@@ -1,0 +1,23 @@
+<IfModule mod_rewrite.c>
+
+<Files .env>
+        Order Allow,Deny
+        Deny from all
+    </Files>
+	
+    RewriteEngine On
+
+    # Forza HTTPS
+    RewriteCond %{HTTPS} off
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+    # Reindirizza tutte le richieste alla cartella public
+    RewriteRule ^$ public/index.php [L]
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ public/$1 [L,NC]
+</IfModule>
+
+# Imposta l'index predefinito
+DirectoryIndex index.php

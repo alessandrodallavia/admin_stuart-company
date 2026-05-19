@@ -1,0 +1,136 @@
+// tailwind.config.js
+import defaultTheme from 'tailwindcss/defaultTheme'
+import forms from '@tailwindcss/forms'
+import typography from '@tailwindcss/typography'
+import flowbite from 'flowbite/plugin'
+
+/** @type {import('tailwindcss').Config} */
+export default {
+    content: [
+        './resources/**/*.blade.php',
+        './resources/**/*.js',
+        './resources/**/*.vue',
+    ],
+    theme: {
+        extend: {
+            screens: {
+                xs: '360px',
+                sm: '640px',
+                md: '768px',
+                lg: '1024px',
+                xl: '1920px',
+            },
+            spacing: {
+                0: 0,
+                px: '1px',
+                2: '2px',
+                4: '4px',
+                5: '5px',
+                6: '6px',
+                8: '8px',
+                10: '10px',
+                12: '12px',
+                16: '16px',
+                20: '20px',
+                24: '24px',
+                28: '28px',
+                32: '32px',
+                36: '36px',
+                40: '40px',
+                48: '48px',
+                50: '50px',
+                56: '56px',
+                60: '60px',
+                64: '64px',
+                70: '70px',
+                75: '75px',
+                80: '80px',
+                90: '90px',
+                96: '96px',
+                100: '100px',
+                120: '120px',
+                130: '130px',
+                144: '144px',
+                150: '150px',
+                160: '160px',
+                180: '180px',
+                200: '200px',
+                220: '220px',
+                300: '300px',
+                320: '320px',
+                400: '400px',
+                500: '500px',
+                600: '600px',
+                700: '700px',
+                '60vw': '60vw',
+            },
+            maxWidth: {
+                100: '100px',
+                120: '120px',
+                130: '130px',
+            },
+            fontSize: {
+                11: '11px',
+                12: ['12px', '12px'],
+                14: '14px',
+                base: ['16px', '18px'],
+                18: '18px',
+                20: '20px',
+                21: '21px',
+                24: '24px',
+                25: '25px',
+                28: '28px',
+                30: '30px',
+                38: '38px',
+                40: '40px',
+                50: '50px',
+                60: '60px',
+            },
+            fontFamily: {
+                // scegli una sola "sans" coerente (qui uso Inter + default)
+                sans: ['Inter', ...defaultTheme.fontFamily.sans],
+                inter: ['Inter', ...defaultTheme.fontFamily.sans],
+                roboto: ['Roboto', ...defaultTheme.fontFamily.sans],
+                bebas: ['"Bebas Neue"', ...defaultTheme.fontFamily.sans],
+                futura: ['Futura', 'sans-serif'],
+            },
+            letterSpacing: {
+                // valori già presenti: tight = -0.025em, normal = 0em
+                semi: '-0.010em',
+                nike: '-0.07em',
+            },
+            colors: {
+                transparent: 'transparent',
+                black: 'rgba(var(--color-black), <alpha-value>)',
+                white: 'rgba(var(--color-white), <alpha-value>)',
+                brand: 'rgba(var(--color-brand), <alpha-value>)',
+                gray: {
+                    DEFAULT: 'rgba(var(--color-gray), <alpha-value>)',
+                    mid: 'rgba(var(--color-gray-mid), <alpha-value>)',
+                    light: 'rgba(var(--color-gray-light), <alpha-value>)',
+                    custom: '#f8f8f8',
+                },
+                'black-nike': 'rgba(var(--color-black-nike), <alpha-value>)',
+                'bullstar': 'rgba(var(--color-bullstar), <alpha-value>)',
+                'bullstar-hover': 'rgba(var(--color-bullstar-hover), <alpha-value>)',
+                'whatsapp': 'rgba(var(--color-whatsapp), <alpha-value>)'
+            },
+            aspectRatio: {
+                '3/2': '3 / 2',
+                '4/5': '4 / 5',
+                '5/4': '5 / 4',
+                '16/9': '16 / 9',
+                '9/16': '9 / 16',
+                '21/9': '21 / 9',
+            },
+            borderRadius: {
+                10: '10px',
+            },
+        },
+    },
+    plugins: [
+        forms(),
+        typography(),
+        flowbite(),
+    ],
+}

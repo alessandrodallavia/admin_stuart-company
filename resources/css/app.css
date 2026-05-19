@@ -1,0 +1,156 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Roboto:ital,wght@0,100..900&display=swap');
+
+@import "tailwindcss";
+@config "../../tailwind.config.js";
+
+/* Import Swiper dentro un layer base */
+@import "swiper/swiper-bundle.css" layer(base);
+@import "swiper/css/bundle" layer(base);
+
+@font-face {
+    font-family: 'Futura';
+    src: url('../fonts/Futura-CondensedExtraBold.woff2') format('woff2'),
+        url('../fonts/Futura-CondensedExtraBold.woff') format('woff');
+    font-weight: 800; /* meglio che "bold", così Tailwind lo mappa a font-extrabold */
+    font-style: normal;
+    font-display: swap;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+/* Fix border color compatibilità */
+@layer base {
+    *,
+    ::after,
+    ::before,
+    ::backdrop,
+    ::file-selector-button {
+      border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+@layer base {
+    :root {
+        --color-black: 0, 0, 0;
+        --color-white: 255, 255, 255;
+        --color-brand: 255, 0, 0;
+        --color-gray: 84, 84, 84;
+        --color-gray-mid: 220, 220, 220;
+        --color-gray-light: 248, 248, 248;
+        --color-black-nike: 31, 31, 33;
+        --color-bullstar: 32, 106, 233;
+        --color-bullstar-hover: 0, 84, 230;
+        --color-whatsapp: 11, 159, 10;
+    }
+}
+
+@layer components {
+
+    .h1-headline {
+        @apply font-futura font-extrabold 
+               text-[clamp(34px,5vw,60px)] 
+               leading-[1.05] 
+               md:leading-[0.95] 
+               tracking-[-0.05em] 
+               uppercase 
+               text-center;
+    }
+
+    .h2-title {
+        @apply font-futura font-extrabold
+                text-[clamp(28px,4vw,50px)]
+                leading-[1.05] 
+                md:leading-[0.95] 
+                tracking-[-0.08em] 
+               uppercase 
+               text-center;
+    }
+
+    .h3-prodotti {
+        @apply font-futura font-extrabold 
+               text-[clamp(24px,3vw,38px)] 
+               leading-[1] 
+               tracking-[-0.04em] 
+               uppercase;
+    }
+
+    .h4-strap {
+        @apply font-futura font-extrabold 
+               text-[clamp(16px,1.8vw,28px)] 
+               leading-[1.1] 
+               tracking-[-0.03em] 
+               uppercase;
+    }
+
+    .h5-grafico {
+        @apply font-futura font-extrabold 
+               text-[clamp(22px,1.8vw,28px)] 
+               leading-[1.1] 
+               tracking-[-0.03em] 
+               uppercase;
+    }
+
+    .body1-text {
+        @apply text-[clamp(18px,2vw,25px)] 
+               leading-[1.4] 
+               tracking-[-0.01em] 
+               text-center;
+    }
+
+    .body2-text {
+        @apply text-[clamp(16px,1.3vw,18px)] 
+               leading-[1.5] 
+               tracking-[-0.01em];
+    }
+
+    .body3-text {
+        @apply text-[clamp(14px,1.3vw,16px)] 
+               leading-[1.5] 
+               tracking-[-0.01em];
+    }
+
+    .button-cta {
+        @apply font-extrabold 
+               text-[clamp(16px,1.5vw,21px)] 
+               leading-[1] 
+               rounded-3xl md:rounded-full 
+               flex items-center justify-center 
+               text-white 
+               text-center
+               cursor-pointer 
+               px-16 py-12 md:px-24 md:py-[14px] lg:px-28 lg:py-[14px];
+    }
+
+    .steps-number {
+        @apply font-futura
+                font-extrabold
+                text-[clamp(50px,4vw,90px)]
+                leading-[1]
+                tracking-[-0.04em]
+                text-bullstar
+                text-center;
+                
+    }
+
+    .steps-title {
+        @apply font-futura
+                font-extrabold
+                text-[clamp(28px,4vw,50px)]
+                leading-[1]
+                tracking-[-0.08em]
+                text-center
+                uppercase;
+    }
+
+}
+
+[x-cloak] {
+    display: none;
+}
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
