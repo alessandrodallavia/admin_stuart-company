@@ -6,6 +6,54 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Chat WhatsApp - Bullstar Admin</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <style>
+        .admin-stats-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+
+        .admin-follow-up-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .admin-line-clamp-2 {
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+            overflow: hidden;
+        }
+
+        .admin-follow-up-list {
+            max-height: 260px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .admin-message-list {
+            min-height: 360px;
+            overflow-y: auto;
+        }
+
+        @media (min-width: 768px) {
+            .admin-message-list {
+                max-height: 560px;
+            }
+        }
+
+        @media (min-width: 768px) {
+            .admin-stats-grid {
+                grid-template-columns: repeat(5, minmax(0, 1fr));
+            }
+        }
+
+        @media (min-width: 1280px) {
+            .admin-follow-up-grid {
+                grid-template-columns: minmax(0, 1fr) 360px;
+            }
+        }
+    </style>
 </head>
 <body class="min-h-screen bg-gray-light text-black-nike antialiased">
     <div class="flex min-h-screen flex-col">
@@ -51,7 +99,7 @@
         </header>
 
         <main class="mx-auto flex w-full max-w-[1440px] flex-1 flex-col px-16 py-20 md:px-32 md:py-28">
-            <section class="mb-16 grid gap-12 md:grid-cols-4">
+            <section class="admin-stats-grid mb-16">
                 <article class="rounded-10 border border-gray-mid bg-white p-16">
                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Conversazioni</p>
                     <p id="stat-total" class="mt-8 text-38 font-black leading-none tracking-normal">{{ $stats['total'] ?? 0 }}</p>
@@ -65,6 +113,11 @@
                 <article class="rounded-10 border border-gray-mid bg-white p-16">
                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Da prendere</p>
                     <p id="stat-needs-human" class="mt-8 text-38 font-black leading-none tracking-normal">{{ $stats['needs_human'] ?? 0 }}</p>
+                </article>
+
+                <article class="rounded-10 border border-gray-mid bg-white p-16">
+                    <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Follow-up dovuti</p>
+                    <p id="stat-follow-ups-due" class="mt-8 text-38 font-black leading-none tracking-normal">{{ $stats['follow_ups_due'] ?? 0 }}</p>
                 </article>
 
                 <article class="rounded-10 border border-gray-mid bg-white p-16">
@@ -128,6 +181,21 @@
                                                     {{ $conversation->unread_incoming_messages_count }}
                                                 </span>
                                             @endif
+                                            @if (! $conversation->isExcludedFromFollowUps() && $conversation->due_follow_ups_count > 0)
+                                                <span class="shrink-0 rounded-full bg-brand px-8 py-4 text-11 font-extrabold uppercase tracking-normal text-white">
+                                                    Da fare
+                                                </span>
+                                            @endif
+                                            @if ($conversation->pending_follow_ups_count > 0)
+                                                <span class="shrink-0 rounded-full bg-bullstar/10 px-8 py-4 text-11 font-extrabold uppercase tracking-normal text-bullstar">
+                                                    FU {{ $conversation->pending_follow_ups_count }}
+                                                </span>
+                                            @endif
+                                            @if ($conversation->isExcludedFromFollowUps())
+                                                <span class="shrink-0 rounded-full bg-gray-mid px-8 py-4 text-11 font-extrabold uppercase tracking-normal text-black-nike">
+                                                    Pausa FU
+                                                </span>
+                                            @endif
                                         </div>
                                         <p class="mt-4 truncate text-12 font-semibold text-gray">
                                             {{ $conversation->lead?->club ?: $conversation->contact_phone }}
@@ -150,7 +218,7 @@
                                 </p>
 
                                 <p class="mt-4 text-11 font-bold uppercase tracking-normal text-gray">
-                                    {{ optional($conversation->last_message_at ?? $conversation->created_at)->format('d/m/Y H:i') }}
+                                    {{ optional($conversation->last_message_at ?? $conversation->created_at)?->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}
                                 </p>
                             </a>
                         @empty
@@ -181,6 +249,11 @@
                                             <span class="rounded-full px-10 py-5 text-11 font-extrabold uppercase tracking-normal {{ $selectedConversation->mode === 'manual' ? 'bg-bullstar/10 text-bullstar' : 'bg-whatsapp/10 text-whatsapp' }}">
                                                 {{ $selectedConversation->mode }}
                                             </span>
+                                            @if ($selectedConversation->isExcludedFromFollowUps())
+                                                <span class="rounded-full bg-gray-mid px-10 py-5 text-11 font-extrabold uppercase tracking-normal text-black-nike">
+                                                    Follow-up sospesi
+                                                </span>
+                                            @endif
                                         </div>
                                         @if ($selectedConversation->needs_human)
                                             <p class="mt-8 rounded-10 border border-brand/20 bg-brand/5 px-12 py-10 text-14 font-bold text-brand">
@@ -192,6 +265,24 @@
                                             @if ($selectedConversation->lead?->email)
                                                 <span class="mx-6 text-gray-mid">/</span>{{ $selectedConversation->lead->email }}
                                             @endif
+                                        </p>
+                                        @if ($selectedConversation->isExcludedFromFollowUps())
+                                            <p class="mt-8 rounded-10 border border-gray-mid bg-gray-light px-12 py-10 text-14 font-bold text-gray">
+                                                @if ($selectedConversation->follow_up_excluded_permanently)
+                                                    Esclusa dai follow-up a tempo indeterminato.
+                                                @else
+                                                    Esclusa dai follow-up fino al {{ $selectedConversation->follow_up_excluded_until?->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}.
+                                                @endif
+                                                @if ($selectedConversation->follow_up_exclusion_reason)
+                                                    <span class="block text-black-nike">{{ $selectedConversation->follow_up_exclusion_reason }}</span>
+                                                @endif
+                                            </p>
+                                        @endif
+                                        <p
+                                            id="selected-follow-up-alert"
+                                            class="{{ (! $selectedConversation->isExcludedFromFollowUps() && ($selectedConversation->due_follow_ups_count ?? 0) > 0) ? '' : 'hidden' }} mt-8 rounded-10 border border-brand/20 bg-brand/5 px-12 py-10 text-14 font-bold text-brand"
+                                        >
+                                            Follow-up da fare: questa chat ha <span id="selected-follow-up-alert-count">{{ $selectedConversation->due_follow_ups_count ?? 0 }}</span> promemoria scaduti.
                                         </p>
                                     </div>
 
@@ -223,7 +314,120 @@
                                 </div>
                             </div>
 
-                            <div id="message-list" class="flex-1 space-y-12 overflow-y-auto bg-gray-light px-16 py-20 md:px-24">
+                            <div class="admin-follow-up-grid border-b border-gray-mid bg-white px-20 py-16">
+                                <div class="rounded-10 border border-gray-mid bg-gray-light p-14">
+                                    <div class="mb-12 flex items-center justify-between gap-12">
+                                        <div>
+                                            <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Follow-up programmati</p>
+                                            <p class="mt-4 text-12 font-semibold text-gray">I follow-up in pausa restano in attesa finché l’esclusione scade.</p>
+                                        </div>
+                                    </div>
+
+                                    <div id="follow-up-list" class="admin-follow-up-list space-y-8">
+                                        @forelse ($selectedConversation->followUps as $followUp)
+                                            @php
+                                                $isFollowUpDue = $followUp->status === 'pending' && $followUp->due_at->isPast();
+                                            @endphp
+                                            <div class="rounded-10 border border-gray-mid bg-white px-12 py-10">
+                                                <div class="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
+                                                    <div class="min-w-0">
+                                                        <div class="flex flex-wrap items-center gap-8">
+                                                            <span class="rounded-full px-8 py-4 text-11 font-extrabold uppercase tracking-normal {{ match ($followUp->status) {
+                                                                'sent' => 'bg-whatsapp/10 text-whatsapp',
+                                                                'failed' => 'bg-red-50 text-red-700',
+                                                                'cancelled' => 'bg-gray-mid text-black-nike',
+                                                                default => $isFollowUpDue ? 'bg-brand text-white' : 'bg-bullstar/10 text-bullstar',
+                                                            } }}">
+                                                                {{ match ($followUp->status) {
+                                                                    'sent' => 'Inviato',
+                                                                    'failed' => 'Errore',
+                                                                    'cancelled' => 'Annullato',
+                                                                    default => $isFollowUpDue ? 'Da fare' : 'Programmato',
+                                                                } }}
+                                                            </span>
+                                                            @if ($followUp->auto_generated)
+                                                                <span class="rounded-full bg-white px-8 py-4 text-11 font-extrabold uppercase tracking-normal text-gray">
+                                                                    Auto
+                                                                </span>
+                                                            @endif
+                                                            <span class="text-12 font-bold uppercase tracking-normal text-gray">{{ $followUp->due_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</span>
+                                                        </div>
+                                                        <p class="admin-line-clamp-2 mt-6 text-14 font-semibold leading-[20px] text-black-nike">{{ $followUp->body }}</p>
+                                                        @if ($followUp->error_message)
+                                                            <p class="mt-6 text-12 font-bold text-red-700">{{ $followUp->error_message }}</p>
+                                                        @endif
+                                                    </div>
+
+                                                    @if ($followUp->status === 'pending')
+                                                        <form method="POST" action="{{ route('admin.conversations.follow-ups.cancel', [$selectedConversation, $followUp]) }}">
+                                                            @csrf
+                                                            @method('PATCH')
+                                                            <button type="submit" class="rounded-10 border border-gray-mid bg-white px-10 py-8 text-11 font-extrabold uppercase tracking-normal transition hover:border-red-400 hover:text-red-700">
+                                                                Annulla
+                                                            </button>
+                                                        </form>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        @empty
+                                            <div class="rounded-10 border border-dashed border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-gray">
+                                                Nessun follow-up programmato.
+                                            </div>
+                                        @endforelse
+                                    </div>
+                                </div>
+
+                                <div class="space-y-12">
+                                    <form method="POST" action="{{ route('admin.conversations.follow-ups.store', $selectedConversation) }}" class="rounded-10 border border-gray-mid bg-white p-14">
+                                        @csrf
+                                        <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Nuovo follow-up</p>
+                                        <input
+                                            name="due_at"
+                                            type="datetime-local"
+                                            value="{{ old('due_at') }}"
+                                            class="mt-10 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"
+                                        >
+                                        <textarea
+                                            name="body"
+                                            rows="3"
+                                            maxlength="4096"
+                                            class="mt-10 w-full resize-none rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"
+                                            placeholder="Messaggio follow-up..."
+                                        >{{ old('body') }}</textarea>
+                                        <button type="submit" class="mt-10 w-full rounded-10 bg-bullstar px-14 py-10 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">
+                                            Programma
+                                        </button>
+                                    </form>
+
+                                    <form method="POST" action="{{ route('admin.conversations.follow-up-exclusion', $selectedConversation) }}" class="rounded-10 border border-gray-mid bg-white p-14">
+                                        @csrf
+                                        @method('PATCH')
+                                        <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Esclusione follow-up</p>
+                                        <select name="exclusion_type" class="mt-10 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                            <option value="none">Attiva follow-up</option>
+                                            <option value="until" @selected($selectedConversation->follow_up_excluded_until && ! $selectedConversation->follow_up_excluded_permanently)>Escludi fino a data</option>
+                                            <option value="permanent" @selected($selectedConversation->follow_up_excluded_permanently)>Escludi a tempo indeterminato</option>
+                                        </select>
+                                        <input
+                                            name="excluded_until"
+                                            type="datetime-local"
+                                            value="{{ old('excluded_until', $selectedConversation->follow_up_excluded_until?->timezone(config('app.display_timezone'))->format('Y-m-d\TH:i')) }}"
+                                            class="mt-10 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"
+                                        >
+                                        <textarea
+                                            name="reason"
+                                            rows="2"
+                                            class="mt-10 w-full resize-none rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"
+                                            placeholder="Motivo interno..."
+                                        >{{ old('reason', $selectedConversation->follow_up_exclusion_reason) }}</textarea>
+                                        <button type="submit" class="mt-10 w-full rounded-10 border border-black-nike bg-white px-14 py-10 text-12 font-extrabold uppercase tracking-normal text-black-nike transition hover:bg-gray-light">
+                                            Salva esclusione
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <div id="message-list" class="admin-message-list flex-1 space-y-12 bg-gray-light px-16 py-20 md:px-24">
                                 @forelse ($selectedConversation->messages as $message)
                                     @php
                                         $isOutbound = $message->direction === 'outbound';
@@ -278,9 +482,9 @@
                                             <div class="mt-8 flex flex-wrap items-center gap-8 text-11 font-bold uppercase tracking-normal {{ $isOutbound ? 'text-white/70' : 'text-gray' }}">
                                                 <span>{{ $message->source }}</span>
                                                 @if ($isOutbound)
-                                                    <span>{{ $statusLabel }} {{ optional($message->read_at ?? $message->delivered_at ?? $message->sent_at ?? $message->created_at)->format('d/m/Y H:i') }}</span>
+                                                    <span>{{ $statusLabel }} {{ optional($message->read_at ?? $message->delivered_at ?? $message->sent_at ?? $message->created_at)?->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</span>
                                                 @else
-                                                    <span>{{ optional($message->received_at ?? $message->created_at)->format('d/m/Y H:i') }}</span>
+                                                    <span>{{ optional($message->received_at ?? $message->created_at)?->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</span>
                                                     <span>{{ $statusLabel }}</span>
                                                 @endif
                                             </div>
@@ -358,7 +562,9 @@
     <script>
             const selectedConversationId = @json($selectedConversation?->id);
             const pollUrl = @json($selectedConversation ? route('admin.conversations.poll', $selectedConversation) : route('admin.dashboard.poll'));
+            const csrfToken = @json(csrf_token());
             let lastMessageSignature = '';
+            let lastFollowUpSignature = '';
 
             function escapeHtml(value) {
                 return String(value ?? '')
@@ -373,6 +579,7 @@
                 document.getElementById('stat-total').textContent = stats.total;
                 document.getElementById('stat-auto').textContent = stats.auto;
                 document.getElementById('stat-needs-human').textContent = stats.needs_human;
+                document.getElementById('stat-follow-ups-due').textContent = stats.follow_ups_due;
                 document.getElementById('stat-unread').textContent = stats.unread;
             }
 
@@ -399,6 +606,15 @@
                     const unread = conversation.unread_count > 0
                         ? `<span class="shrink-0 rounded-full bg-black-nike px-8 py-4 text-11 font-extrabold uppercase tracking-normal text-white">${conversation.unread_count}</span>`
                         : '';
+                    const dueFollowUps = conversation.due_follow_ups_count > 0
+                        ? '<span class="shrink-0 rounded-full bg-brand px-8 py-4 text-11 font-extrabold uppercase tracking-normal text-white">Da fare</span>'
+                        : '';
+                    const followUps = conversation.pending_follow_ups_count > 0
+                        ? `<span class="shrink-0 rounded-full bg-bullstar/10 px-8 py-4 text-11 font-extrabold uppercase tracking-normal text-bullstar">FU ${conversation.pending_follow_ups_count}</span>`
+                        : '';
+                    const followUpExcluded = conversation.follow_up_excluded
+                        ? '<span class="shrink-0 rounded-full bg-gray-mid px-8 py-4 text-11 font-extrabold uppercase tracking-normal text-black-nike">Pausa FU</span>'
+                        : '';
                     const modeClass = conversation.mode === 'manual' ? 'bg-bullstar/10 text-bullstar' : 'bg-whatsapp/10 text-whatsapp';
 
                     return `
@@ -409,6 +625,9 @@
                                         <p class="truncate text-14 font-black leading-tight">${escapeHtml(conversation.name)}</p>
                                         ${needsHuman}
                                         ${unread}
+                                        ${dueFollowUps}
+                                        ${followUps}
+                                        ${followUpExcluded}
                                     </div>
                                     <p class="mt-4 truncate text-12 font-semibold text-gray">${escapeHtml(conversation.subtitle)}</p>
                                 </div>
@@ -419,6 +638,90 @@
                             <p class="line-clamp-1 text-12 font-semibold leading-[18px] text-gray">${escapeHtml(conversation.latest_body)}</p>
                             <p class="mt-4 text-11 font-bold uppercase tracking-normal text-gray">${escapeHtml(conversation.last_message_at)}</p>
                         </a>
+                    `;
+                }).join('');
+            }
+
+            function renderSelectedFollowUpAlert(conversation) {
+                const alert = document.getElementById('selected-follow-up-alert');
+                const count = document.getElementById('selected-follow-up-alert-count');
+
+                if (!alert || !count || !conversation) {
+                    return;
+                }
+
+                const dueCount = Number(conversation.due_follow_ups_count || 0);
+                count.textContent = dueCount;
+                alert.classList.toggle('hidden', dueCount <= 0);
+            }
+
+            function renderFollowUps(followUps) {
+                const list = document.getElementById('follow-up-list');
+
+                if (!list || !Array.isArray(followUps)) {
+                    return;
+                }
+
+                const signature = followUps.map((followUp) => [
+                    followUp.id,
+                    followUp.status,
+                    followUp.status_label,
+                    followUp.due_at,
+                    followUp.body,
+                    followUp.error_message,
+                ].join(':')).join('|');
+
+                if (signature === lastFollowUpSignature) {
+                    return;
+                }
+
+                lastFollowUpSignature = signature;
+
+                if (!followUps.length) {
+                    list.innerHTML = `
+                        <div class="rounded-10 border border-dashed border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-gray">
+                            Nessun follow-up programmato.
+                        </div>
+                    `;
+                    return;
+                }
+
+                list.innerHTML = followUps.map((followUp) => {
+                    const autoBadge = followUp.auto_generated
+                        ? '<span class="rounded-full bg-white px-8 py-4 text-11 font-extrabold uppercase tracking-normal text-gray">Auto</span>'
+                        : '';
+                    const error = followUp.error_message
+                        ? `<p class="mt-6 text-12 font-bold text-red-700">${escapeHtml(followUp.error_message)}</p>`
+                        : '';
+                    const cancelForm = followUp.is_pending
+                        ? `
+                            <form method="POST" action="${followUp.cancel_url}">
+                                <input type="hidden" name="_token" value="${escapeHtml(csrfToken)}">
+                                <input type="hidden" name="_method" value="PATCH">
+                                <button type="submit" class="rounded-10 border border-gray-mid bg-white px-10 py-8 text-11 font-extrabold uppercase tracking-normal transition hover:border-red-400 hover:text-red-700">
+                                    Annulla
+                                </button>
+                            </form>
+                        `
+                        : '';
+
+                    return `
+                        <div class="rounded-10 border border-gray-mid bg-white px-12 py-10">
+                            <div class="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
+                                <div class="min-w-0">
+                                    <div class="flex flex-wrap items-center gap-8">
+                                        <span class="rounded-full px-8 py-4 text-11 font-extrabold uppercase tracking-normal ${escapeHtml(followUp.status_class)}">
+                                            ${escapeHtml(followUp.status_label)}
+                                        </span>
+                                        ${autoBadge}
+                                        <span class="text-12 font-bold uppercase tracking-normal text-gray">${escapeHtml(followUp.due_at)}</span>
+                                    </div>
+                                    <p class="admin-line-clamp-2 mt-6 text-14 font-semibold leading-[20px] text-black-nike">${escapeHtml(followUp.body)}</p>
+                                    ${error}
+                                </div>
+                                ${cancelForm}
+                            </div>
+                        </div>
                     `;
                 }).join('');
             }
@@ -520,6 +823,14 @@
                 }
             }
 
+            function scrollMessagesToBottom() {
+                const list = document.getElementById('message-list');
+
+                if (list) {
+                    list.scrollTop = list.scrollHeight;
+                }
+            }
+
             async function pollConversation() {
                 try {
                     const response = await fetch(pollUrl, {
@@ -536,6 +847,10 @@
                     const data = await response.json();
                     renderStats(data.stats);
                     renderConversationList(data.conversations);
+                    renderSelectedFollowUpAlert(data.selected_conversation);
+                    if (data.follow_ups) {
+                        renderFollowUps(data.follow_ups);
+                    }
                     if (data.messages) {
                         renderMessages(data.messages);
                     }
@@ -544,6 +859,7 @@
                 }
             }
 
+            scrollMessagesToBottom();
             pollConversation();
             window.setInterval(pollConversation, 3000);
         </script>

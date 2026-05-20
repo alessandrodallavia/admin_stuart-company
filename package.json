@@ -3,8 +3,8 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "build": "vite build",
-        "dev": "vite"
+        "build": "PATH=/Users/alessandrodallavia/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH vite build",
+        "dev": "PATH=/Users/alessandrodallavia/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH vite"
     },
     "devDependencies": {
         "@tailwindcss/forms": "^0.5.11",

@@ -2,17 +2,17 @@
 
 namespace App\Jobs;
 
-use Illuminate\Bus\Queueable;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
 use App\Models\Lead;
 use App\Models\WhatsappConversation;
 use App\Models\WhatsappMessage;
 use App\Services\BrevoEmailService;
 use Carbon\Carbon;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ProcessWhatsappWebhookJob implements ShouldQueue
@@ -25,7 +25,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
     {
         $value = $this->data['entry'][0]['changes'][0]['value'] ?? null;
 
-        if (!$value) {
+        if (! $value) {
             return;
         }
 
@@ -33,7 +33,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
             $this->handleStatuses($value['statuses']);
         }
 
-        if (!isset($value['messages'])) {
+        if (! isset($value['messages'])) {
             return;
         }
 
@@ -42,7 +42,9 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
             $from = $message['from'] ?? null;
             $type = $message['type'] ?? null;
 
-            if (!$from) continue;
+            if (! $from) {
+                continue;
+            }
 
             // 🚫 evita loop su tuoi messaggi (opzionale)
             if (($message['from'] ?? null) === config('services.whatsapp.phone_number_id')) {
@@ -52,12 +54,13 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
             $conversation = $this->getConversation($from);
             $lead = $conversation->lead ?: $this->findLead($message, $from);
 
-            if ($lead && !$conversation->lead_id) {
+            if ($lead && ! $conversation->lead_id) {
                 $conversation->forceFill(['lead_id' => $lead->id])->save();
                 $conversation->setRelation('lead', $lead);
             }
 
             $this->storeIncomingMessage($conversation, $message, $from);
+            $this->deleteAutomaticFollowUpsAfterCustomerReply($conversation);
 
             if ($conversation->mode === 'manual') {
                 continue;
@@ -78,13 +81,13 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
         foreach ($statuses as $statusPayload) {
             $providerMessageId = $statusPayload['id'] ?? null;
 
-            if (!$providerMessageId) {
+            if (! $providerMessageId) {
                 continue;
             }
 
             $message = WhatsappMessage::where('provider_message_id', $providerMessageId)->first();
 
-            if (!$message) {
+            if (! $message) {
                 continue;
             }
 
@@ -132,7 +135,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
         }
 
         if ($payload === 'Modifica il tuo ordine') {
-            $this->sendText($from, "Come vuoi modificarlo?", $conversation);
+            $this->sendText($from, 'Come vuoi modificarlo?', $conversation);
         }
     }
 
@@ -140,8 +143,9 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
     {
         $text = $message['text']['body'] ?? '';
 
-        if (!$lead) {
+        if (! $lead) {
             $this->requestHumanHandoff($conversation, 'Lead non trovato: conversazione in modalità manuale.');
+
             return; // nessun lead → ignora
         }
 
@@ -151,11 +155,11 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
             $lead->save();
         }
 
-        if (!$conversation->lead_id) {
+        if (! $conversation->lead_id) {
             $conversation->forceFill(['lead_id' => $lead->id])->save();
         }
 
-        if (!$lead->whatsapp_conversation_id) {
+        if (! $lead->whatsapp_conversation_id) {
             $lead->forceFill(['whatsapp_conversation_id' => $conversation->id])->save();
         }
 
@@ -189,18 +193,18 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
     private function sendText($to, $body, ?WhatsappConversation $conversation = null)
     {
         $payload = [
-            "messaging_product" => "whatsapp",
-            "to" => $to,
-            "type" => "text",
-            "text" => [
-                "body" => $body
-            ]
+            'messaging_product' => 'whatsapp',
+            'to' => $to,
+            'type' => 'text',
+            'text' => [
+                'body' => $body,
+            ],
         ];
 
         $response = Http::withToken(config('services.whatsapp.token'))
-            ->post("https://graph.facebook.com/v25.0/" . config('services.whatsapp.phone_number_id') . "/messages", $payload);
+            ->post('https://graph.facebook.com/v25.0/'.config('services.whatsapp.phone_number_id').'/messages', $payload);
 
-        if (!$conversation) {
+        if (! $conversation) {
             $conversation = $this->getConversation($to);
         }
 
@@ -260,11 +264,11 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
             ->first();
 
         if ($conversation) {
-            if ($lead && !$conversation->lead_id) {
+            if ($lead && ! $conversation->lead_id) {
                 $conversation->forceFill(['lead_id' => $lead->id])->save();
             }
 
-            if ($lead && !$lead->whatsapp_conversation_id) {
+            if ($lead && ! $lead->whatsapp_conversation_id) {
                 $lead->forceFill(['whatsapp_conversation_id' => $conversation->id])->save();
             }
 
@@ -279,7 +283,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
             'status' => 'open',
         ]);
 
-        if ($lead && !$lead->whatsapp_conversation_id) {
+        if ($lead && ! $lead->whatsapp_conversation_id) {
             $lead->forceFill(['whatsapp_conversation_id' => $conversation->id])->save();
         }
 
@@ -299,7 +303,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
         ])->save();
     }
 
-    private function storeIncomingMessage(WhatsappConversation $conversation, array $message, string $from): void
+    private function storeIncomingMessage(WhatsappConversation $conversation, array $message, string $from): WhatsappMessage
     {
         $receivedAt = isset($message['timestamp'])
             ? Carbon::createFromTimestamp((int) $message['timestamp'])
@@ -345,6 +349,16 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
         $conversation->forceFill([
             'last_message_at' => $storedMessage->received_at ?? $storedMessage->created_at,
         ])->save();
+
+        return $storedMessage;
+    }
+
+    private function deleteAutomaticFollowUpsAfterCustomerReply(WhatsappConversation $conversation): void
+    {
+        $conversation->followUps()
+            ->where('auto_generated', true)
+            ->where('status', 'pending')
+            ->delete();
     }
 
     private function existingMediaAttributes(WhatsappMessage $message): array
@@ -416,7 +430,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
                 ];
             }
 
-            $path = "whatsapp/{$conversation->id}/{$mediaId}-" . Str::slug(pathinfo($filename, PATHINFO_FILENAME));
+            $path = "whatsapp/{$conversation->id}/{$mediaId}-".Str::slug(pathinfo($filename, PATHINFO_FILENAME));
             $extension = pathinfo($filename, PATHINFO_EXTENSION);
             $path .= $extension ? ".{$extension}" : '';
 
@@ -491,41 +505,41 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
 
     private function sendList($to, ?WhatsappConversation $conversation = null)
     {
-        $body = "Cosa vuoi modificare?";
+        $body = 'Cosa vuoi modificare?';
         $payload = [
-            "messaging_product" => "whatsapp",
-            "to" => $to,
-            "type" => "interactive",
-            "interactive" => [
-                "type" => "list",
-                "body" => [
-                    "text" => $body
+            'messaging_product' => 'whatsapp',
+            'to' => $to,
+            'type' => 'interactive',
+            'interactive' => [
+                'type' => 'list',
+                'body' => [
+                    'text' => $body,
                 ],
-                "action" => [
-                    "button" => "Scegli",
-                    "sections" => [
+                'action' => [
+                    'button' => 'Scegli',
+                    'sections' => [
                         [
-                            "title" => "Modifica ordine",
-                            "rows" => [
+                            'title' => 'Modifica ordine',
+                            'rows' => [
                                 [
-                                    "id" => "modifica_taglia",
-                                    "title" => "Modifica taglia"
+                                    'id' => 'modifica_taglia',
+                                    'title' => 'Modifica taglia',
                                 ],
                                 [
-                                    "id" => "modifica_colore",
-                                    "title" => "Modifica colore"
-                                ]
-                            ]
-                        ]
-                    ]
-                ]
-            ]
+                                    'id' => 'modifica_colore',
+                                    'title' => 'Modifica colore',
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
         ];
 
         $response = Http::withToken(config('services.whatsapp.token'))
-            ->post("https://graph.facebook.com/v25.0/" . config('services.whatsapp.phone_number_id') . "/messages", $payload);
+            ->post('https://graph.facebook.com/v25.0/'.config('services.whatsapp.phone_number_id').'/messages', $payload);
 
-        if (!$conversation) {
+        if (! $conversation) {
             $conversation = $this->getConversation($to);
         }
 
@@ -544,7 +558,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
 
         if (! empty($responseDeal['id'])) {
             Lead::where('id', $lead->id)->update([
-                'pipeline_lead_id' => $responseDeal['id']
+                'pipeline_lead_id' => $responseDeal['id'],
             ]);
         }
     }

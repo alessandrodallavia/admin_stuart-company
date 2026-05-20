@@ -19,6 +19,9 @@ Route::name('admin.')->group(function () {
         Route::get('/conversations/{conversation}', [AdminWhatsappConversationController::class, 'index'])->name('conversations.show');
         Route::get('/conversations/{conversation}/poll', [AdminWhatsappConversationController::class, 'poll'])->name('conversations.poll');
         Route::patch('/conversations/{conversation}/mode', [AdminWhatsappConversationController::class, 'updateMode'])->name('conversations.mode');
+        Route::patch('/conversations/{conversation}/follow-up-exclusion', [AdminWhatsappConversationController::class, 'updateFollowUpExclusion'])->name('conversations.follow-up-exclusion');
+        Route::post('/conversations/{conversation}/follow-ups', [AdminWhatsappConversationController::class, 'storeFollowUp'])->name('conversations.follow-ups.store');
+        Route::patch('/conversations/{conversation}/follow-ups/{followUp}/cancel', [AdminWhatsappConversationController::class, 'cancelFollowUp'])->name('conversations.follow-ups.cancel');
         Route::post('/conversations/{conversation}/messages', [AdminWhatsappConversationController::class, 'sendMessage'])->name('conversations.messages.store');
         Route::get('/messages/{message}/media', [AdminWhatsappConversationController::class, 'showMedia'])->name('messages.media');
         Route::post('/logout', [AdminAuthController::class, 'logout'])->name('logout');

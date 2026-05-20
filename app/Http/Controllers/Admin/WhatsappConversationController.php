@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\WhatsappConversation;
+use App\Models\WhatsappFollowUp;
 use App\Models\WhatsappMessage;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -27,7 +29,8 @@ class WhatsappConversationController extends Controller
 
         $conversations = WhatsappConversation::query()
             ->with(['lead', 'latestMessage'])
-            ->withCount('unreadIncomingMessages')
+            ->withCount(['unreadIncomingMessages', 'pendingFollowUps', 'dueFollowUps'])
+            ->orderByDesc('due_follow_ups_count')
             ->orderByDesc('needs_human')
             ->orderByDesc('unread_incoming_messages_count')
             ->orderByDesc('last_message_at')
@@ -37,12 +40,27 @@ class WhatsappConversationController extends Controller
         $selectedConversation = $conversation?->load([
             'lead',
             'messages' => fn ($query) => $query->oldest(),
-        ]);
+            'followUps' => fn ($query) => $query
+                ->orderByRaw("status = 'pending' desc")
+                ->orderBy('due_at')
+                ->limit(12),
+        ])?->loadCount(['pendingFollowUps', 'dueFollowUps']);
 
         $stats = [
             'total' => WhatsappConversation::count(),
             'auto' => WhatsappConversation::where('mode', 'auto')->count(),
             'needs_human' => WhatsappConversation::where('needs_human', true)->count(),
+            'follow_ups_due' => WhatsappFollowUp::query()
+                ->where('status', 'pending')
+                ->where('due_at', '<=', now())
+                ->whereHas('conversation', fn ($query) => $query
+                    ->where('follow_up_excluded_permanently', false)
+                    ->where(fn ($query) => $query
+                        ->whereNull('follow_up_excluded_until')
+                        ->orWhere('follow_up_excluded_until', '<=', now())
+                    )
+                )
+                ->count(),
             'unread' => WhatsappMessage::query()
                 ->where('direction', 'inbound')
                 ->whereNull('admin_read_at')
@@ -72,6 +90,94 @@ class WhatsappConversationController extends Controller
         return redirect()
             ->route('admin.conversations.show', $conversation)
             ->with('status', $data['mode'] === 'manual' ? 'Chat passata in manuale.' : 'Chat passata in automatico.');
+    }
+
+    public function storeFollowUp(Request $request, WhatsappConversation $conversation): RedirectResponse
+    {
+        $data = $request->validate([
+            'due_at' => ['required', 'date'],
+            'body' => ['required', 'string', 'max:4096'],
+        ]);
+        $dueAt = $this->parseAdminDateTime($data['due_at']);
+
+        if ($dueAt->lessThanOrEqualTo(now())) {
+            return back()
+                ->withErrors(['message' => 'Imposta una data follow-up futura.'])
+                ->withInput();
+        }
+
+        $conversation->followUps()->create([
+            'created_by_admin_user_id' => Auth::guard('admin')->id(),
+            'due_at' => $dueAt,
+            'body' => trim($data['body']),
+            'status' => 'pending',
+        ]);
+
+        return redirect()
+            ->route('admin.conversations.show', $conversation)
+            ->with('status', 'Follow-up programmato.');
+    }
+
+    public function cancelFollowUp(Request $request, WhatsappConversation $conversation, WhatsappFollowUp $followUp): RedirectResponse
+    {
+        abort_unless($followUp->whatsapp_conversation_id === $conversation->id, 404);
+
+        if ($followUp->status !== 'pending') {
+            return back()->withErrors(['message' => 'Puoi annullare solo follow-up ancora in attesa.']);
+        }
+
+        $data = $request->validate([
+            'cancel_reason' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $followUp->forceFill([
+            'status' => 'cancelled',
+            'cancelled_at' => now(),
+            'cancel_reason' => $data['cancel_reason'] ?? null,
+        ])->save();
+
+        return redirect()
+            ->route('admin.conversations.show', $conversation)
+            ->with('status', 'Follow-up annullato.');
+    }
+
+    public function updateFollowUpExclusion(Request $request, WhatsappConversation $conversation): RedirectResponse
+    {
+        $data = $request->validate([
+            'exclusion_type' => ['required', 'in:none,until,permanent'],
+            'excluded_until' => ['nullable', 'date', 'required_if:exclusion_type,until'],
+            'reason' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $updates = [
+            'follow_up_excluded_until' => null,
+            'follow_up_excluded_permanently' => false,
+            'follow_up_exclusion_reason' => null,
+        ];
+
+        if ($data['exclusion_type'] === 'until') {
+            $excludedUntil = $this->parseAdminDateTime($data['excluded_until']);
+
+            if ($excludedUntil->lessThanOrEqualTo(now())) {
+                return back()
+                    ->withErrors(['message' => 'Imposta una data di esclusione futura.'])
+                    ->withInput();
+            }
+
+            $updates['follow_up_excluded_until'] = $excludedUntil;
+            $updates['follow_up_exclusion_reason'] = $data['reason'] ?? null;
+        }
+
+        if ($data['exclusion_type'] === 'permanent') {
+            $updates['follow_up_excluded_permanently'] = true;
+            $updates['follow_up_exclusion_reason'] = $data['reason'] ?? null;
+        }
+
+        $conversation->forceFill($updates)->save();
+
+        return redirect()
+            ->route('admin.conversations.show', $conversation)
+            ->with('status', $data['exclusion_type'] === 'none' ? 'Esclusione follow-up rimossa.' : 'Esclusione follow-up aggiornata.');
     }
 
     public function sendMessage(Request $request, WhatsappConversation $conversation): RedirectResponse
@@ -115,7 +221,7 @@ class WhatsappConversationController extends Controller
         $payload = $this->buildOutgoingPayload($conversation, $messageType, $body, $mediaAttributes);
 
         $response = Http::withToken(config('services.whatsapp.token'))
-            ->post('https://graph.facebook.com/v25.0/' . config('services.whatsapp.phone_number_id') . '/messages', $payload);
+            ->post('https://graph.facebook.com/v25.0/'.config('services.whatsapp.phone_number_id').'/messages', $payload);
 
         $message = WhatsappMessage::create([
             'whatsapp_conversation_id' => $conversation->id,
@@ -147,12 +253,45 @@ class WhatsappConversationController extends Controller
         if ($response->failed()) {
             return redirect()
                 ->route('admin.conversations.show', $conversation)
-                ->withErrors(['message' => 'Messaggio salvato, ma invio WhatsApp fallito: ' . ($message->error_message ?? 'errore sconosciuto')]);
+                ->withErrors(['message' => 'Messaggio salvato, ma invio WhatsApp fallito: '.($message->error_message ?? 'errore sconosciuto')]);
         }
+
+        $this->scheduleAutomaticFollowUp($conversation, $message);
 
         return redirect()
             ->route('admin.conversations.show', $conversation)
             ->with('status', 'Messaggio inviato.');
+    }
+
+    private function scheduleAutomaticFollowUp(WhatsappConversation $conversation, WhatsappMessage $message): void
+    {
+        if (! config('whatsapp_follow_up.auto_enabled', true) || $conversation->isExcludedFromFollowUps()) {
+            return;
+        }
+
+        $body = trim((string) config('whatsapp_follow_up.auto_body'));
+
+        if ($body === '') {
+            return;
+        }
+
+        $conversation->followUps()
+            ->where('auto_generated', true)
+            ->where('status', 'pending')
+            ->update([
+                'status' => 'cancelled',
+                'cancelled_at' => now(),
+                'cancel_reason' => 'Sostituito da un nuovo messaggio manuale.',
+            ]);
+
+        $conversation->followUps()->create([
+            'created_by_admin_user_id' => Auth::guard('admin')->id(),
+            'trigger_message_id' => $message->id,
+            'auto_generated' => true,
+            'due_at' => ($message->sent_at ?? $message->created_at)->copy()->addHours((int) config('whatsapp_follow_up.auto_delay_hours', 24)),
+            'body' => $body,
+            'status' => 'pending',
+        ]);
     }
 
     private function uploadAttachmentForWhatsapp(WhatsappConversation $conversation, $attachment): array
@@ -162,7 +301,7 @@ class WhatsappConversationController extends Controller
         $originalName = $preparedFile['filename'];
         $safeName = Str::limit(Str::slug(pathinfo($originalName, PATHINFO_FILENAME)), 80, '');
         $extension = pathinfo($originalName, PATHINFO_EXTENSION);
-        $filename = ($safeName ?: 'allegato') . '-' . now()->format('YmdHis') . '-' . Str::random(6) . ($extension ? ".{$extension}" : '');
+        $filename = ($safeName ?: 'allegato').'-'.now()->format('YmdHis').'-'.Str::random(6).($extension ? ".{$extension}" : '');
         $localPath = "whatsapp/{$conversation->id}/outbound/{$filename}";
 
         Storage::disk(self::MEDIA_DISK)->put($localPath, file_get_contents($preparedFile['path']));
@@ -172,7 +311,7 @@ class WhatsappConversationController extends Controller
         try {
             $response = Http::withToken(config('services.whatsapp.token'))
                 ->attach('file', $file, $originalName)
-                ->post('https://graph.facebook.com/v25.0/' . config('services.whatsapp.phone_number_id') . '/media', [
+                ->post('https://graph.facebook.com/v25.0/'.config('services.whatsapp.phone_number_id').'/media', [
                     'messaging_product' => 'whatsapp',
                     'type' => $mimeType,
                 ]);
@@ -254,7 +393,7 @@ class WhatsappConversationController extends Controller
         imagefill($canvas, 0, 0, $white);
         imagecopy($canvas, $image, 0, 0, 0, 0, $width, $height);
 
-        $temporaryPath = storage_path('app/private/whatsapp-upload-' . Str::uuid() . '.jpg');
+        $temporaryPath = storage_path('app/private/whatsapp-upload-'.Str::uuid().'.jpg');
         imagejpeg($canvas, $temporaryPath, 90);
         imagedestroy($image);
         imagedestroy($canvas);
@@ -262,7 +401,7 @@ class WhatsappConversationController extends Controller
         return [
             'path' => $temporaryPath,
             'mime_type' => 'image/jpeg',
-            'filename' => pathinfo($filename, PATHINFO_FILENAME) . '.jpg',
+            'filename' => pathinfo($filename, PATHINFO_FILENAME).'.jpg',
             'temporary' => true,
         ];
     }
@@ -313,11 +452,16 @@ class WhatsappConversationController extends Controller
         $conversation->load([
             'lead',
             'messages' => fn ($query) => $query->oldest(),
-        ]);
+            'followUps' => fn ($query) => $query
+                ->orderByRaw("status = 'pending' desc")
+                ->orderBy('due_at')
+                ->limit(12),
+        ])->loadCount(['pendingFollowUps', 'dueFollowUps']);
 
         $conversations = WhatsappConversation::query()
             ->with(['lead', 'latestMessage'])
-            ->withCount('unreadIncomingMessages')
+            ->withCount(['unreadIncomingMessages', 'pendingFollowUps', 'dueFollowUps'])
+            ->orderByDesc('due_follow_ups_count')
             ->orderByDesc('needs_human')
             ->orderByDesc('unread_incoming_messages_count')
             ->orderByDesc('last_message_at')
@@ -329,6 +473,17 @@ class WhatsappConversationController extends Controller
                 'total' => WhatsappConversation::count(),
                 'auto' => WhatsappConversation::where('mode', 'auto')->count(),
                 'needs_human' => WhatsappConversation::where('needs_human', true)->count(),
+                'follow_ups_due' => WhatsappFollowUp::query()
+                    ->where('status', 'pending')
+                    ->where('due_at', '<=', now())
+                    ->whereHas('conversation', fn ($query) => $query
+                        ->where('follow_up_excluded_permanently', false)
+                        ->where(fn ($query) => $query
+                            ->whereNull('follow_up_excluded_until')
+                            ->orWhere('follow_up_excluded_until', '<=', now())
+                        )
+                    )
+                    ->count(),
                 'unread' => WhatsappMessage::query()
                     ->where('direction', 'inbound')
                     ->whereNull('admin_read_at')
@@ -342,6 +497,9 @@ class WhatsappConversationController extends Controller
             'messages' => $conversation->messages
                 ->map(fn (WhatsappMessage $message) => $this->serializeMessage($message))
                 ->values(),
+            'follow_ups' => $conversation->followUps
+                ->map(fn (WhatsappFollowUp $followUp) => $this->serializeFollowUp($followUp, $conversation))
+                ->values(),
         ]);
     }
 
@@ -349,7 +507,8 @@ class WhatsappConversationController extends Controller
     {
         $conversations = WhatsappConversation::query()
             ->with(['lead', 'latestMessage'])
-            ->withCount('unreadIncomingMessages')
+            ->withCount(['unreadIncomingMessages', 'pendingFollowUps', 'dueFollowUps'])
+            ->orderByDesc('due_follow_ups_count')
             ->orderByDesc('needs_human')
             ->orderByDesc('unread_incoming_messages_count')
             ->orderByDesc('last_message_at')
@@ -361,6 +520,17 @@ class WhatsappConversationController extends Controller
                 'total' => WhatsappConversation::count(),
                 'auto' => WhatsappConversation::where('mode', 'auto')->count(),
                 'needs_human' => WhatsappConversation::where('needs_human', true)->count(),
+                'follow_ups_due' => WhatsappFollowUp::query()
+                    ->where('status', 'pending')
+                    ->where('due_at', '<=', now())
+                    ->whereHas('conversation', fn ($query) => $query
+                        ->where('follow_up_excluded_permanently', false)
+                        ->where(fn ($query) => $query
+                            ->whereNull('follow_up_excluded_until')
+                            ->orWhere('follow_up_excluded_until', '<=', now())
+                        )
+                    )
+                    ->count(),
                 'unread' => WhatsappMessage::query()
                     ->where('direction', 'inbound')
                     ->whereNull('admin_read_at')
@@ -411,11 +581,38 @@ class WhatsappConversationController extends Controller
             'email' => $conversation->lead?->email,
             'mode' => $conversation->mode,
             'needs_human' => $conversation->needs_human,
+            'follow_up_excluded' => $conversation->isExcludedFromFollowUps(),
+            'follow_up_exclusion_label' => $this->followUpExclusionLabel($conversation),
+            'pending_follow_ups_count' => $conversation->pending_follow_ups_count ?? null,
+            'due_follow_ups_count' => $conversation->isExcludedFromFollowUps() ? 0 : ($conversation->due_follow_ups_count ?? null),
             'handoff_reason' => data_get($conversation->metadata, 'handoff_reason', 'La chat richiede il tuo intervento.'),
             'unread_count' => $conversation->unread_incoming_messages_count ?? 0,
             'latest_body' => $this->messagePreview($conversation->latestMessage),
-            'last_message_at' => optional($conversation->last_message_at ?? $conversation->created_at)->format('d/m/Y H:i'),
+            'last_message_at' => $this->formatAdminDateTime($conversation->last_message_at ?? $conversation->created_at),
         ];
+    }
+
+    private function followUpExclusionLabel(WhatsappConversation $conversation): ?string
+    {
+        if ($conversation->follow_up_excluded_permanently) {
+            return 'No follow-up';
+        }
+
+        if ($conversation->follow_up_excluded_until && $conversation->follow_up_excluded_until->isFuture()) {
+            return 'Pausa fino al '.$this->formatAdminDateTime($conversation->follow_up_excluded_until);
+        }
+
+        return null;
+    }
+
+    private function parseAdminDateTime(string $value): Carbon
+    {
+        return Carbon::parse($value, config('app.display_timezone'))->utc();
+    }
+
+    private function formatAdminDateTime(?Carbon $date): ?string
+    {
+        return $date?->copy()->timezone(config('app.display_timezone'))->format('d/m/Y H:i');
     }
 
     private function serializeMessage(WhatsappMessage $message): array
@@ -440,12 +637,40 @@ class WhatsappConversationController extends Controller
             'type' => $message->type,
             'body' => $message->body,
             'status_label' => $statusLabel,
-            'message_at' => optional($message->received_at ?? $message->sent_at ?? $message->created_at)->format('d/m/Y H:i'),
-            'status_at' => optional($message->read_at ?? $message->delivered_at ?? $message->sent_at ?? $message->created_at)->format('d/m/Y H:i'),
-            'delivered_at' => $message->delivered_at?->format('d/m/Y H:i'),
-            'read_at' => $message->read_at?->format('d/m/Y H:i'),
+            'message_at' => $this->formatAdminDateTime($message->received_at ?? $message->sent_at ?? $message->created_at),
+            'status_at' => $this->formatAdminDateTime($message->read_at ?? $message->delivered_at ?? $message->sent_at ?? $message->created_at),
+            'delivered_at' => $this->formatAdminDateTime($message->delivered_at),
+            'read_at' => $this->formatAdminDateTime($message->read_at),
             'error_message' => $message->error_message,
             'media' => $this->serializeMedia($message),
+        ];
+    }
+
+    private function serializeFollowUp(WhatsappFollowUp $followUp, WhatsappConversation $conversation): array
+    {
+        $isDue = $followUp->status === 'pending' && $followUp->due_at->isPast();
+
+        return [
+            'id' => $followUp->id,
+            'body' => $followUp->body,
+            'status' => $followUp->status,
+            'status_label' => match ($followUp->status) {
+                'sent' => 'Inviato',
+                'failed' => 'Errore',
+                'cancelled' => 'Annullato',
+                default => $isDue ? 'Da fare' : 'Programmato',
+            },
+            'status_class' => match ($followUp->status) {
+                'sent' => 'bg-whatsapp/10 text-whatsapp',
+                'failed' => 'bg-red-50 text-red-700',
+                'cancelled' => 'bg-gray-mid text-black-nike',
+                default => $isDue ? 'bg-brand text-white' : 'bg-bullstar/10 text-bullstar',
+            },
+            'auto_generated' => $followUp->auto_generated,
+            'is_pending' => $followUp->status === 'pending',
+            'due_at' => $this->formatAdminDateTime($followUp->due_at),
+            'error_message' => $followUp->error_message,
+            'cancel_url' => route('admin.conversations.follow-ups.cancel', [$conversation, $followUp]),
         ];
     }
 
@@ -531,7 +756,7 @@ class WhatsappConversationController extends Controller
             }
 
             $filename = $message->media_filename ?: ($mediaPayload['filename'] ?? $this->fallbackMediaFilename($message, $mediaId, $mimeType));
-            $path = 'whatsapp/' . $message->whatsapp_conversation_id . '/' . ($mediaId ?: $message->id) . '-' . str()->slug(pathinfo($filename, PATHINFO_FILENAME));
+            $path = 'whatsapp/'.$message->whatsapp_conversation_id.'/'.($mediaId ?: $message->id).'-'.str()->slug(pathinfo($filename, PATHINFO_FILENAME));
             $extension = pathinfo($filename, PATHINFO_EXTENSION);
             $path .= $extension ? ".{$extension}" : '';
 
@@ -568,7 +793,7 @@ class WhatsappConversationController extends Controller
             default => null,
         };
 
-        $name = $message->type . '-' . ($mediaId ?: $message->id);
+        $name = $message->type.'-'.($mediaId ?: $message->id);
 
         return $extension ? "{$name}.{$extension}" : $name;
     }
