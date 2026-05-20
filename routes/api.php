@@ -1,3 +1,6 @@
 <?php
 
-// Admin API routes can live here later. Public webhooks stay in public_html.
+use App\Http\Controllers\StripeWebhookController;
+use Illuminate\Support\Facades\Route;
+
+Route::post('/stripe/webhook', StripeWebhookController::class)->name('stripe.webhook');

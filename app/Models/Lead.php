@@ -43,6 +43,13 @@ class Lead extends Model
         'payment_link',
         'quote_amount',
         'payment_amount',
+        'quote_number',
+        'quote_pdf_disk',
+        'quote_pdf_path',
+        'quote_pdf_filename',
+        'quote_pdf_mime_type',
+        'quote_pdf_size',
+        'quote_pdf_uploaded_at',
         'whatsapp_conversation_id',
     ];
 
@@ -51,6 +58,7 @@ class Lead extends Model
         'marketing_consent' => 'boolean',
         'quote_amount' => 'decimal:2',
         'payment_amount' => 'decimal:2',
+        'quote_pdf_uploaded_at' => 'datetime',
     ];
 
     public function whatsappConversation(): BelongsTo

@@ -17,6 +17,8 @@ use Illuminate\View\View;
 
 class WhatsappConversationController extends Controller
 {
+    private const MEDIA_DISK = 'local';
+
     public function index(?WhatsappConversation $conversation = null): View
     {
         if ($conversation) {
@@ -163,7 +165,7 @@ class WhatsappConversationController extends Controller
         $filename = ($safeName ?: 'allegato') . '-' . now()->format('YmdHis') . '-' . Str::random(6) . ($extension ? ".{$extension}" : '');
         $localPath = "whatsapp/{$conversation->id}/outbound/{$filename}";
 
-        Storage::disk('public')->put($localPath, file_get_contents($preparedFile['path']));
+        Storage::disk(self::MEDIA_DISK)->put($localPath, file_get_contents($preparedFile['path']));
 
         $file = fopen($preparedFile['path'], 'r');
 
@@ -191,21 +193,21 @@ class WhatsappConversationController extends Controller
             ]);
 
             return [
-                'media_disk' => 'public',
+                'media_disk' => self::MEDIA_DISK,
                 'media_path' => $localPath,
                 'media_mime_type' => $mimeType,
                 'media_filename' => $originalName,
-                'media_size' => filesize(Storage::disk('public')->path($localPath)),
+                'media_size' => filesize(Storage::disk(self::MEDIA_DISK)->path($localPath)),
             ];
         }
 
         return [
             'media_id' => $response->json('id'),
-            'media_disk' => 'public',
+            'media_disk' => self::MEDIA_DISK,
             'media_path' => $localPath,
             'media_mime_type' => $mimeType,
             'media_filename' => $originalName,
-            'media_size' => filesize(Storage::disk('public')->path($localPath)),
+            'media_size' => filesize(Storage::disk(self::MEDIA_DISK)->path($localPath)),
         ];
     }
 
@@ -533,11 +535,11 @@ class WhatsappConversationController extends Controller
             $extension = pathinfo($filename, PATHINFO_EXTENSION);
             $path .= $extension ? ".{$extension}" : '';
 
-            Storage::disk('public')->put($path, $fileResponse->body());
+            Storage::disk(self::MEDIA_DISK)->put($path, $fileResponse->body());
 
             $message->forceFill([
                 'media_id' => $mediaId,
-                'media_disk' => 'public',
+                'media_disk' => self::MEDIA_DISK,
                 'media_path' => $path,
                 'media_mime_type' => $mimeType,
                 'media_filename' => $filename,

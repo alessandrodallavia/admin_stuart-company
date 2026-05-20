@@ -97,16 +97,6 @@
                         @error('password')<p class="mt-8 text-14 font-bold text-red-300">{{ $message }}</p>@enderror
                     </div>
 
-                    <label class="flex items-center gap-8 text-12 font-semibold text-white/70">
-                        <input
-                            name="remember"
-                            type="checkbox"
-                            value="1"
-                            class="h-12 w-12 rounded border-gray-mid bg-white text-bullstar focus:ring-2 focus:ring-bullstar"
-                        >
-                        Ricordami su questo dispositivo
-                    </label>
-
                     <button
                         type="submit"
                         class="w-full rounded-10 bg-bullstar px-20 py-12 text-14 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover focus:outline-none focus:ring-4 focus:ring-bullstar/30"

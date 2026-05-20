@@ -14,6 +14,8 @@ Route::name('admin.')->group(function () {
         Route::get('/poll', [AdminWhatsappConversationController::class, 'pollIndex'])->name('dashboard.poll');
         Route::get('/leads/{lead?}', [AdminLeadController::class, 'index'])->name('leads.index');
         Route::patch('/leads/{lead}', [AdminLeadController::class, 'update'])->name('leads.update');
+        Route::post('/leads/{lead}/stripe-payment-link', [AdminLeadController::class, 'createStripePaymentLink'])->name('leads.stripe-payment-link');
+        Route::get('/leads/{lead}/quote-pdf', [AdminLeadController::class, 'showQuotePdf'])->name('leads.quote-pdf');
         Route::get('/conversations/{conversation}', [AdminWhatsappConversationController::class, 'index'])->name('conversations.show');
         Route::get('/conversations/{conversation}/poll', [AdminWhatsappConversationController::class, 'poll'])->name('conversations.poll');
         Route::patch('/conversations/{conversation}/mode', [AdminWhatsappConversationController::class, 'updateMode'])->name('conversations.mode');

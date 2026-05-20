@@ -57,6 +57,15 @@ return [
         'webhook_token' => env('WHATSAPP_WEBHOOK_TOKEN'),
         'phone' => env('WHATSAPP_PHONE', '393458007031'),
         'phone_api' => env('WHATSAPP_PHONE_API', '15559497130'),
-    ]
+    ],
+
+    'stripe' => [
+        'secret_key' => env('STRIPE_SECRET_KEY', env('STRIPE_PRIVATE_KEY')),
+        'public_key' => env('STRIPE_PUBLIC_KEY'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+        'currency' => env('STRIPE_CURRENCY', 'eur'),
+        'success_url' => env('STRIPE_SUCCESS_URL', 'https://stuart-company.com/pagamento/completato'),
+        'cancel_url' => env('STRIPE_CANCEL_URL', 'https://stuart-company.com/pagamento/annullato'),
+    ],
 
 ];
