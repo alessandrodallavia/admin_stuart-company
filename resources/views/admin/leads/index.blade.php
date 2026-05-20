@@ -1,43 +1,10 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Leads - Bullstar Admin</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-</head>
-<body class="min-h-screen bg-gray-light text-black-nike antialiased">
-    <div class="flex min-h-screen flex-col">
-        <header class="border-b border-gray-mid bg-white">
-            <div class="mx-auto flex max-w-[1440px] flex-col gap-16 px-20 py-16 md:flex-row md:items-center md:justify-between md:px-32">
-                <div class="flex items-center gap-16">
-                    <img src="{{ asset('assets/logos/logo-stuart.png') }}" alt="Bullstar" class="h-36 w-auto">
-                    <div class="hidden h-32 w-px bg-gray-mid sm:block"></div>
-                    <div>
-                        <p class="text-12 font-extrabold uppercase tracking-normal text-bullstar">Admin</p>
-                        <h1 class="text-24 font-black leading-none tracking-normal">Leads</h1>
-                    </div>
-                </div>
+@extends('admin.layouts.app')
 
-                <div class="flex flex-wrap items-center gap-8">
-                    <a href="{{ route('admin.dashboard') }}" class="rounded-10 border border-gray-mid bg-white px-12 py-10 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">
-                        WhatsApp
-                    </a>
-                    <a href="{{ route('admin.leads.index') }}" class="rounded-10 border border-bullstar bg-bullstar px-12 py-10 text-12 font-extrabold uppercase tracking-normal text-white">
-                        Leads
-                    </a>
-                    <form method="POST" action="{{ route('admin.logout') }}">
-                        @csrf
-                        <button type="submit" class="rounded-10 border border-gray-mid bg-white px-12 py-10 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">
-                            Esci
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </header>
+@section('title', 'Leads - Bullstar Admin')
+@section('page_title', 'Leads')
+@section('active_nav', 'leads')
 
-        <main class="mx-auto flex w-full max-w-[1440px] flex-1 flex-col px-16 py-20 md:px-32 md:py-28">
+@section('content')
             <section class="mb-16 grid gap-12 md:grid-cols-4">
                 <article class="rounded-10 border border-gray-mid bg-white p-16">
                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Lead totali</p>
@@ -56,18 +23,6 @@
                     <p class="mt-8 text-38 font-black leading-none tracking-normal">{{ $stats['paid'] }}</p>
                 </article>
             </section>
-
-            @if (session('status'))
-                <div class="mb-16 rounded-10 border border-whatsapp/20 bg-whatsapp/10 px-16 py-12 text-14 font-bold text-whatsapp">
-                    {{ session('status') }}
-                </div>
-            @endif
-
-            @if ($errors->any())
-                <div class="mb-16 rounded-10 border border-red-200 bg-red-50 px-16 py-12 text-14 font-bold text-red-700">
-                    {{ $errors->first() }}
-                </div>
-            @endif
 
             <section class="mb-16 overflow-hidden rounded-10 border border-gray-mid bg-white">
                 <form method="GET" action="{{ route('admin.leads.index') }}" class="grid gap-12 p-16 lg:grid-cols-[minmax(220px,1fr)_240px_auto] lg:items-end">
@@ -407,7 +362,4 @@
                     @endif
                 </aside>
             </section>
-        </main>
-    </div>
-</body>
-</html>
+@endsection

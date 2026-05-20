@@ -87,12 +87,8 @@ export default {
                 60: '60px',
             },
             fontFamily: {
-                // scegli una sola "sans" coerente (qui uso Inter + default)
                 sans: ['Inter', ...defaultTheme.fontFamily.sans],
                 inter: ['Inter', ...defaultTheme.fontFamily.sans],
-                roboto: ['Roboto', ...defaultTheme.fontFamily.sans],
-                bebas: ['"Bebas Neue"', ...defaultTheme.fontFamily.sans],
-                futura: ['Futura', 'sans-serif'],
             },
             letterSpacing: {
                 // valori già presenti: tight = -0.025em, normal = 0em
