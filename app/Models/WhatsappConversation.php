@@ -19,6 +19,7 @@ class WhatsappConversation extends Model
         'needs_human',
         'last_message_at',
         'human_requested_at',
+        'manual_started_at',
         'follow_up_excluded_until',
         'follow_up_excluded_permanently',
         'follow_up_exclusion_reason',
@@ -31,6 +32,7 @@ class WhatsappConversation extends Model
             'needs_human' => 'boolean',
             'last_message_at' => 'datetime',
             'human_requested_at' => 'datetime',
+            'manual_started_at' => 'datetime',
             'follow_up_excluded_until' => 'datetime',
             'follow_up_excluded_permanently' => 'boolean',
             'metadata' => 'array',
@@ -55,6 +57,13 @@ class WhatsappConversation extends Model
     public function latestMessage(): HasOne
     {
         return $this->hasOne(WhatsappMessage::class)->latestOfMany();
+    }
+
+    public function latestIncomingMessage(): HasOne
+    {
+        return $this->hasOne(WhatsappMessage::class)
+            ->where('direction', 'inbound')
+            ->latestOfMany();
     }
 
     public function unreadIncomingMessages(): HasMany
@@ -83,5 +92,17 @@ class WhatsappConversation extends Model
     {
         return $this->follow_up_excluded_permanently
             || ($this->follow_up_excluded_until && $this->follow_up_excluded_until->isFuture());
+    }
+
+    public function isWhatsappWindowExpired(): bool
+    {
+        $latestIncomingAt = $this->latestIncomingMessage?->received_at
+            ?? $this->latestIncomingMessage?->created_at
+            ?? $this->last_message_at
+            ?? $this->created_at;
+
+        return $latestIncomingAt
+            ? $latestIncomingAt->lte(now()->subHours(24))
+            : false;
     }
 }

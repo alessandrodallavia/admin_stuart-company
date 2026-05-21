@@ -13,6 +13,8 @@ class AdminUser extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
+        'permissions',
         'is_active',
         'last_login_at',
     ];
@@ -28,6 +30,38 @@ class AdminUser extends Authenticatable
             'is_active' => 'boolean',
             'last_login_at' => 'datetime',
             'password' => 'hashed',
+            'permissions' => 'array',
         ];
+    }
+
+    public function isOwner(): bool
+    {
+        return $this->role === 'owner';
+    }
+
+    public function canManageAdminUsers(): bool
+    {
+        return $this->hasAdminPermission('admin_users.manage')
+            || ! self::query()->where('role', 'owner')->exists();
+    }
+
+    public function hasAdminPermission(string $permission): bool
+    {
+        if ($this->isOwner()) {
+            return true;
+        }
+
+        $permissions = $this->effectivePermissions();
+
+        return in_array('*', $permissions, true)
+            || in_array($permission, $permissions, true);
+    }
+
+    public function effectivePermissions(): array
+    {
+        $rolePermissions = config("admin_permissions.role_permissions.{$this->role}", []);
+        $userPermissions = $this->permissions ?? [];
+
+        return array_values(array_unique([...$rolePermissions, ...$userPermissions]));
     }
 }

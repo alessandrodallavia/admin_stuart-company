@@ -5,6 +5,10 @@
 @section('active_nav', 'whatsapp')
 
 @section('content')
+            @php
+                $canManageWhatsapp = auth('admin')->user()?->hasAdminPermission('whatsapp.manage');
+            @endphp
+
             <section class="admin-stats-grid mb-16">
                 <article class="rounded-10 border border-gray-mid bg-white p-16">
                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Conversazioni</p>
@@ -90,6 +94,11 @@
                                                     Pausa FU
                                                 </span>
                                             @endif
+                                            @if ($conversation->isWhatsappWindowExpired())
+                                                <span class="shrink-0 rounded-full bg-red-50 px-8 py-4 text-11 font-extrabold uppercase tracking-normal text-red-700">
+                                                    24h scadute
+                                                </span>
+                                            @endif
                                         </div>
                                         <p class="mt-4 truncate text-12 font-semibold text-gray">
                                             {{ $conversation->lead?->club ?: $conversation->contact_phone }}
@@ -143,6 +152,11 @@
                                             <span class="rounded-full px-10 py-5 text-11 font-extrabold uppercase tracking-normal {{ $selectedConversation->mode === 'manual' ? 'bg-bullstar/10 text-bullstar' : 'bg-whatsapp/10 text-whatsapp' }}">
                                                 {{ $selectedConversation->mode }}
                                             </span>
+                                            @if ($selectedConversation->isWhatsappWindowExpired())
+                                                <span class="rounded-full bg-red-50 px-10 py-5 text-11 font-extrabold uppercase tracking-normal text-red-700">
+                                                    24h scadute
+                                                </span>
+                                            @endif
                                             @if ($selectedConversation->isExcludedFromFollowUps())
                                                 <span class="rounded-full bg-gray-mid px-10 py-5 text-11 font-extrabold uppercase tracking-normal text-black-nike">
                                                     Follow-up sospesi
@@ -180,31 +194,65 @@
                                         </p>
                                     </div>
 
-                                    <div class="flex gap-8">
-                                        <form method="POST" action="{{ route('admin.conversations.mode', $selectedConversation) }}">
-                                            @csrf
-                                            @method('PATCH')
-                                            <input type="hidden" name="mode" value="auto">
-                                            <button
-                                                type="submit"
-                                                class="rounded-10 border px-14 py-10 text-12 font-extrabold uppercase tracking-normal transition {{ $selectedConversation->mode === 'auto' ? 'border-whatsapp bg-whatsapp text-white' : 'border-gray-mid bg-white hover:border-whatsapp' }}"
-                                            >
-                                                Auto
-                                            </button>
-                                        </form>
+                                    @if ($canManageWhatsapp)
+                                        <div class="flex flex-wrap gap-8">
+                                            <form method="POST" action="{{ route('admin.conversations.mark-unread', $selectedConversation) }}">
+                                                @csrf
+                                                @method('PATCH')
+                                                <button
+                                                    type="submit"
+                                                    class="rounded-10 border border-gray-mid bg-white px-14 py-10 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike"
+                                                >
+                                                    Da leggere
+                                                </button>
+                                            </form>
 
-                                        <form method="POST" action="{{ route('admin.conversations.mode', $selectedConversation) }}">
-                                            @csrf
-                                            @method('PATCH')
-                                            <input type="hidden" name="mode" value="manual">
-                                            <button
-                                                type="submit"
-                                                class="rounded-10 border px-14 py-10 text-12 font-extrabold uppercase tracking-normal transition {{ $selectedConversation->mode === 'manual' ? 'border-bullstar bg-bullstar text-white' : 'border-gray-mid bg-white hover:border-bullstar' }}"
-                                            >
-                                                Manuale
-                                            </button>
-                                        </form>
-                                    </div>
+                                            @if ($selectedConversation->manual_started_at && $selectedConversation->mode !== 'auto')
+                                                <button
+                                                    type="button"
+                                                    disabled
+                                                    class="rounded-10 border border-gray-mid bg-gray-light px-14 py-10 text-12 font-extrabold uppercase tracking-normal text-gray"
+                                                    title="Chat già passata in manuale"
+                                                >
+                                                    Auto
+                                                </button>
+                                            @else
+                                                <form method="POST" action="{{ route('admin.conversations.mode', $selectedConversation) }}">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <input type="hidden" name="mode" value="auto">
+                                                    <button
+                                                        type="submit"
+                                                        class="rounded-10 border px-14 py-10 text-12 font-extrabold uppercase tracking-normal transition {{ $selectedConversation->mode === 'auto' ? 'border-whatsapp bg-whatsapp text-white' : 'border-gray-mid bg-white hover:border-whatsapp' }}"
+                                                    >
+                                                        Auto
+                                                    </button>
+                                                </form>
+                                            @endif
+
+                                            @if ($selectedConversation->mode === 'manual')
+                                                <button
+                                                    type="button"
+                                                    disabled
+                                                    class="rounded-10 border border-bullstar bg-bullstar px-14 py-10 text-12 font-extrabold uppercase tracking-normal text-white"
+                                                >
+                                                    Manuale
+                                                </button>
+                                            @else
+                                                <form method="POST" action="{{ route('admin.conversations.mode', $selectedConversation) }}">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <input type="hidden" name="mode" value="manual">
+                                                    <button
+                                                        type="submit"
+                                                        class="rounded-10 border border-gray-mid bg-white px-14 py-10 text-12 font-extrabold uppercase tracking-normal transition hover:border-bullstar"
+                                                    >
+                                                        Manuale
+                                                    </button>
+                                                </form>
+                                            @endif
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
 
@@ -252,7 +300,7 @@
                                                         @endif
                                                     </div>
 
-                                                    @if ($followUp->status === 'pending')
+                                                    @if ($canManageWhatsapp && $followUp->status === 'pending')
                                                         <form method="POST" action="{{ route('admin.conversations.follow-ups.cancel', [$selectedConversation, $followUp]) }}">
                                                             @csrf
                                                             @method('PATCH')
@@ -271,54 +319,56 @@
                                     </div>
                                 </div>
 
-                                <div class="space-y-12">
-                                    <form method="POST" action="{{ route('admin.conversations.follow-ups.store', $selectedConversation) }}" class="rounded-10 border border-gray-mid bg-white p-14">
-                                        @csrf
-                                        <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Nuovo follow-up</p>
-                                        <input
-                                            name="due_at"
-                                            type="datetime-local"
-                                            value="{{ old('due_at') }}"
-                                            class="mt-10 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"
-                                        >
-                                        <textarea
-                                            name="body"
-                                            rows="3"
-                                            maxlength="4096"
-                                            class="mt-10 w-full resize-none rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"
-                                            placeholder="Messaggio follow-up..."
-                                        >{{ old('body') }}</textarea>
-                                        <button type="submit" class="mt-10 w-full rounded-10 bg-bullstar px-14 py-10 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">
-                                            Programma
-                                        </button>
-                                    </form>
+                                @if ($canManageWhatsapp)
+                                    <div class="space-y-12">
+                                        <form method="POST" action="{{ route('admin.conversations.follow-ups.store', $selectedConversation) }}" class="rounded-10 border border-gray-mid bg-white p-14">
+                                            @csrf
+                                            <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Nuovo follow-up</p>
+                                            <input
+                                                name="due_at"
+                                                type="datetime-local"
+                                                value="{{ old('due_at') }}"
+                                                class="mt-10 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"
+                                            >
+                                            <textarea
+                                                name="body"
+                                                rows="3"
+                                                maxlength="4096"
+                                                class="mt-10 w-full resize-none rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"
+                                                placeholder="Messaggio follow-up..."
+                                            >{{ old('body') }}</textarea>
+                                            <button type="submit" class="mt-10 w-full rounded-10 bg-bullstar px-14 py-10 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">
+                                                Programma
+                                            </button>
+                                        </form>
 
-                                    <form method="POST" action="{{ route('admin.conversations.follow-up-exclusion', $selectedConversation) }}" class="rounded-10 border border-gray-mid bg-white p-14">
-                                        @csrf
-                                        @method('PATCH')
-                                        <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Esclusione follow-up</p>
-                                        <select name="exclusion_type" class="mt-10 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
-                                            <option value="none">Attiva follow-up</option>
-                                            <option value="until" @selected($selectedConversation->follow_up_excluded_until && ! $selectedConversation->follow_up_excluded_permanently)>Escludi fino a data</option>
-                                            <option value="permanent" @selected($selectedConversation->follow_up_excluded_permanently)>Escludi a tempo indeterminato</option>
-                                        </select>
-                                        <input
-                                            name="excluded_until"
-                                            type="datetime-local"
-                                            value="{{ old('excluded_until', $selectedConversation->follow_up_excluded_until?->timezone(config('app.display_timezone'))->format('Y-m-d\TH:i')) }}"
-                                            class="mt-10 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"
-                                        >
-                                        <textarea
-                                            name="reason"
-                                            rows="2"
-                                            class="mt-10 w-full resize-none rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"
-                                            placeholder="Motivo interno..."
-                                        >{{ old('reason', $selectedConversation->follow_up_exclusion_reason) }}</textarea>
-                                        <button type="submit" class="mt-10 w-full rounded-10 border border-black-nike bg-white px-14 py-10 text-12 font-extrabold uppercase tracking-normal text-black-nike transition hover:bg-gray-light">
-                                            Salva esclusione
-                                        </button>
-                                    </form>
-                                </div>
+                                        <form method="POST" action="{{ route('admin.conversations.follow-up-exclusion', $selectedConversation) }}" class="rounded-10 border border-gray-mid bg-white p-14">
+                                            @csrf
+                                            @method('PATCH')
+                                            <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Esclusione follow-up</p>
+                                            <select name="exclusion_type" class="mt-10 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                                <option value="none">Attiva follow-up</option>
+                                                <option value="until" @selected($selectedConversation->follow_up_excluded_until && ! $selectedConversation->follow_up_excluded_permanently)>Escludi fino a data</option>
+                                                <option value="permanent" @selected($selectedConversation->follow_up_excluded_permanently)>Escludi a tempo indeterminato</option>
+                                            </select>
+                                            <input
+                                                name="excluded_until"
+                                                type="datetime-local"
+                                                value="{{ old('excluded_until', $selectedConversation->follow_up_excluded_until?->timezone(config('app.display_timezone'))->format('Y-m-d\TH:i')) }}"
+                                                class="mt-10 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"
+                                            >
+                                            <textarea
+                                                name="reason"
+                                                rows="2"
+                                                class="mt-10 w-full resize-none rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"
+                                                placeholder="Motivo interno..."
+                                            >{{ old('reason', $selectedConversation->follow_up_exclusion_reason) }}</textarea>
+                                            <button type="submit" class="mt-10 w-full rounded-10 border border-black-nike bg-white px-14 py-10 text-12 font-extrabold uppercase tracking-normal text-black-nike transition hover:bg-gray-light">
+                                                Salva esclusione
+                                            </button>
+                                        </form>
+                                    </div>
+                                @endif
                             </div>
 
                             <div id="message-list" class="admin-message-list flex-1 space-y-12 bg-gray-light px-16 py-20 md:px-24">
@@ -397,7 +447,7 @@
                             </div>
 
                             <div class="border-t border-gray-mid bg-white p-16">
-                                @if ($selectedConversation->mode === 'manual')
+                                @if ($selectedConversation->mode === 'manual' && $canManageWhatsapp)
                                     @php
                                         $messageTemplates = [
                                             [
@@ -498,7 +548,7 @@
                                     </form>
                                 @else
                                     <div class="rounded-10 border border-dashed border-gray-mid bg-gray-light px-16 py-14 text-14 font-semibold text-gray">
-                                        La chat è in automatico. Passala in manuale per scrivere dal pannello admin.
+                                        {{ $canManageWhatsapp ? 'La chat è in automatico. Passala in manuale per scrivere dal pannello admin.' : 'Il tuo utente può leggere questa chat, ma non può modificarla o inviare messaggi.' }}
                                     </div>
                                 @endif
                             </div>
@@ -528,6 +578,7 @@
             const pollUrl = @json($selectedConversation ? route('admin.conversations.poll', $selectedConversation) : route('admin.dashboard.poll'));
             const csrfToken = @json(csrf_token());
             const messageTemplates = @json($messageTemplateMessages ?? []);
+            const canManageWhatsapp = @json($canManageWhatsapp);
             let lastMessageSignature = '';
             let lastFollowUpSignature = '';
 
@@ -580,6 +631,9 @@
                     const followUpExcluded = conversation.follow_up_excluded
                         ? '<span class="shrink-0 rounded-full bg-gray-mid px-8 py-4 text-11 font-extrabold uppercase tracking-normal text-black-nike">Pausa FU</span>'
                         : '';
+                    const whatsappWindowExpired = conversation.whatsapp_window_expired
+                        ? '<span class="shrink-0 rounded-full bg-red-50 px-8 py-4 text-11 font-extrabold uppercase tracking-normal text-red-700">24h scadute</span>'
+                        : '';
                     const modeClass = conversation.mode === 'manual' ? 'bg-bullstar/10 text-bullstar' : 'bg-whatsapp/10 text-whatsapp';
 
                     return `
@@ -593,6 +647,7 @@
                                         ${dueFollowUps}
                                         ${followUps}
                                         ${followUpExcluded}
+                                        ${whatsappWindowExpired}
                                     </div>
                                     <p class="mt-4 truncate text-12 font-semibold text-gray">${escapeHtml(conversation.subtitle)}</p>
                                 </div>
@@ -658,7 +713,7 @@
                     const error = followUp.error_message
                         ? `<p class="mt-6 text-12 font-bold text-red-700">${escapeHtml(followUp.error_message)}</p>`
                         : '';
-                    const cancelForm = followUp.is_pending
+                    const cancelForm = canManageWhatsapp && followUp.is_pending
                         ? `
                             <form method="POST" action="${followUp.cancel_url}">
                                 <input type="hidden" name="_token" value="${escapeHtml(csrfToken)}">

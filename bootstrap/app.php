@@ -2,6 +2,7 @@
 
 use App\Console\Commands\SendWhatsappFollowUps;
 use App\Http\Middleware\AuthenticateAdmin;
+use App\Http\Middleware\CheckAdminPermission;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -19,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'admin.auth' => AuthenticateAdmin::class,
+            'admin.permission' => CheckAdminPermission::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

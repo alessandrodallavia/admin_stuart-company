@@ -299,6 +299,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
             'mode' => 'manual',
             'needs_human' => true,
             'human_requested_at' => now(),
+            'manual_started_at' => $conversation->manual_started_at ?? now(),
             'metadata' => $metadata,
         ])->save();
     }

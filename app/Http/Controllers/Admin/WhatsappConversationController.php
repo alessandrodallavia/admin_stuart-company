@@ -28,7 +28,7 @@ class WhatsappConversationController extends Controller
         }
 
         $conversations = WhatsappConversation::query()
-            ->with(['lead', 'latestMessage'])
+            ->with(['lead', 'latestMessage', 'latestIncomingMessage'])
             ->withCount(['unreadIncomingMessages', 'pendingFollowUps', 'dueFollowUps'])
             ->orderByDesc('due_follow_ups_count')
             ->orderByDesc('needs_human')
@@ -39,6 +39,7 @@ class WhatsappConversationController extends Controller
 
         $selectedConversation = $conversation?->load([
             'lead',
+            'latestIncomingMessage',
             'messages' => fn ($query) => $query->oldest(),
             'followUps' => fn ($query) => $query
                 ->orderByRaw("status = 'pending' desc")
@@ -81,15 +82,47 @@ class WhatsappConversationController extends Controller
             'mode' => ['required', 'in:auto,manual'],
         ]);
 
+        if ($data['mode'] === 'auto' && $conversation->manual_started_at) {
+            return back()->withErrors([
+                'message' => 'Questa chat è già stata passata in manuale e non può tornare in automatico.',
+            ]);
+        }
+
         $conversation->forceFill([
             'mode' => $data['mode'],
-            'assigned_user_id' => $data['mode'] === 'manual' ? Auth::guard('admin')->id() : null,
+            'assigned_user_id' => $data['mode'] === 'manual' ? Auth::guard('admin')->id() : $conversation->assigned_user_id,
             'needs_human' => false,
+            'manual_started_at' => $data['mode'] === 'manual'
+                ? ($conversation->manual_started_at ?? now())
+                : $conversation->manual_started_at,
         ])->save();
 
         return redirect()
             ->route('admin.conversations.show', $conversation)
             ->with('status', $data['mode'] === 'manual' ? 'Chat passata in manuale.' : 'Chat passata in automatico.');
+    }
+
+    public function markAsUnread(WhatsappConversation $conversation): RedirectResponse
+    {
+        $message = $conversation->messages()
+            ->where('direction', 'inbound')
+            ->latest('received_at')
+            ->latest()
+            ->first();
+
+        if (! $message) {
+            return back()->withErrors([
+                'message' => 'Non ci sono messaggi cliente da segnare come non letti.',
+            ]);
+        }
+
+        $message->forceFill([
+            'admin_read_at' => null,
+        ])->save();
+
+        return redirect()
+            ->route('admin.dashboard')
+            ->with('status', 'Conversazione segnata da leggere.');
     }
 
     public function storeFollowUp(Request $request, WhatsappConversation $conversation): RedirectResponse
@@ -451,6 +484,7 @@ class WhatsappConversationController extends Controller
 
         $conversation->load([
             'lead',
+            'latestIncomingMessage',
             'messages' => fn ($query) => $query->oldest(),
             'followUps' => fn ($query) => $query
                 ->orderByRaw("status = 'pending' desc")
@@ -459,7 +493,7 @@ class WhatsappConversationController extends Controller
         ])->loadCount(['pendingFollowUps', 'dueFollowUps']);
 
         $conversations = WhatsappConversation::query()
-            ->with(['lead', 'latestMessage'])
+            ->with(['lead', 'latestMessage', 'latestIncomingMessage'])
             ->withCount(['unreadIncomingMessages', 'pendingFollowUps', 'dueFollowUps'])
             ->orderByDesc('due_follow_ups_count')
             ->orderByDesc('needs_human')
@@ -506,7 +540,7 @@ class WhatsappConversationController extends Controller
     public function pollIndex(): JsonResponse
     {
         $conversations = WhatsappConversation::query()
-            ->with(['lead', 'latestMessage'])
+            ->with(['lead', 'latestMessage', 'latestIncomingMessage'])
             ->withCount(['unreadIncomingMessages', 'pendingFollowUps', 'dueFollowUps'])
             ->orderByDesc('due_follow_ups_count')
             ->orderByDesc('needs_human')
@@ -580,6 +614,9 @@ class WhatsappConversationController extends Controller
             'phone' => $conversation->contact_phone,
             'email' => $conversation->lead?->email,
             'mode' => $conversation->mode,
+            'manual_started_at' => $this->formatAdminDateTime($conversation->manual_started_at),
+            'whatsapp_window_expired' => $conversation->isWhatsappWindowExpired(),
+            'whatsapp_window_reference_at' => $this->formatAdminDateTime($conversation->latestIncomingMessage?->received_at ?? $conversation->latestIncomingMessage?->created_at ?? $conversation->last_message_at ?? $conversation->created_at),
             'needs_human' => $conversation->needs_human,
             'follow_up_excluded' => $conversation->isExcludedFromFollowUps(),
             'follow_up_exclusion_label' => $this->followUpExclusionLabel($conversation),

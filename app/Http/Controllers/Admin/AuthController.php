@@ -18,7 +18,7 @@ class AuthController extends Controller
     public function showLogin(): View|RedirectResponse
     {
         if (Auth::guard('admin')->check()) {
-            return redirect()->route('admin.dashboard');
+            return redirect()->route($this->homeRouteFor(Auth::guard('admin')->user()));
         }
 
         return view('admin.auth.login');
@@ -42,7 +42,7 @@ class AuthController extends Controller
                 'last_login_at' => now(),
             ])->save();
 
-            return redirect()->intended(route('admin.dashboard'));
+            return redirect()->intended(route($this->homeRouteFor(Auth::guard('admin')->user())));
         }
 
         RateLimiter::hit($this->throttleKey($request), 300);
@@ -80,5 +80,22 @@ class AuthController extends Controller
     private function throttleKey(Request $request): string
     {
         return Str::lower((string) $request->input('email')) . '|' . $request->ip();
+    }
+
+    private function homeRouteFor($user): string
+    {
+        if ($user?->hasAdminPermission('whatsapp.view')) {
+            return 'admin.dashboard';
+        }
+
+        if ($user?->hasAdminPermission('leads.view')) {
+            return 'admin.leads.index';
+        }
+
+        if ($user?->canManageAdminUsers()) {
+            return 'admin.users.index';
+        }
+
+        return 'admin.dashboard';
     }
 }

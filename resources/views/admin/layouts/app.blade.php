@@ -22,20 +22,35 @@
                 </div>
 
                 <div class="flex flex-wrap items-center gap-8">
-                    @php($activeNav = trim($__env->yieldContent('active_nav')))
+                    @php
+                        $activeNav = trim($__env->yieldContent('active_nav'));
+                        $adminUser = auth('admin')->user();
+                    @endphp
 
-                    <a
-                        href="{{ route('admin.dashboard') }}"
-                        class="rounded-10 border px-12 py-10 text-12 font-extrabold uppercase tracking-normal transition {{ $activeNav === 'whatsapp' ? 'border-bullstar bg-bullstar text-white' : 'border-gray-mid bg-white text-black-nike hover:border-black-nike' }}"
-                    >
-                        WhatsApp
-                    </a>
-                    <a
-                        href="{{ route('admin.leads.index') }}"
-                        class="rounded-10 border px-12 py-10 text-12 font-extrabold uppercase tracking-normal transition {{ $activeNav === 'leads' ? 'border-bullstar bg-bullstar text-white' : 'border-gray-mid bg-white text-black-nike hover:border-black-nike' }}"
-                    >
-                        Leads
-                    </a>
+                    @if ($adminUser?->hasAdminPermission('whatsapp.view'))
+                        <a
+                            href="{{ route('admin.dashboard') }}"
+                            class="rounded-10 border px-12 py-10 text-12 font-extrabold uppercase tracking-normal transition {{ $activeNav === 'whatsapp' ? 'border-bullstar bg-bullstar text-white' : 'border-gray-mid bg-white text-black-nike hover:border-black-nike' }}"
+                        >
+                            WhatsApp
+                        </a>
+                    @endif
+                    @if ($adminUser?->hasAdminPermission('leads.view'))
+                        <a
+                            href="{{ route('admin.leads.index') }}"
+                            class="rounded-10 border px-12 py-10 text-12 font-extrabold uppercase tracking-normal transition {{ $activeNav === 'leads' ? 'border-bullstar bg-bullstar text-white' : 'border-gray-mid bg-white text-black-nike hover:border-black-nike' }}"
+                        >
+                            Leads
+                        </a>
+                    @endif
+                    @if ($adminUser?->canManageAdminUsers())
+                        <a
+                            href="{{ route('admin.users.index') }}"
+                            class="rounded-10 border px-12 py-10 text-12 font-extrabold uppercase tracking-normal transition {{ $activeNav === 'settings' ? 'border-bullstar bg-bullstar text-white' : 'border-gray-mid bg-white text-black-nike hover:border-black-nike' }}"
+                        >
+                            Utenti
+                        </a>
+                    @endif
                     <form method="POST" action="{{ route('admin.logout') }}">
                         @csrf
                         <button
