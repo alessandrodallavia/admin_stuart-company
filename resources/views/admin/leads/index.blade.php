@@ -274,7 +274,7 @@
                                             <span class="text-11 font-extrabold uppercase tracking-normal text-gray">Importo Stripe</span>
                                             <input name="payment_amount" value="{{ old('payment_amount', $selectedLead->payment_amount ?: $selectedLead->quote_amount) }}" type="number" min="0.50" step="0.01" placeholder="0,00" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-9 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
                                         </label>
-                                        <button type="submit" class="w-full rounded-10 border border-black-nike bg-black-nike px-10 py-9 text-11 font-extrabold uppercase tracking-normal text-white transition hover:bg-black">
+                                        <button type="submit" class="w-full rounded-10 border border-black-nike bg-black-nike px-10 py-6 text-11 font-extrabold uppercase leading-none tracking-normal text-white transition hover:bg-black">
                                             Crea link Stripe
                                         </button>
                                     </form>

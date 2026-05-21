@@ -398,13 +398,82 @@
 
                             <div class="border-t border-gray-mid bg-white p-16">
                                 @if ($selectedConversation->mode === 'manual')
+                                    @php
+                                        $messageTemplates = [
+                                            [
+                                                'title' => 'Risposta iniziale',
+                                                'message' => 'Ciao 👋 Sono Andrea di Stuart.\nHo visto la tua richiesta per delle t-shirt personalizzate 👕\n\nPer iniziare mandami pure:\n- logo o grafica\n- colore delle t-shirt\n\n👉 Se hai già il logo in buona qualità puoi inviarmelo direttamente qui 👍',
+                                            ],
+                                            [
+                                                'title' => 'Proposta completa',
+                                                'message' => 'Perfetto 👍\nTi preparo una proposta completa con:\n- anteprima realistica\n- soluzione consigliata\n- idea chiara di prezzo\n\nMi servirebbe ancora:\n- per cosa ti servono le t-shirt\n- quantità indicativa\nCosi riesco a prepararti una proposta precisa e coerente con il progetto',
+                                            ],
+                                            [
+                                                'title' => 'Informazioni mancanti',
+                                                'message' => 'Perfetto 👍\nPer prepararti una proposta precisa mi servirebbe ancora:\n- quantità indicativa\n- colore delle t-shirt',
+                                            ],
+                                            [
+                                                'title' => 'File non adatto',
+                                                'message' => 'Perfetto 👍\nPer il mockup questo file va benissimo. Per la produzione però avrei bisogno del logo/file originale in qualità più alta.\nSe riesci inviami: ai, pdf, svg, psd, png ad alta risoluzione.\nSe il file è pesante puoi usare Smash o WeTransfer'
+                                            ],
+                                            [
+                                                'title' => 'Invio mockup + PDF',
+                                                'message' => 'Ecco la proposta 👇\nNel PDF trovi:\n- anteprima realistica\n- soluzione consigliata\n- prezzi chiari\n- dettagli produzione\nCosì puoi vedere subito il risultato finale👍\nDimmi cosa ne pensi👌',
+                                            ],
+                                            [
+                                                'title' => 'Follow-up dopo mockup',
+                                                'message' => 'Ciao 👋\nVolevo capire cosa ne pensi della proposta🙂\nSe vuoi posso anche fare delle modifiche, proporti alternative o mostrarti altre soluzioni',
+                                            ],
+                                            [
+                                                'title' => 'Follow-up dati',
+                                                'message' => 'Ciao 👋\nQuando vuoi mandami pure logo e dettagli così ti preparo la proposta👍',
+                                            ],
+                                            [
+                                                'title' => 'Follow-up pagamento',
+                                                'message' => 'Ciao 👋\nVolevo capire se questa soluzione può andare bene👍\nSe vuoi possiamo ancora:\n- modificare qualcosa\n- adattare quantità o prodotto\n- trovare un\'alternativa diversa',
+                                            ],
+                                            [
+                                                'title' => 'Upsell',
+                                                'message' => 'Perfetto 👍\nSe vuoi possiamo creare anche:\n- felpe coordinate\n- tote bag\n- shopper\n- altri capi con la stessa grafica\nCosì hai tutto coordinato.',
+                                            ],
+                                            [
+                                                'title' => 'Link pagamento',
+                                                'message' => 'Perfetto 👍\nPuoi confermare direttamente da qui\n\n[link di pagamento]\n\nAppena ricevo la conferma partiamo subito con la produzione👍',
+                                            ],
+                                            [
+                                                'title' => 'File definitivo',
+                                                'message' => 'Perfetto 👍\nPer preparare la produzone inviami il file finale in alta qualità a:\ngrafiche@stuart-company.com\nInserisci come oggetto:\nPreventivo #0000\n\nFormati consigliati: ai, pdf, svg, eps, psd, png ad alta risoluzione\nSe il file è pesante puoi usare Smash o WeTransfer',
+                                            ],
+                                            [
+                                                'title' => 'Conferma produzione',
+                                                'message' => 'Perfetto 👍\nHo ricevuto tutto correttamente 👌\nProcediamo con la produzione e ti aggiornerò appena l\'ordine sarà pronto 💪',
+                                            ],
+                                        ];
+                                        $messageTemplateMessages = collect($messageTemplates)
+                                            ->pluck('message')
+                                            ->map(fn ($message) => str_replace('\n', "\n", $message))
+                                            ->values();
+                                    @endphp
                                     <form method="POST" action="{{ route('admin.conversations.messages.store', $selectedConversation) }}" enctype="multipart/form-data" class="flex flex-col gap-12">
                                         @csrf
+                                        <div class="flex flex-wrap gap-8">
+                                            @foreach ($messageTemplates as $template)
+                                                <button
+                                                    type="button"
+                                                    data-message-template-index="{{ $loop->index }}"
+                                                    class="rounded-10 border border-gray-mid bg-gray-light px-10 py-6 text-left text-12 font-bold leading-[18px] text-black-nike transition hover:border-bullstar hover:text-bullstar"
+                                                >
+                                                    {{ $template['title'] }}
+                                                </button>
+                                            @endforeach
+                                        </div>
+
                                         <textarea
+                                            id="message-composer"
                                             name="message"
-                                            rows="2"
+                                            rows="4"
                                             maxlength="4096"
-                                            class="min-h-[56px] resize-none rounded-10 border-gray-mid px-16 py-12 text-14 font-semibold text-black-nike placeholder:text-gray focus:border-bullstar focus:ring-bullstar"
+                                            class="min-h-[172px] resize-none rounded-10 border-gray-mid px-16 py-12 text-14 font-semibold text-black-nike placeholder:text-gray focus:border-bullstar focus:ring-bullstar"
                                             placeholder="Scrivi un messaggio o una didascalia..."
                                         >{{ old('message') }}</textarea>
 
@@ -458,6 +527,7 @@
             const selectedConversationId = @json($selectedConversation?->id);
             const pollUrl = @json($selectedConversation ? route('admin.conversations.poll', $selectedConversation) : route('admin.dashboard.poll'));
             const csrfToken = @json(csrf_token());
+            const messageTemplates = @json($messageTemplateMessages ?? []);
             let lastMessageSignature = '';
             let lastFollowUpSignature = '';
 
@@ -726,6 +796,21 @@
                 }
             }
 
+            function bindMessageTemplates() {
+                const composer = document.getElementById('message-composer');
+
+                if (!composer) {
+                    return;
+                }
+
+                document.querySelectorAll('[data-message-template-index]').forEach((button) => {
+                    button.addEventListener('click', () => {
+                        composer.value = messageTemplates[Number(button.dataset.messageTemplateIndex)] || '';
+                        composer.focus();
+                    });
+                });
+            }
+
             async function pollConversation() {
                 try {
                     const response = await fetch(pollUrl, {
@@ -754,6 +839,7 @@
                 }
             }
 
+            bindMessageTemplates();
             scrollMessagesToBottom();
             pollConversation();
             window.setInterval(pollConversation, 3000);
