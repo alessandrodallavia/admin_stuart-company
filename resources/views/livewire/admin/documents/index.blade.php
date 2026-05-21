@@ -5,7 +5,7 @@
             <p class="mt-8 text-38 font-black leading-none tracking-normal">{{ $stats['total'] }}</p>
         </article>
         <article class="rounded-10 border border-gray-mid bg-white p-16">
-            <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Da incassare</p>
+            <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Residuo da incassare</p>
             <p class="mt-8 text-30 font-black leading-none tracking-normal">€ {{ number_format((float) $stats['open_total'], 2, ',', '.') }}</p>
         </article>
         <article class="rounded-10 border border-gray-mid bg-white p-16">
@@ -19,10 +19,14 @@
     </section>
 
     <section class="mb-16 overflow-hidden rounded-10 border border-gray-mid bg-white">
-        <form method="GET" action="{{ route('admin.documents.index') }}" class="grid gap-12 p-16 xl:grid-cols-[minmax(220px,1fr)_180px_180px_180px_auto] xl:items-end">
+        <form method="GET" action="{{ route('admin.documents.index') }}" class="grid gap-12 p-16 xl:grid-cols-[160px_minmax(220px,1fr)_180px_180px_180px_auto] xl:items-end">
+            <label class="block">
+                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Numero documento</span>
+                <input name="search_number" value="{{ $searchNumber }}" type="search" placeholder="OFF-1 o 1" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+            </label>
             <label class="block">
                 <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Cerca</span>
-                <input name="q" value="{{ $search }}" type="search" placeholder="Codice, cliente, email o telefono" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                <input name="search" value="{{ $search }}" type="search" placeholder="Cliente, email, telefono, CF/P.IVA, città" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
             </label>
             <label class="block">
                 <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Tipo</span>
@@ -96,7 +100,7 @@
                                 <p class="mt-4 max-w-[260px] truncate text-11 font-semibold text-gray">{{ $document->customer_email ?: $document->customer_phone ?: 'Contatto non indicato' }}</p>
                             </td>
                             <td class="px-12 py-12"><span class="rounded-full bg-black-nike px-10 py-6 text-11 font-extrabold uppercase tracking-normal text-white">{{ $document->status_label }}</span></td>
-                            <td class="px-12 py-12"><span class="rounded-full {{ $document->payment_status === 'paid' ? 'bg-whatsapp/10 text-whatsapp' : ($document->payment_status === 'overdue' ? 'bg-brand/10 text-brand' : 'bg-gray-light text-gray') }} px-10 py-6 text-11 font-extrabold uppercase tracking-normal">{{ $document->payment_status_label }}</span></td>
+                            <td class="px-12 py-12"><span class="rounded-full {{ $document->payment_status === 'paid' ? 'bg-whatsapp/10 text-whatsapp' : 'bg-gray-light text-gray' }} px-10 py-6 text-11 font-extrabold uppercase tracking-normal">{{ $document->payment_status_label }}</span></td>
                             <td class="px-12 py-12 text-right text-14 font-black">€ {{ number_format((float) $document->total, 2, ',', '.') }}</td>
                             <td class="px-12 py-12 text-right">
                                 <div class="flex justify-end gap-6">

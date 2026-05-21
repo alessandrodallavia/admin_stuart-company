@@ -34,6 +34,8 @@ class TcpdfDocumentoService extends TCPDF
     {
         parent::__construct('P', 'mm', 'A4', true, 'UTF-8', false);
 
+        $this->registerRobotoFont();
+
         $this->SetCreator('Laravel');
         $this->SetAuthor('Stuart');
         $this->setPrintHeader(true);
@@ -43,15 +45,30 @@ class TcpdfDocumentoService extends TCPDF
         $this->SetMargins(7.5, 7.5, 7.5);
         $this->SetAutoPageBreak(true, 10);
 
-        $this->SetFont('dejavusans', '', 9);
+        $this->SetFont('roboto', '', 9);
 
         $this->setCellHeightRatio(1.0);
         $this->setCellPaddings(0, 0, 0, 0);
     }
 
+    private function registerRobotoFont(): void
+    {
+        if (file_exists(K_PATH_FONTS.'roboto.php')) {
+            return;
+        }
+
+        foreach (['Roboto-Regular.ttf', 'Roboto-Bold.ttf', 'Roboto-Italic.ttf', 'Roboto-BoldItalic.ttf'] as $font) {
+            $path = resource_path('fonts/'.$font);
+
+            if (file_exists($path)) {
+                \TCPDF_FONTS::addTTFfont($path, 'TrueTypeUnicode', '', 96);
+            }
+        }
+    }
+
     public function calcRowHeight(array $colonne, array $valori, int $fontSize = 9): float
     {
-        $this->SetFont('dejavusans', '', $fontSize);
+        $this->SetFont('roboto', '', $fontSize);
 
         $maxLines = 1;
 
@@ -99,7 +116,7 @@ class TcpdfDocumentoService extends TCPDF
 
     public function drawTopHeader()
     {
-        $this->SetFont('dejavusans', '', 9);
+        $this->SetFont('roboto', '', 9);
 
         $x = 7.5;
         $y = 10;
@@ -121,7 +138,7 @@ class TcpdfDocumentoService extends TCPDF
                 $this->header_data['logo'],
                 $x,
                 $startLeftY,
-                50,
+                20,
                 0,
                 '',
                 '',
@@ -136,7 +153,7 @@ class TcpdfDocumentoService extends TCPDF
         $currentLeftY = $startLeftY + $logoHeight + 10;
         $this->SetXY($x, $currentLeftY);
 
-        $this->SetFont('dejavusans', '', 8);
+        $this->SetFont('roboto', '', 8);
 
         foreach ($this->header_data['company_address'] as $line) {
             $this->MultiCell($leftWidth, 4, $line, 0, 'L');
@@ -154,11 +171,11 @@ class TcpdfDocumentoService extends TCPDF
         $this->SetXY($rightX, $rightY);
 
         // --- TITOLO CLIENTE ---
-        $this->SetFont('dejavusans', 'B', 10);
+        $this->SetFont('roboto', 'B', 10);
         $this->Cell($rightWidth, 6, 'Spett.le', 0, 1, 'L');
 
         // --- DATI CLIENTE ---
-        $this->SetFont('dejavusans', '', 9);
+        $this->SetFont('roboto', '', 9);
 
         foreach ($this->header_data['billing_address'] as $line) {
             $this->SetX($rightX);
@@ -170,10 +187,10 @@ class TcpdfDocumentoService extends TCPDF
         if (! empty($this->header_data['shipping_address'])) {
             // --- SPEDIZIONE (se esiste) ---
             $this->SetX($rightX);
-            $this->SetFont('dejavusans', 'B', 10);
+            $this->SetFont('roboto', 'B', 10);
             $this->Cell($rightWidth, 6, 'Destinazione', 0, 1, 'L');
 
-            $this->SetFont('dejavusans', '', 9);
+            $this->SetFont('roboto', '', 9);
 
             foreach ($this->header_data['shipping_address'] as $line) {
                 $this->SetX($rightX);
@@ -199,7 +216,7 @@ class TcpdfDocumentoService extends TCPDF
         $this->SetY(70);
 
         $h = 7.5;
-        $this->SetFont('dejavusans', '', 9);
+        $this->SetFont('roboto', '', 9);
         $page = $this->getAliasNumPage().'/'.$this->getAliasNbPages();
 
         // === PRIMA RIGA ===
@@ -402,12 +419,12 @@ class TcpdfDocumentoService extends TCPDF
         $this->Rect($x, $y, $w, $h);
 
         // Titolo piccolo
-        $this->SetFont('dejavusans', '', 7);
+        $this->SetFont('roboto', '', 7);
         $this->SetXY($x, $y + 1);
         $this->Cell($w - 2, 3, $title, 0, 0, 'L');
 
         // Valore grande
-        $this->SetFont('dejavusans', '', 10);
+        $this->SetFont('roboto', '', 10);
         $this->SetXY($x + 1, $y + 3.5);
         $this->MultiCell($w - 2, 4, $value, 0, 'L', false);
 
@@ -429,12 +446,12 @@ class TcpdfDocumentoService extends TCPDF
         $this->Rect($x, $y, $w, $h);
 
         // Titolo (piccolo)
-        $this->SetFont('dejavusans', '', 7);
+        $this->SetFont('roboto', '', 7);
         $this->SetXY($x + 1, $y + 1);
         $this->Cell($w - 2, 3, $titolo, 0, 0, 'L');
 
         // Valore (grande)
-        $this->SetFont('dejavusans', '', 10);
+        $this->SetFont('roboto', '', 10);
         $this->SetXY($x + 1, $y + 3.5);
         $this->Cell($w - 2, 4, $valore, 0, 0, 'L');
 
@@ -448,7 +465,7 @@ class TcpdfDocumentoService extends TCPDF
     public function drawHeader(array $colonne): void
     {
         $h = 6.5;
-        $this->SetFont('dejavusans', 'B', 8);
+        $this->SetFont('roboto', 'B', 8);
         $this->SetLineWidth(0.1);
 
         foreach ($colonne as $i => $col) {
@@ -473,7 +490,7 @@ class TcpdfDocumentoService extends TCPDF
        ============================================================ */
     public function getTextHeight(float $w, string $text, int $fontSize = 9): float
     {
-        $this->SetFont('dejavusans', '', $fontSize);
+        $this->SetFont('roboto', '', $fontSize);
 
         // Altezza per riga = 4 (come usi nella tabella)
         $lineHeight = 4;
@@ -500,7 +517,7 @@ class TcpdfDocumentoService extends TCPDF
         $x_start = $this->GetX();
         $y_start = $this->GetY();
 
-        $this->SetFont('dejavusans', '', 9);
+        $this->SetFont('roboto', '', 9);
 
         $xCursor = $x_start;
 

@@ -45,8 +45,6 @@ return [
             'whatsapp.manage',
             'leads.view',
             'leads.manage',
-            'documents.view',
-            'documents.manage',
         ],
         'custom' => [],
     ],

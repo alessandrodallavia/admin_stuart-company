@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AdminDocument;
+use App\Models\DocumentsPaymentMethod;
 use App\Services\AdminDocumentPdfService;
 use App\Services\AdminDocumentService;
+use App\Services\AdminDocumentXmlService;
+use App\Services\DocumentGeneratorService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -34,13 +37,16 @@ class DocumentController extends Controller
         return view('admin.documents.create', [
             'document' => new AdminDocument([
                 'type' => array_key_exists($type, AdminDocument::TYPES) ? $type : 'quote',
+                'fiscal_type' => $type === 'invoice' ? 'TD01' : null,
                 'document_date' => now(),
                 'status' => 'draft',
+                'payment_conditions' => 'TP02',
                 'currency' => 'EUR',
                 'customer_country' => 'IT',
             ]),
             'types' => AdminDocument::TYPES,
-            'statuses' => AdminDocument::STATUSES,
+            'statuses' => AdminDocument::statusesFor($type),
+            'paymentMethods' => DocumentsPaymentMethod::query()->where('is_active', true)->orderBy('code')->get(),
         ]);
     }
 
@@ -55,12 +61,12 @@ class DocumentController extends Controller
 
     public function show(AdminDocument $document): View
     {
-        $document->load(['items', 'paymentSchedules', 'sourceDocument', 'generatedDocuments']);
+        $document->load(['items', 'paymentSchedules.paymentMethod', 'paymentMethod', 'sourceDocument', 'generatedDocuments']);
 
         return view('admin.documents.show', [
             'document' => $document,
             'types' => AdminDocument::TYPES,
-            'statuses' => AdminDocument::STATUSES,
+            'statuses' => AdminDocument::statusesFor($document->type),
         ]);
     }
 
@@ -73,14 +79,26 @@ class DocumentController extends Controller
             ->header('Content-Disposition', 'inline; filename="'.$pdfService->filename($document).'"');
     }
 
+    public function exportXml(AdminDocument $document, AdminDocumentXmlService $xmlService)
+    {
+        abort_unless($document->type === 'invoice', 404);
+
+        $xml = $xmlService->output($document);
+
+        return response($xml)
+            ->header('Content-Type', 'application/xml')
+            ->header('Content-Disposition', 'attachment; filename="'.$xmlService->filename($document).'"');
+    }
+
     public function edit(AdminDocument $document): View
     {
-        $document->load(['items', 'paymentSchedules']);
+        $document->load(['items', 'paymentSchedules.paymentMethod']);
 
         return view('admin.documents.edit', [
             'document' => $document,
             'types' => AdminDocument::TYPES,
-            'statuses' => AdminDocument::STATUSES,
+            'statuses' => AdminDocument::statusesFor($document->type),
+            'paymentMethods' => DocumentsPaymentMethod::query()->where('is_active', true)->orderBy('code')->get(),
         ]);
     }
 
@@ -102,13 +120,23 @@ class DocumentController extends Controller
             ->with('status', 'Documento eliminato.');
     }
 
-    public function duplicate(Request $request, AdminDocument $document, AdminDocumentService $service): RedirectResponse
+    public function duplicate(Request $request, AdminDocument $document, AdminDocumentService $service, DocumentGeneratorService $generator): RedirectResponse
     {
         $data = $request->validate([
             'type' => ['required', Rule::in(array_keys(AdminDocument::TYPES))],
         ]);
 
-        $newDocument = $service->duplicateAs($document, $data['type']);
+        $newDocument = match ([$document->type, $data['type']]) {
+            ['quote', 'proforma'] => $generator->fromQuoteToProforma($document->id),
+            ['quote', 'offline_order'] => $generator->fromQuoteToOrder($document->id),
+            ['quote', 'invoice'] => $generator->fromQuoteToInvoice($document->id),
+            ['proforma', 'offline_order'] => $generator->fromProformaToOrder($document->id),
+            ['proforma', 'invoice'] => $generator->fromProformaToInvoice($document->id),
+            ['offline_order', 'delivery_note'] => $generator->fromOrderToDeliveryNote($document->id),
+            ['offline_order', 'invoice'] => $generator->fromOrderToInvoice($document->id),
+            ['delivery_note', 'invoice'] => $generator->fromDeliveryNoteToInvoice($document->id),
+            default => $service->duplicateAs($document, $data['type']),
+        };
 
         return redirect()
             ->route('admin.documents.edit', $newDocument)
@@ -132,8 +160,9 @@ class DocumentController extends Controller
     {
         $validator = validator($request->all(), [
             'type' => ['required', Rule::in(array_keys(AdminDocument::TYPES))],
+            'fiscal_type' => ['nullable', Rule::in(array_keys(config('documents.invoice_fiscal_types')))],
             'document_date' => ['required', 'date'],
-            'status' => ['required', Rule::in(array_keys(AdminDocument::STATUSES))],
+            'status' => ['required', Rule::in(array_keys(AdminDocument::statusesFor($request->input('type'))))],
             'currency' => ['required', 'string', 'size:3'],
             'customer_name' => ['required', 'string', 'max:255'],
             'customer_email' => ['nullable', 'email:rfc', 'max:255'],
@@ -149,6 +178,7 @@ class DocumentController extends Controller
             'customer_postal_code' => ['nullable', 'string', 'max:20'],
             'customer_country' => ['required', 'string', 'size:2'],
             'notes' => ['nullable', 'string', 'max:5000'],
+            'payment_conditions' => ['required', Rule::in(['TP00', 'TP01', 'TP02'])],
             'items' => ['required', 'array', 'min:1'],
             'items.*.description' => ['nullable', 'string', 'max:255'],
             'items.*.quantity' => ['nullable', 'numeric', 'min:0.01', 'max:999999.99'],
@@ -157,6 +187,7 @@ class DocumentController extends Controller
             'payments' => ['nullable', 'array'],
             'payments.*.due_date' => ['nullable', 'date'],
             'payments.*.method' => ['nullable', 'string', 'max:60'],
+            'payments.*.payment_method_code' => ['nullable', Rule::exists('documents_payment_methods', 'code')],
             'payments.*.amount' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
             'payments.*.paid_amount' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
             'payments.*.paid_at' => ['nullable', 'date'],
@@ -182,6 +213,8 @@ class DocumentController extends Controller
         });
 
         $data = $validator->validate();
+
+        $data['fiscal_type'] = ($data['type'] ?? null) === 'invoice' ? ($data['fiscal_type'] ?: 'TD01') : null;
 
         $data['customer_tax_code'] = Str::upper(preg_replace('/\s+/', '', (string) ($data['customer_tax_code'] ?? ''))) ?: null;
         $data['customer_vat_number'] = preg_replace('/\D+/', '', (string) ($data['customer_vat_number'] ?? '')) ?: null;

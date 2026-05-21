@@ -45,6 +45,7 @@ Route::name('admin.')->group(function () {
             Route::get('/documents/create', [AdminDocumentController::class, 'create'])->name('documents.create');
             Route::get('/documents/{document}', [AdminDocumentController::class, 'show'])->name('documents.show');
             Route::get('/documents/{document}/preview', [AdminDocumentController::class, 'preview'])->name('documents.preview');
+            Route::get('/documents/{document}/xml', [AdminDocumentController::class, 'exportXml'])->name('documents.xml');
             Route::get('/documents/{document}/edit', [AdminDocumentController::class, 'edit'])->name('documents.edit');
         });
 

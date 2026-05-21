@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AdminDocument;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -10,7 +11,7 @@ class AdminDocumentPdfService
 {
     public function output(AdminDocument $document): string
     {
-        $document->loadMissing(['items', 'paymentSchedules']);
+        $document->loadMissing(['items', 'paymentSchedules.paymentMethod', 'paymentMethod']);
 
         $columns = [
             ['Codice', 30.50],
@@ -72,11 +73,11 @@ class AdminDocumentPdfService
             'tax_value' => $taxValue,
             'codice_destinatario' => Str::upper((string) $document->customer_recipient_code),
             'cod_agente' => '',
-            'cod_iban' => '',
-            'cod_bic' => '',
-            'cod_pag' => $singlePayment?->method ?: '',
-            'descrizione_pagamento' => $singlePayment?->method ?: '',
-            'banca_appoggio' => '',
+            'cod_iban' => $this->bankIban($document),
+            'cod_bic' => $this->bankBic($document),
+            'cod_pag' => $singlePayment?->payment_method_code ?: $document->payment_method ?: '',
+            'descrizione_pagamento' => $singlePayment ? $this->paymentLabel($document, $singlePayment) : ($document->paymentMethod?->name ?: ''),
+            'banca_appoggio' => $this->bankName($document),
             'annotazioni' => '',
             'invio_fattura' => $document->customer_email ?: '',
             'reference_name' => '',
@@ -187,17 +188,104 @@ class AdminDocumentPdfService
     private function paymentDeadlines(AdminDocument $document): string
     {
         return $document->paymentSchedules
-            ->map(fn ($payment) => trim(($payment->method ?: 'Pagamento').' € '.number_format((float) $payment->amount, 2, ',', '.').' scad. '.$payment->due_date->format('d/m/Y')))
+            ->map(fn ($payment) => trim($this->paymentDeadlineLabel($document, $payment).' € '.number_format((float) $payment->amount, 2, ',', '.').' scad. '.$payment->due_date->format('d/m/Y')))
             ->implode("\n");
+    }
+
+    private function paymentDeadlineLabel(AdminDocument $document, mixed $payment): string
+    {
+        return match ($payment->payment_method_code) {
+            'MP05' => 'BB',
+            'MP12' => $this->ribaLabel($document->document_date, $payment->due_date),
+            default => $payment->paymentMethod?->name ?: $payment->method ?: 'Pagamento',
+        };
+    }
+
+    private function hasBankTransfer(AdminDocument $document): bool
+    {
+        return $document->payment_method === 'MP05'
+            || $document->paymentSchedules->contains(fn ($payment) => $payment->payment_method_code === 'MP05');
+    }
+
+    private function bankName(AdminDocument $document): string
+    {
+        return $this->hasBankTransfer($document) ? (string) config('documents.bank.name', '') : ($document->bank_name ?: '');
+    }
+
+    private function bankIban(AdminDocument $document): string
+    {
+        return $this->hasBankTransfer($document) ? (string) config('documents.bank.iban', '') : ($document->bank_iban ?: '');
+    }
+
+    private function bankBic(AdminDocument $document): string
+    {
+        return $this->hasBankTransfer($document) ? (string) config('documents.bank.bic', '') : ($document->bank_bic ?: '');
+    }
+
+    private function paymentLabel(AdminDocument $document, mixed $payment): string
+    {
+        if ($payment->payment_method_code === 'MP12') {
+            return $this->ribaLabel($document->document_date, $payment->due_date);
+        }
+
+        return $payment->paymentMethod?->name ?: $payment->method ?: 'Pagamento';
+    }
+
+    private function ribaLabel(?CarbonInterface $documentDate, ?CarbonInterface $dueDate): string
+    {
+        if (! $documentDate || ! $dueDate) {
+            return 'RIBA';
+        }
+
+        $documentDate = $documentDate->copy()->startOfDay();
+        $dueDate = $dueDate->copy()->startOfDay();
+
+        if ($dueDate->isSameDay($dueDate->copy()->endOfMonth())) {
+            $months = (int) $documentDate->copy()->startOfMonth()->diffInMonths($dueDate->copy()->startOfMonth());
+
+            return match ($months) {
+                0 => 'RIBA f.m.',
+                1 => 'RIBA 30 gg f.m.',
+                2 => 'RIBA 60 gg f.m.',
+                3 => 'RIBA 90 gg f.m.',
+                4 => 'RIBA 120 gg f.m.',
+                default => 'RIBA',
+            };
+        }
+
+        $days = (int) $documentDate->diffInDays($dueDate);
+
+        return match (true) {
+            abs($days - 30) <= 5 => 'RIBA 30 gg',
+            abs($days - 60) <= 5 => 'RIBA 60 gg',
+            abs($days - 90) <= 5 => 'RIBA 90 gg',
+            abs($days - 120) <= 5 => 'RIBA 120 gg',
+            default => 'RIBA',
+        };
     }
 
     private function documentTitle(AdminDocument $document): string
     {
+        if ($document->type === 'invoice') {
+            return match ($document->fiscal_type ?: 'TD01') {
+                'TD01' => 'Fattura riepilogativa',
+                'TD02' => 'Fattura di acconto',
+                'TD24' => 'Fattura differita',
+                'TD04' => 'Nota di credito',
+                'TD05' => 'Nota di debito',
+                'TD01A' => 'Autofattura',
+                'TD16' => 'Integrazione fattura reverse charge interno',
+                'TD17' => "Integrazione/autofattura per acquisto servizi all'estero",
+                'TD18' => 'Integrazione/autofattura per acquisto di beni intracomunitari',
+                default => 'Documento',
+            };
+        }
+
         return match ($document->type) {
             'quote' => 'Preventivo',
+            'proforma' => 'Proforma',
             'offline_order' => 'Conferma ordine',
             'delivery_note' => 'Documento di trasporto',
-            'invoice' => 'Fattura riepilogativa',
             default => $document->type_label,
         };
     }

@@ -7,11 +7,19 @@
 @section('content')
     <section class="mb-16 flex flex-col gap-12 md:flex-row md:items-center md:justify-between">
         <div class="flex flex-wrap gap-8">
+            @php
+                $availableGenerationTypes = collect($document->availableActions())
+                    ->map(fn ($type) => $type === 'order' ? 'offline_order' : $type)
+                    ->all();
+            @endphp
             <a href="{{ route('admin.documents.index') }}" class="rounded-10 border border-gray-mid bg-white px-12 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">Archivio</a>
             <a href="{{ route('admin.documents.preview', $document) }}" target="_blank" class="rounded-10 border border-gray-mid bg-white px-12 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">PDF</a>
+            @if ($document->type === 'invoice')
+                <a href="{{ route('admin.documents.xml', $document) }}" class="rounded-10 border border-gray-mid bg-white px-12 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">XML</a>
+            @endif
             <a href="{{ route('admin.documents.edit', $document) }}" class="rounded-10 bg-bullstar px-12 py-8 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">Modifica</a>
             @foreach ($types as $type => $label)
-                @if ($type !== $document->type)
+                @if ($type !== $document->type && in_array($type, $availableGenerationTypes, true))
                     <form method="POST" action="{{ route('admin.documents.duplicate', $document) }}">
                         @csrf
                         <input type="hidden" name="type" value="{{ $type }}">
@@ -35,6 +43,9 @@
                         <p class="text-12 font-extrabold uppercase tracking-normal text-gray">{{ $document->type_label }}</p>
                         <h2 class="mt-6 text-30 font-black leading-tight">{{ $document->display_code }}</h2>
                         <p class="mt-6 text-14 font-semibold text-gray">Data {{ optional($document->document_date)->format('d/m/Y') }}</p>
+                        @if ($document->type === 'invoice')
+                            <p class="mt-2 text-12 font-bold uppercase tracking-normal text-gray">{{ $document->fiscal_type ?: 'TD01' }} - {{ config('documents.invoice_fiscal_types')[$document->fiscal_type ?: 'TD01'] ?? 'Fattura' }}</p>
+                        @endif
                     </div>
                     <div class="text-left md:text-right">
                         <span class="rounded-full bg-black-nike px-10 py-6 text-11 font-extrabold uppercase tracking-normal text-white">{{ $document->status_label }}</span>
@@ -107,7 +118,16 @@
                         <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Pagamenti</p>
                         <h2 class="mt-6 text-20 font-black leading-tight">{{ $document->payment_status_label }}</h2>
                     </div>
-                    <span class="rounded-full {{ $document->payment_status === 'paid' ? 'bg-whatsapp/10 text-whatsapp' : ($document->payment_status === 'overdue' ? 'bg-brand/10 text-brand' : 'bg-gray-light text-gray') }} px-10 py-6 text-11 font-extrabold uppercase tracking-normal">{{ $document->payment_status_label }}</span>
+                    <span class="rounded-full {{ $document->payment_status === 'paid' ? 'bg-whatsapp/10 text-whatsapp' : 'bg-gray-light text-gray' }} px-10 py-6 text-11 font-extrabold uppercase tracking-normal">{{ $document->payment_status_label }}</span>
+                </div>
+                <div class="mt-10 space-y-4 text-13 font-semibold text-gray">
+                    <p>Condizioni {{ $document->payment_conditions ?: 'TP02' }}</p>
+                    @if ($document->payment_method || $document->bank_name || $document->bank_iban)
+                        <p>{{ $document->payment_method }}{{ $document->paymentMethod?->name ? ' - '.$document->paymentMethod->name : '' }}</p>
+                        @if ($document->bank_name || $document->bank_iban)
+                            <p>{{ collect([$document->bank_name, $document->bank_iban, $document->bank_bic])->filter()->implode(' · ') }}</p>
+                        @endif
+                    @endif
                 </div>
                 <div class="mt-12 space-y-10">
                     @forelse ($document->paymentSchedules as $payment)
@@ -118,9 +138,9 @@
                             <div class="flex items-start justify-between gap-10">
                                 <div>
                                     <p class="text-14 font-black">€ {{ number_format((float) $payment->amount, 2, ',', '.') }}</p>
-                                    <p class="mt-4 text-11 font-bold uppercase tracking-normal text-gray">{{ optional($payment->due_date)->format('d/m/Y') }} · {{ $payment->method ?: 'Metodo non indicato' }}</p>
+                                    <p class="mt-4 text-11 font-bold uppercase tracking-normal text-gray">{{ optional($payment->due_date)->format('d/m/Y') }} · {{ $payment->payment_method_code ?: '--' }} {{ $payment->paymentMethod?->name ?: $payment->method ?: 'Metodo non indicato' }}</p>
                                 </div>
-                                <span class="rounded-full bg-white px-8 py-5 text-11 font-extrabold uppercase tracking-normal text-gray">{{ ucfirst($payment->status) }}</span>
+                                <span class="rounded-full bg-white px-8 py-5 text-11 font-extrabold uppercase tracking-normal text-gray">{{ $payment->status_label }}</span>
                             </div>
                             <div class="mt-10 grid gap-8 md:grid-cols-2 xl:grid-cols-1">
                                 <input name="paid_amount" value="{{ $payment->paid_amount }}" type="number" min="0" step="0.01" class="rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
@@ -136,11 +156,21 @@
 
             <section class="rounded-10 border border-gray-mid bg-white p-16">
                 <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Collegamenti</p>
-                @if ($document->sourceDocument)
+                @php
+                    $shownRelatedKeys = collect($document->related_documents)
+                        ->map(fn ($relatedDocument) => $relatedDocument['type'].'-'.$relatedDocument['id'])
+                        ->all();
+                @endphp
+                @foreach ($document->related_documents as $relatedDocument)
+                    <a href="{{ route('admin.documents.show', $relatedDocument['id']) }}" class="mt-8 block text-14 font-bold text-bullstar underline-offset-4 hover:underline">{{ $relatedDocument['label'] }}</a>
+                @endforeach
+                @if ($document->sourceDocument && ! in_array($document->sourceDocument->currentDocumentType()->value.'-'.$document->sourceDocument->id, $shownRelatedKeys, true))
                     <a href="{{ route('admin.documents.show', $document->sourceDocument) }}" class="mt-8 block text-14 font-bold text-bullstar underline-offset-4 hover:underline">Origine: {{ $document->sourceDocument->type_label }} {{ $document->sourceDocument->display_code }}</a>
                 @endif
                 @forelse ($document->generatedDocuments as $generated)
-                    <a href="{{ route('admin.documents.show', $generated) }}" class="mt-8 block text-14 font-bold text-bullstar underline-offset-4 hover:underline">{{ $generated->type_label }} {{ $generated->display_code }}</a>
+                    @unless (in_array($generated->currentDocumentType()->value.'-'.$generated->id, $shownRelatedKeys, true))
+                        <a href="{{ route('admin.documents.show', $generated) }}" class="mt-8 block text-14 font-bold text-bullstar underline-offset-4 hover:underline">{{ $generated->type_label }} {{ $generated->display_code }}</a>
+                    @endunless
                 @empty
                     @unless ($document->sourceDocument)
                         <p class="mt-8 text-14 font-semibold text-gray">Nessun documento collegato.</p>

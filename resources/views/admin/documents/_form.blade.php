@@ -1,4 +1,5 @@
 @php
+    $paymentMethods = $paymentMethods ?? collect();
     $oldItems = old('items');
     $items = $oldItems ?: ($document->exists ? $document->items->map(fn ($item) => [
         'description' => $item->description,
@@ -11,11 +12,12 @@
     $payments = $oldPayments ?: ($document->exists ? $document->paymentSchedules->map(fn ($payment) => [
         'due_date' => optional($payment->due_date)->format('Y-m-d'),
         'method' => $payment->method,
+        'payment_method_code' => $payment->payment_method_code ?: 'MP05',
         'amount' => $payment->amount,
         'paid_amount' => $payment->paid_amount,
         'paid_at' => optional($payment->paid_at)->format('Y-m-d'),
         'notes' => $payment->notes,
-    ])->all() : [['due_date' => now()->format('Y-m-d'), 'method' => 'Bonifico', 'amount' => 0, 'paid_amount' => 0, 'paid_at' => '', 'notes' => '']]);
+    ])->all() : [['due_date' => now()->format('Y-m-d'), 'method' => 'Bonifico bancario', 'payment_method_code' => 'MP05', 'amount' => 0, 'paid_amount' => 0, 'paid_at' => '', 'notes' => '']]);
 @endphp
 
 <form method="POST" action="{{ $document->exists ? route('admin.documents.update', $document) : route('admin.documents.store') }}" class="space-y-16" data-document-form>
@@ -28,9 +30,17 @@
         <div class="grid gap-12 lg:grid-cols-4">
             <label class="block">
                 <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Tipo</span>
-                <select name="type" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                <select name="type" data-document-type class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
                     @foreach ($types as $value => $label)
                         <option value="{{ $value }}" @selected(old('type', $document->type) === $value)>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </label>
+            <label class="block" data-fiscal-type-field>
+                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Tipo documento SDI</span>
+                <select name="fiscal_type" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                    @foreach (config('documents.invoice_fiscal_types') as $value => $label)
+                        <option value="{{ $value }}" @selected(old('fiscal_type', $document->fiscal_type ?: 'TD01') === $value)>{{ $value }} - {{ $label }}</option>
                     @endforeach
                 </select>
             </label>
@@ -40,7 +50,7 @@
             </label>
             <label class="block">
                 <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Stato</span>
-                <select name="status" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                <select name="status" data-document-status class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
                     @foreach ($statuses as $value => $label)
                         <option value="{{ $value }}" @selected(old('status', $document->status ?: 'draft') === $value)>{{ $label }}</option>
                     @endforeach
@@ -49,6 +59,14 @@
             <label class="block">
                 <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Valuta</span>
                 <input name="currency" value="{{ old('currency', $document->currency ?: 'EUR') }}" maxlength="3" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold uppercase focus:border-bullstar focus:ring-bullstar">
+            </label>
+            <label class="block">
+                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Condizioni pagamento</span>
+                <select name="payment_conditions" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                    <option value="TP00" @selected(old('payment_conditions', $document->payment_conditions ?: 'TP02') === 'TP00')>TP00 - Seleziona metodo...</option>
+                    <option value="TP02" @selected(old('payment_conditions', $document->payment_conditions ?: 'TP02') === 'TP02')>TP02 - Pagamento completo</option>
+                    <option value="TP01" @selected(old('payment_conditions', $document->payment_conditions ?: 'TP02') === 'TP01')>TP01 - Pagamento a rate</option>
+                </select>
             </label>
         </div>
     </section>
@@ -189,7 +207,13 @@
                     @foreach ($payments as $index => $payment)
                         <tr>
                             <td class="px-12 py-10"><input name="payments[{{ $index }}][due_date]" value="{{ $payment['due_date'] ?? '' }}" type="date" class="w-full rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
-                            <td class="px-12 py-10"><input name="payments[{{ $index }}][method]" value="{{ $payment['method'] ?? '' }}" placeholder="Bonifico, Stripe..." class="w-full rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
+                            <td class="px-12 py-10">
+                                <select name="payments[{{ $index }}][payment_method_code]" class="w-full rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                    @foreach ($paymentMethods as $method)
+                                        <option value="{{ $method->code }}" @selected(($payment['payment_method_code'] ?? 'MP05') === $method->code)>{{ $method->code }} - {{ $method->name }}</option>
+                                    @endforeach
+                                </select>
+                            </td>
                             <td class="px-12 py-10"><input data-payment-amount name="payments[{{ $index }}][amount]" value="{{ $payment['amount'] ?? 0 }}" type="number" min="0" step="0.01" class="w-full rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
                             <td class="px-12 py-10"><input name="payments[{{ $index }}][paid_amount]" value="{{ $payment['paid_amount'] ?? 0 }}" type="number" min="0" step="0.01" class="w-full rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
                             <td class="px-12 py-10"><input name="payments[{{ $index }}][paid_at]" value="{{ $payment['paid_at'] ?? '' }}" type="date" class="w-full rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
@@ -219,6 +243,11 @@
 
 @push('scripts')
     <script>
+        const paymentMethodOptions = @json($paymentMethods->map(fn ($method) => ['code' => $method->code, 'name' => $method->name])->values());
+        const paymentMethodSelect = (index, selected = 'MP05') => `<select name="payments[${index}][payment_method_code]" class="w-full rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">${
+            paymentMethodOptions.map((method) => `<option value="${method.code}" ${method.code === selected ? 'selected' : ''}>${method.code} - ${method.name}</option>`).join('')
+        }</select>`;
+
         const templates = {
             items: (index) => `<tr>
                 <td class="px-12 py-10"><input name="items[${index}][description]" placeholder="Descrizione riga" class="w-full rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
@@ -229,7 +258,7 @@
             </tr>`,
             payments: (index) => `<tr>
                 <td class="px-12 py-10"><input name="payments[${index}][due_date]" type="date" class="w-full rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
-                <td class="px-12 py-10"><input name="payments[${index}][method]" placeholder="Bonifico, Stripe..." class="w-full rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
+                <td class="px-12 py-10">${paymentMethodSelect(index)}</td>
                 <td class="px-12 py-10"><input data-payment-amount name="payments[${index}][amount]" value="0" type="number" min="0" step="0.01" class="w-full rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
                 <td class="px-12 py-10"><input name="payments[${index}][paid_amount]" value="0" type="number" min="0" step="0.01" class="w-full rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
                 <td class="px-12 py-10"><input name="payments[${index}][paid_at]" type="date" class="w-full rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
@@ -247,6 +276,7 @@
         });
 
         const form = document.querySelector('[data-document-form]');
+        const statusesByType = @json(\App\Models\AdminDocument::STATUSES);
         const money = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' });
         let lastSyncedSinglePayment = null;
 
@@ -302,6 +332,24 @@
         }
 
         form?.addEventListener('input', recalculateDocument);
+        form?.querySelector('[data-document-type]')?.addEventListener('change', (event) => {
+            const statusSelect = form.querySelector('[data-document-status]');
+            const fiscalTypeField = form.querySelector('[data-fiscal-type-field]');
+            const currentStatus = statusSelect.value;
+            const statuses = statusesByType[event.target.value] || statusesByType.quote;
+            statusSelect.innerHTML = Object.entries(statuses)
+                .map(([value, label]) => `<option value="${value}" ${value === currentStatus ? 'selected' : ''}>${label}</option>`)
+                .join('');
+
+            if (!statuses[currentStatus]) {
+                statusSelect.value = 'draft';
+            }
+
+            if (fiscalTypeField) {
+                fiscalTypeField.classList.toggle('hidden', event.target.value !== 'invoice');
+            }
+        });
+        form?.querySelector('[data-fiscal-type-field]')?.classList.toggle('hidden', form?.querySelector('[data-document-type]')?.value !== 'invoice');
         recalculateDocument();
     </script>
 @endpush

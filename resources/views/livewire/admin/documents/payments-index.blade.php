@@ -35,7 +35,7 @@
                                 <a href="{{ route('admin.documents.show', $payment->document) }}" class="text-14 font-bold text-bullstar underline-offset-4 hover:underline">{{ $payment->document->type_label }} {{ $payment->document->display_code }}</a>
                             </td>
                             <td class="px-12 py-12 text-14 font-semibold">{{ $payment->document->customer_name }}</td>
-                            <td class="px-12 py-12"><span class="rounded-full bg-gray-light px-10 py-6 text-11 font-extrabold uppercase tracking-normal text-gray">{{ ucfirst($payment->status) }}</span></td>
+                            <td class="px-12 py-12"><span class="rounded-full bg-gray-light px-10 py-6 text-11 font-extrabold uppercase tracking-normal text-gray">{{ $payment->status_label }}</span></td>
                             <td class="px-12 py-12 text-right text-14 font-black">€ {{ number_format((float) $payment->amount, 2, ',', '.') }}</td>
                             <td class="px-12 py-12 text-right text-14 font-black">€ {{ number_format((float) $payment->paid_amount, 2, ',', '.') }}</td>
                         </tr>
