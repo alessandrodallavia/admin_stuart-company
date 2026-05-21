@@ -133,6 +133,10 @@ class AdminUserController extends Controller
             return 'admin.leads.index';
         }
 
+        if ($user?->hasAdminPermission('documents.view')) {
+            return 'admin.documents.index';
+        }
+
         return 'admin.login';
     }
 }

@@ -1,6 +1,6 @@
 @extends('admin.layouts.app')
 
-@section('title', 'Leads - Bullstar Admin')
+@section('title', 'Leads - Stuart Admin')
 @section('page_title', 'Leads')
 @section('active_nav', 'leads')
 

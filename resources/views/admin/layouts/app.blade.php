@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Bullstar Admin')</title>
+    <title>@yield('title', 'Stuart Admin')</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @livewireStyles
     @stack('head')
 </head>
 <body class="min-h-screen bg-gray-light text-black-nike antialiased">
@@ -13,7 +14,7 @@
         <header class="border-b border-gray-mid bg-white">
             <div class="mx-auto flex max-w-[1440px] flex-col gap-16 px-20 py-16 md:flex-row md:items-center md:justify-between md:px-32">
                 <div class="flex items-center gap-16">
-                    <img src="{{ asset('assets/logos/logo-stuart.png') }}" alt="Bullstar" class="h-36 w-auto">
+                    <img src="{{ asset('assets/logos/logo-stuart.png') }}" alt="Stuart" class="h-36 w-auto">
                     <div class="hidden h-32 w-px bg-gray-mid sm:block"></div>
                     <div>
                         <p class="text-12 font-extrabold uppercase tracking-normal text-bullstar">Admin</p>
@@ -41,6 +42,14 @@
                             class="rounded-10 border px-12 py-10 text-12 font-extrabold uppercase tracking-normal transition {{ $activeNav === 'leads' ? 'border-bullstar bg-bullstar text-white' : 'border-gray-mid bg-white text-black-nike hover:border-black-nike' }}"
                         >
                             Leads
+                        </a>
+                    @endif
+                    @if ($adminUser?->hasAdminPermission('documents.view'))
+                        <a
+                            href="{{ route('admin.documents.index') }}"
+                            class="rounded-10 border px-12 py-10 text-12 font-extrabold uppercase tracking-normal transition {{ $activeNav === 'documents' ? 'border-bullstar bg-bullstar text-white' : 'border-gray-mid bg-white text-black-nike hover:border-black-nike' }}"
+                        >
+                            Documenti
                         </a>
                     @endif
                     @if ($adminUser?->canManageAdminUsers())
@@ -82,5 +91,6 @@
     </div>
 
     @stack('scripts')
+    @livewireScripts
 </body>
 </html>

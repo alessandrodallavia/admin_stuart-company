@@ -1,7 +1,8 @@
 <?php
 
-use App\Http\Controllers\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Admin\AdminUserController as AdminAdminUserController;
+use App\Http\Controllers\Admin\AuthController as AdminAuthController;
+use App\Http\Controllers\Admin\DocumentController as AdminDocumentController;
 use App\Http\Controllers\Admin\LeadController as AdminLeadController;
 use App\Http\Controllers\Admin\WhatsappConversationController as AdminWhatsappConversationController;
 use Illuminate\Support\Facades\Route;
@@ -36,6 +37,23 @@ Route::name('admin.')->group(function () {
         Route::middleware('admin.permission:leads.manage')->group(function () {
             Route::patch('/leads/{lead}', [AdminLeadController::class, 'update'])->name('leads.update');
             Route::post('/leads/{lead}/stripe-payment-link', [AdminLeadController::class, 'createStripePaymentLink'])->name('leads.stripe-payment-link');
+        });
+
+        Route::middleware('admin.permission:documents.view')->group(function () {
+            Route::get('/documents/payments', [AdminDocumentController::class, 'payments'])->name('documents.payments');
+            Route::get('/documents', [AdminDocumentController::class, 'index'])->name('documents.index');
+            Route::get('/documents/create', [AdminDocumentController::class, 'create'])->name('documents.create');
+            Route::get('/documents/{document}', [AdminDocumentController::class, 'show'])->name('documents.show');
+            Route::get('/documents/{document}/preview', [AdminDocumentController::class, 'preview'])->name('documents.preview');
+            Route::get('/documents/{document}/edit', [AdminDocumentController::class, 'edit'])->name('documents.edit');
+        });
+
+        Route::middleware('admin.permission:documents.manage')->group(function () {
+            Route::post('/documents', [AdminDocumentController::class, 'store'])->name('documents.store');
+            Route::patch('/documents/{document}', [AdminDocumentController::class, 'update'])->name('documents.update');
+            Route::delete('/documents/{document}', [AdminDocumentController::class, 'destroy'])->name('documents.destroy');
+            Route::post('/documents/{document}/duplicate', [AdminDocumentController::class, 'duplicate'])->name('documents.duplicate');
+            Route::patch('/documents/{document}/payments', [AdminDocumentController::class, 'updatePayment'])->name('documents.payments.update');
         });
 
         Route::middleware('admin.permission:admin_users.manage')->group(function () {

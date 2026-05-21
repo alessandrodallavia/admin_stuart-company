@@ -24,6 +24,14 @@ return [
             'label' => 'Modificare lead, preventivi e link Stripe',
             'group' => 'Leads',
         ],
+        'documents.view' => [
+            'label' => 'Vedere documenti, fatture, ordini e pagamenti',
+            'group' => 'Documenti',
+        ],
+        'documents.manage' => [
+            'label' => 'Creare e modificare documenti e pagamenti',
+            'group' => 'Documenti',
+        ],
         'admin_users.manage' => [
             'label' => 'Gestire utenti admin e permessi',
             'group' => 'Impostazioni',
@@ -37,6 +45,8 @@ return [
             'whatsapp.manage',
             'leads.view',
             'leads.manage',
+            'documents.view',
+            'documents.manage',
         ],
         'custom' => [],
     ],
