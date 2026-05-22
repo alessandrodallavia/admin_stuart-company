@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AdminDocument;
 use DOMDocument;
 use DOMElement;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 class AdminDocumentXmlService
@@ -99,7 +100,7 @@ class AdminDocumentXmlService
         $this->append($xml, $sender, 'IdCodice', $company['vat_number']);
         $this->append($xml, $data, 'ProgressivoInvio', substr(preg_replace('/\W+/', '', $document->display_code), 0, 10) ?: (string) $document->id);
         $this->append($xml, $data, 'FormatoTrasmissione', 'FPR12');
-        $this->append($xml, $data, 'CodiceDestinatario', $document->customer_recipient_code ?: '0000000');
+        $this->append($xml, $data, 'CodiceDestinatario', $this->upper($document->customer_recipient_code ?: '0000000'));
         if ($document->customer_pec) {
             $this->append($xml, $data, 'PECDestinatario', $document->customer_pec);
         }
@@ -126,21 +127,21 @@ class AdminDocumentXmlService
         $registry = $this->append($xml, $customer, 'DatiAnagrafici');
         if ($document->customer_vat_number) {
             $vat = $this->append($xml, $registry, 'IdFiscaleIVA');
-            $this->append($xml, $vat, 'IdPaese', $document->customer_country ?: 'IT');
-            $this->append($xml, $vat, 'IdCodice', $document->customer_vat_number);
+            $this->append($xml, $vat, 'IdPaese', $this->upper($document->customer_country ?: 'IT'));
+            $this->append($xml, $vat, 'IdCodice', $this->upper($document->customer_vat_number));
         }
         if ($document->customer_tax_code) {
-            $this->append($xml, $registry, 'CodiceFiscale', $document->customer_tax_code);
+            $this->append($xml, $registry, 'CodiceFiscale', $this->upper($document->customer_tax_code));
         }
         $name = $this->append($xml, $registry, 'Anagrafica');
-        $this->append($xml, $name, 'Denominazione', $document->customer_name);
+        $this->append($xml, $name, 'Denominazione', $this->upper($document->customer_name));
         $this->appendAddress($xml, $customer, 'Sede', [
-            'address' => $document->customer_address ?: '.',
-            'street_number' => $document->customer_street_number ?: '',
+            'address' => $this->upper($document->customer_address ?: '.'),
+            'street_number' => $this->upper($document->customer_street_number ?: ''),
             'postal_code' => $document->customer_postal_code ?: '00000',
-            'city' => $document->customer_city ?: '.',
-            'province' => $document->customer_province ?: '',
-            'country' => $document->customer_country ?: 'IT',
+            'city' => $this->upper($document->customer_city ?: '.'),
+            'province' => $this->upper($document->customer_province ?: ''),
+            'country' => $this->upper($document->customer_country ?: 'IT'),
         ]);
     }
 
@@ -193,5 +194,10 @@ class AdminDocumentXmlService
     private function bankBic(AdminDocument $document): string
     {
         return (string) config('documents.bank.bic', '') ?: ($document->bank_bic ?: '');
+    }
+
+    private function upper(?string $value): string
+    {
+        return Str::upper((string) $value);
     }
 }

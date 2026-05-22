@@ -30,6 +30,11 @@ class DocumentController extends Controller
         ]);
     }
 
+    public function importXml(): View
+    {
+        return view('admin.documents.import-xml');
+    }
+
     public function create(Request $request): View
     {
         $type = $request->string('type')->toString() ?: 'quote';

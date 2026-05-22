@@ -47,7 +47,7 @@ class AdminDocumentPdfService
 
     private function headerData(AdminDocument $document): array
     {
-        [$taxLabel, $taxValue] = $this->taxData($document);
+        [$taxLabel, $taxValue] = $this->taxHeaderData($document);
 
         $singlePayment = $document->paymentSchedules->count() === 1
             ? $document->paymentSchedules->first()
@@ -301,7 +301,24 @@ class AdminDocumentPdfService
         }
 
         if ($document->customer_tax_code) {
-            return ['Codice fiscale', $document->customer_tax_code];
+            return ['CF', $document->customer_tax_code];
+        }
+
+        return ['', ''];
+    }
+
+    private function taxHeaderData(AdminDocument $document): array
+    {
+        if ($document->customer_vat_number && $document->customer_tax_code && $document->customer_vat_number === $document->customer_tax_code) {
+            return ['P.Iva/CF', $document->customer_vat_number];
+        }
+
+        if ($document->customer_vat_number) {
+            return ['P.Iva', $document->customer_vat_number];
+        }
+
+        if ($document->customer_tax_code) {
+            return ['Codice Fiscale', $document->customer_tax_code];
         }
 
         return ['', ''];

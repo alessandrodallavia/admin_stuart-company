@@ -70,6 +70,7 @@
             </div>
             <div class="flex flex-wrap gap-8">
                 <a href="{{ route('admin.documents.payments') }}" class="rounded-10 border border-gray-mid px-12 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">Pagamenti</a>
+                <a href="{{ route('admin.documents.import-xml') }}" class="rounded-10 border border-gray-mid px-12 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">Importa XML</a>
                 @foreach ($types as $value => $label)
                     <a href="{{ route('admin.documents.create', ['type' => $value]) }}" class="rounded-10 bg-bullstar px-12 py-8 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">+ {{ $label }}</a>
                 @endforeach

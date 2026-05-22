@@ -363,7 +363,7 @@ class AdminDocumentService
             'proforma' => 'PRO',
             'offline_order' => 'OFF',
             'delivery_note' => 'DDT',
-            'invoice' => 'FAT',
+            'invoice' => 'FPR',
             default => 'DOC',
         };
 
@@ -371,6 +371,21 @@ class AdminDocumentService
             $prefix = 'OFF';
         }
 
-        return sprintf('%s-%d', $prefix, $number ?: $this->nextNumber($type, $year));
+        $shortYear = substr((string) $year, -2);
+
+        if ($type === 'invoice') {
+            return sprintf(
+                '%s %d/%s',
+                $prefix,
+                $number ?: $this->nextNumber($type, $year),
+                $shortYear
+            );
+        }
+
+        return sprintf(
+            '%s-%d',
+            $prefix,
+            $number ?: $this->nextNumber($type, $year)
+        );
     }
 }

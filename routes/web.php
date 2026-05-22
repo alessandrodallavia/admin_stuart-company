@@ -41,6 +41,7 @@ Route::name('admin.')->group(function () {
 
         Route::middleware('admin.permission:documents.view')->group(function () {
             Route::get('/documents/payments', [AdminDocumentController::class, 'payments'])->name('documents.payments');
+            Route::get('/documents/import-xml', [AdminDocumentController::class, 'importXml'])->name('documents.import-xml');
             Route::get('/documents', [AdminDocumentController::class, 'index'])->name('documents.index');
             Route::get('/documents/create', [AdminDocumentController::class, 'create'])->name('documents.create');
             Route::get('/documents/{document}', [AdminDocumentController::class, 'show'])->name('documents.show');

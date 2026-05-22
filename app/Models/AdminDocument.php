@@ -91,6 +91,9 @@ class AdminDocument extends Model
         'customer_postal_code',
         'customer_country',
         'source_document_id',
+        'xml_filename',
+        'xml_hash',
+        'xml_imported',
         'notes',
         'subtotal',
         'vat_total',
@@ -104,6 +107,7 @@ class AdminDocument extends Model
             'subtotal' => 'decimal:2',
             'vat_total' => 'decimal:2',
             'total' => 'decimal:2',
+            'xml_imported' => 'boolean',
         ];
     }
 
@@ -203,7 +207,7 @@ class AdminDocument extends Model
             'proforma' => 'PRO',
             'offline_order' => 'OFF',
             'delivery_note' => 'DDT',
-            'invoice' => 'FAT',
+            'invoice' => 'FPR',
             default => 'DOC',
         };
     }
