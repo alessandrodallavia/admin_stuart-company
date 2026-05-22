@@ -41,7 +41,7 @@ class Index extends Component
                     });
                 })
                 ->latest('document_date')
-                ->latest('number')
+                ->latest('id')
                 ->latest()
                 ->paginate(15)
                 ->withQueryString(),
