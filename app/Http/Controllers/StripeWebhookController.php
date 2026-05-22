@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Lead;
+use App\Services\AdminNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -63,12 +64,17 @@ class StripeWebhookController extends Controller
 
         $amountTotal = data_get($session, 'amount_total');
         $paymentUrl = data_get($session, 'url');
+        $wasAlreadyCompleted = $lead->status === 'order_completed';
 
         $lead->fill([
             'status' => 'order_completed',
             'payment_amount' => $amountTotal ? round(((int) $amountTotal) / 100, 2) : $lead->payment_amount,
             'payment_link' => $paymentUrl ?: $lead->payment_link,
         ])->save();
+
+        if (! $wasAlreadyCompleted || $lead->wasChanged('payment_amount')) {
+            app(AdminNotificationService::class)->notifyPaymentCompleted($lead->fresh());
+        }
 
         return response()->json(['message' => 'Lead marked as paid']);
     }

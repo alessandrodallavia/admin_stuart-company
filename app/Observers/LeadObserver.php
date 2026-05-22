@@ -3,11 +3,17 @@
 namespace App\Observers;
 
 use App\Models\Lead;
+use App\Services\AdminNotificationService;
 use App\Services\BrevoEmailService;
 use Illuminate\Support\Facades\Log;
 
 class LeadObserver
 {
+    public function created(Lead $lead): void
+    {
+        app(AdminNotificationService::class)->notifyNewLead($lead);
+    }
+
     public function updated(Lead $lead): void
     {
         $watchedFields = [

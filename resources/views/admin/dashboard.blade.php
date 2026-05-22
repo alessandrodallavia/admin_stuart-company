@@ -1,6 +1,6 @@
 @extends('admin.layouts.app')
 
-@section('title', 'Chat WhatsApp - Bullstar Admin')
+@section('title', 'Chat WhatsApp - Stuart Admin')
 @section('page_title', 'WhatsApp')
 @section('active_nav', 'whatsapp')
 
@@ -63,51 +63,53 @@
                                 href="{{ route('admin.conversations.show', $conversation) }}"
                                 class="block border-b border-gray-mid px-14 py-10 transition hover:bg-gray-light {{ $isSelected ? 'bg-gray-light' : 'bg-white' }}"
                             >
-                                <div class="mb-4 flex items-start justify-between gap-10">
-                                    <div class="min-w-0">
-                                        <div class="flex min-w-0 items-center gap-8">
-                                            <p class="truncate text-14 font-black leading-tight">
-                                                {{ $conversation->lead?->name ?: $conversation->contact_phone }}
-                                            </p>
-                                            @if ($conversation->needs_human)
-                                                <span class="shrink-0 rounded-full bg-brand/10 px-8 py-4 text-11 font-extrabold uppercase tracking-normal text-brand">
-                                                    Subentra
-                                                </span>
-                                            @endif
-                                            @if ($conversation->unread_incoming_messages_count > 0)
-                                                <span class="shrink-0 rounded-full bg-black-nike px-8 py-4 text-11 font-extrabold uppercase tracking-normal text-white">
-                                                    {{ $conversation->unread_incoming_messages_count }}
-                                                </span>
-                                            @endif
-                                            @if (! $conversation->isExcludedFromFollowUps() && $conversation->due_follow_ups_count > 0)
-                                                <span class="shrink-0 rounded-full bg-brand px-8 py-4 text-11 font-extrabold uppercase tracking-normal text-white">
-                                                    Da fare
-                                                </span>
-                                            @endif
-                                            @if ($conversation->pending_follow_ups_count > 0)
-                                                <span class="shrink-0 rounded-full bg-bullstar/10 px-8 py-4 text-11 font-extrabold uppercase tracking-normal text-bullstar">
-                                                    FU {{ $conversation->pending_follow_ups_count }}
-                                                </span>
-                                            @endif
-                                            @if ($conversation->isExcludedFromFollowUps())
-                                                <span class="shrink-0 rounded-full bg-gray-mid px-8 py-4 text-11 font-extrabold uppercase tracking-normal text-black-nike">
-                                                    Pausa FU
-                                                </span>
-                                            @endif
-                                            @if ($conversation->isWhatsappWindowExpired())
-                                                <span class="shrink-0 rounded-full bg-red-50 px-8 py-4 text-11 font-extrabold uppercase tracking-normal text-red-700">
-                                                    24h scadute
-                                                </span>
-                                            @endif
-                                        </div>
-                                        <p class="mt-4 truncate text-12 font-semibold text-gray">
-                                            {{ $conversation->lead?->club ?: $conversation->contact_phone }}
+                                <div class="mb-4 min-w-0">
+                                    <div class="flex min-w-0 items-start justify-between gap-10">
+                                        <p class="min-w-0 truncate text-14 font-black leading-tight">
+                                            {{ $conversation->lead?->name ?: $conversation->contact_phone }}
                                         </p>
+
+                                        <span class="shrink-0 rounded-full px-8 py-4 text-11 font-extrabold uppercase tracking-normal {{ $conversation->mode === 'manual' ? 'bg-bullstar/10 text-bullstar' : 'bg-whatsapp/10 text-whatsapp' }}">
+                                            {{ $conversation->mode }}
+                                        </span>
                                     </div>
 
-                                    <span class="shrink-0 rounded-full px-8 py-4 text-11 font-extrabold uppercase tracking-normal {{ $conversation->mode === 'manual' ? 'bg-bullstar/10 text-bullstar' : 'bg-whatsapp/10 text-whatsapp' }}">
-                                        {{ $conversation->mode }}
-                                    </span>
+                                    <div class="mt-6 flex min-w-0 flex-wrap items-center gap-5">
+                                        @if ($conversation->needs_human)
+                                            <span class="shrink-0 rounded-full bg-brand/10 px-8 py-4 text-11 font-extrabold uppercase tracking-normal text-brand">
+                                                Subentra
+                                            </span>
+                                        @endif
+                                        @if ($conversation->unread_incoming_messages_count > 0)
+                                            <span class="shrink-0 rounded-full bg-black-nike px-8 py-4 text-11 font-extrabold uppercase tracking-normal text-white">
+                                                {{ $conversation->unread_incoming_messages_count }}
+                                            </span>
+                                        @endif
+                                        @if (! $conversation->isExcludedFromFollowUps() && $conversation->due_follow_ups_count > 0)
+                                            <span class="shrink-0 rounded-full bg-brand px-8 py-4 text-11 font-extrabold uppercase tracking-normal text-white">
+                                                Da fare
+                                            </span>
+                                        @endif
+                                        @if ($conversation->pending_follow_ups_count > 0)
+                                            <span class="shrink-0 rounded-full bg-bullstar/10 px-8 py-4 text-11 font-extrabold uppercase tracking-normal text-bullstar">
+                                                FU {{ $conversation->pending_follow_ups_count }}
+                                            </span>
+                                        @endif
+                                        @if ($conversation->isExcludedFromFollowUps())
+                                            <span class="shrink-0 rounded-full bg-gray-mid px-8 py-4 text-11 font-extrabold uppercase tracking-normal text-black-nike">
+                                                Pausa FU
+                                            </span>
+                                        @endif
+                                        @if ($conversation->isWhatsappWindowExpired())
+                                            <span class="shrink-0 rounded-full bg-red-50 px-8 py-4 text-11 font-extrabold uppercase tracking-normal text-red-700">
+                                                24h scadute
+                                            </span>
+                                        @endif
+                                    </div>
+
+                                    <p class="mt-4 truncate text-12 font-semibold text-gray">
+                                        {{ $conversation->lead?->club ?: $conversation->contact_phone }}
+                                    </p>
                                 </div>
 
                                 <p class="line-clamp-1 text-12 font-semibold leading-[18px] text-gray">
@@ -141,7 +143,7 @@
                                 <div class="flex flex-col gap-16 xl:flex-row xl:items-center xl:justify-between">
                                     <div class="min-w-0">
                                         <div class="flex flex-wrap items-center gap-8">
-                                            <h2 class="truncate text-24 font-black leading-tight">
+                                            <h2 class="min-w-0 truncate text-24 font-black leading-tight">
                                                 {{ $selectedConversation->lead?->name ?: $selectedConversation->contact_phone }}
                                             </h2>
                                             @if ($selectedConversation->needs_human)
@@ -638,22 +640,22 @@
 
                     return `
                         <a data-conversation-id="${conversation.id}" href="${conversation.url}" class="block border-b border-gray-mid px-14 py-10 transition hover:bg-gray-light ${selectedClass}">
-                            <div class="mb-4 flex items-start justify-between gap-10">
-                                <div class="min-w-0">
-                                    <div class="flex min-w-0 items-center gap-8">
-                                        <p class="truncate text-14 font-black leading-tight">${escapeHtml(conversation.name)}</p>
-                                        ${needsHuman}
-                                        ${unread}
-                                        ${dueFollowUps}
-                                        ${followUps}
-                                        ${followUpExcluded}
-                                        ${whatsappWindowExpired}
-                                    </div>
-                                    <p class="mt-4 truncate text-12 font-semibold text-gray">${escapeHtml(conversation.subtitle)}</p>
+                            <div class="mb-4 min-w-0">
+                                <div class="flex min-w-0 items-start justify-between gap-10">
+                                    <p class="min-w-0 truncate text-14 font-black leading-tight">${escapeHtml(conversation.name)}</p>
+                                    <span class="shrink-0 rounded-full px-8 py-4 text-11 font-extrabold uppercase tracking-normal ${modeClass}">
+                                        ${escapeHtml(conversation.mode)}
+                                    </span>
                                 </div>
-                                <span class="shrink-0 rounded-full px-8 py-4 text-11 font-extrabold uppercase tracking-normal ${modeClass}">
-                                    ${escapeHtml(conversation.mode)}
-                                </span>
+                                <div class="mt-6 flex min-w-0 flex-wrap items-center gap-5">
+                                    ${needsHuman}
+                                    ${unread}
+                                    ${dueFollowUps}
+                                    ${followUps}
+                                    ${followUpExcluded}
+                                    ${whatsappWindowExpired}
+                                </div>
+                                <p class="mt-4 truncate text-12 font-semibold text-gray">${escapeHtml(conversation.subtitle)}</p>
                             </div>
                             <p class="line-clamp-1 text-12 font-semibold leading-[18px] text-gray">${escapeHtml(conversation.latest_body)}</p>
                             <p class="mt-4 text-11 font-bold uppercase tracking-normal text-gray">${escapeHtml(conversation.last_message_at)}</p>

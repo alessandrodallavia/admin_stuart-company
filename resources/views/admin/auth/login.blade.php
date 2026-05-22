@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Accesso admin - Bullstar</title>
+    <title>Accesso admin - Stuart Company</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-screen bg-black-nike text-white antialiased">
@@ -76,7 +76,7 @@
                             required
                             autofocus
                             class="w-full rounded-10 border border-white/10 bg-white px-12 py-10 text-14 font-semibold leading-[18px] text-black-nike outline-none transition placeholder:text-gray focus:border-bullstar focus:ring-4 focus:ring-bullstar/20"
-                            placeholder="admin@bullstar.it"
+                            placeholder="admin@stuart-company.com"
                         >
                         @error('email')<p class="mt-8 text-14 font-bold text-red-300">{{ $message }}</p>@enderror
                     </div>

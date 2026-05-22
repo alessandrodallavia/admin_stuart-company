@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\Lead;
 use App\Models\WhatsappConversation;
 use App\Models\WhatsappMessage;
+use App\Services\AdminNotificationService;
 use App\Services\BrevoEmailService;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
@@ -21,7 +22,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
 
     public function __construct(public $data) {}
 
-    public function handle(BrevoEmailService $emailService)
+    public function handle(BrevoEmailService $emailService, AdminNotificationService $adminNotifications)
     {
         $value = $this->data['entry'][0]['changes'][0]['value'] ?? null;
 
@@ -59,10 +60,14 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
                 $conversation->setRelation('lead', $lead);
             }
 
-            $this->storeIncomingMessage($conversation, $message, $from);
+            $storedMessage = $this->storeIncomingMessage($conversation, $message, $from);
             $this->deleteAutomaticFollowUpsAfterCustomerReply($conversation);
 
             if ($conversation->mode === 'manual') {
+                if ($storedMessage->wasRecentlyCreated) {
+                    $adminNotifications->notifyWhatsappMessage($conversation->fresh(['lead']), $storedMessage);
+                }
+
                 continue;
             }
 
@@ -72,6 +77,12 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
 
             if ($type === 'text') {
                 $this->handleText($message, $from, $emailService, $lead, $conversation);
+            }
+
+            $conversation = $conversation->fresh(['lead']);
+
+            if ($storedMessage->wasRecentlyCreated && $conversation->mode === 'manual') {
+                $adminNotifications->notifyWhatsappMessage($conversation, $storedMessage);
             }
         }
     }

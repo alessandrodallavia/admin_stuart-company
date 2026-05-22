@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AdminUserController as AdminAdminUserController;
 use App\Http\Controllers\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Admin\DocumentController as AdminDocumentController;
 use App\Http\Controllers\Admin\LeadController as AdminLeadController;
+use App\Http\Controllers\Admin\NotificationController as AdminNotificationController;
 use App\Http\Controllers\Admin\WhatsappConversationController as AdminWhatsappConversationController;
 use Illuminate\Support\Facades\Route;
 
@@ -12,6 +13,10 @@ Route::name('admin.')->group(function () {
     Route::post('/login', [AdminAuthController::class, 'login'])->name('login.store');
 
     Route::middleware('admin.auth')->group(function () {
+        Route::get('/notifications', [AdminNotificationController::class, 'index'])->name('notifications.index');
+        Route::patch('/notifications/read-all', [AdminNotificationController::class, 'markAllRead'])->name('notifications.read-all');
+        Route::get('/notifications/{notification}', [AdminNotificationController::class, 'open'])->name('notifications.open');
+
         Route::middleware('admin.permission:whatsapp.view')->group(function () {
             Route::get('/', [AdminWhatsappConversationController::class, 'index'])->name('dashboard');
             Route::get('/poll', [AdminWhatsappConversationController::class, 'pollIndex'])->name('dashboard.poll');
