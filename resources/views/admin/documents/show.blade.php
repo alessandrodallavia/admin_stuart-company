@@ -18,6 +18,11 @@
                 <a href="{{ route('admin.documents.xml', $document) }}" class="rounded-10 border border-gray-mid bg-white px-12 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">XML</a>
             @endif
             <a href="{{ route('admin.documents.edit', $document) }}" class="rounded-10 bg-bullstar px-12 py-8 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">Modifica</a>
+            <form method="POST" action="{{ route('admin.documents.duplicate', $document) }}">
+                @csrf
+                <input type="hidden" name="type" value="{{ $document->type }}">
+                <button type="submit" class="rounded-10 border border-gray-mid bg-white px-12 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">Copia</button>
+            </form>
             @foreach ($types as $type => $label)
                 @if ($type !== $document->type && in_array($type, $availableGenerationTypes, true))
                     <form method="POST" action="{{ route('admin.documents.duplicate', $document) }}">

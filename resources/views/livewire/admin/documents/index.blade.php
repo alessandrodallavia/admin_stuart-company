@@ -106,6 +106,11 @@
                             <td class="px-12 py-12 text-right">
                                 <div class="flex justify-end gap-6">
                                     <a href="{{ route('admin.documents.preview', $document) }}" target="_blank" class="rounded-10 border border-gray-mid px-10 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">PDF</a>
+                                    <form method="POST" action="{{ route('admin.documents.duplicate', $document) }}">
+                                        @csrf
+                                        <input type="hidden" name="type" value="{{ $document->type }}">
+                                        <button type="submit" class="rounded-10 border border-gray-mid px-10 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">Copia</button>
+                                    </form>
                                     <a href="{{ route('admin.documents.show', $document) }}" class="rounded-10 border border-gray-mid px-12 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-bullstar hover:text-bullstar">Apri</a>
                                 </div>
                             </td>

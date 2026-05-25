@@ -145,7 +145,7 @@ class DocumentController extends Controller
 
         return redirect()
             ->route('admin.documents.edit', $newDocument)
-            ->with('status', 'Documento generato. Controlla i dati prima di emetterlo.');
+            ->with('status', $data['type'] === $document->type ? 'Documento copiato. Puoi modificarlo prima di emetterlo.' : 'Documento generato. Controlla i dati prima di emetterlo.');
     }
 
     public function updatePayment(Request $request, AdminDocument $document, AdminDocumentService $service): RedirectResponse
