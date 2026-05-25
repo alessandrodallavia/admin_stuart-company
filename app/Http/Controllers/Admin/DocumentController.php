@@ -185,6 +185,7 @@ class DocumentController extends Controller
             'notes' => ['nullable', 'string', 'max:5000'],
             'payment_conditions' => ['required', Rule::in(['TP00', 'TP01', 'TP02'])],
             'items' => ['required', 'array', 'min:1'],
+            'items.*.item_code' => ['nullable', 'string', 'max:80'],
             'items.*.description' => ['nullable', 'string', 'max:255'],
             'items.*.quantity' => ['nullable', 'numeric', 'min:0.01', 'max:999999.99'],
             'items.*.unit_price' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
@@ -204,7 +205,7 @@ class DocumentController extends Controller
             $vatNumber = preg_replace('/\D+/', '', (string) $request->input('customer_vat_number'));
             $recipientCode = Str::upper(trim((string) $request->input('customer_recipient_code')));
 
-            if ($taxCode !== '' && ! $this->isValidItalianTaxCode($taxCode)) {
+            if ($taxCode !== '' && ! $this->isValidItalianTaxCode($taxCode) && ! $this->isValidItalianVatNumber($taxCode)) {
                 $validator->errors()->add('customer_tax_code', 'Codice fiscale non valido.');
             }
 

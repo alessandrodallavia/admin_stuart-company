@@ -45,6 +45,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('admin_document_id')->constrained('admin_documents')->cascadeOnDelete();
             $table->unsignedInteger('position')->default(1);
+            $table->string('item_code', 80)->nullable();
             $table->string('description');
             $table->decimal('quantity', 10, 2)->default(1);
             $table->decimal('unit_price', 12, 2)->default(0);

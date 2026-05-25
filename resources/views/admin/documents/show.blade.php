@@ -59,9 +59,10 @@
                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Righe documento</p>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full min-w-[820px] text-left">
+                    <table class="w-full min-w-[920px] text-left">
                         <thead class="bg-gray-light text-11 font-extrabold uppercase tracking-normal text-gray">
                             <tr>
+                                <th class="px-12 py-10">Codice</th>
                                 <th class="px-12 py-10">Descrizione</th>
                                 <th class="px-12 py-10 text-right">Q.tà</th>
                                 <th class="px-12 py-10 text-right">Prezzo</th>
@@ -72,6 +73,7 @@
                         <tbody class="divide-y divide-gray-mid">
                             @foreach ($document->items as $item)
                                 <tr>
+                                    <td class="px-12 py-12 text-14 font-semibold">{{ $item->item_code ?: '-' }}</td>
                                     <td class="px-12 py-12 text-14 font-bold">{{ $item->description }}</td>
                                     <td class="px-12 py-12 text-right text-14 font-semibold">{{ number_format((float) $item->quantity, 2, ',', '.') }}</td>
                                     <td class="px-12 py-12 text-right text-14 font-semibold">€ {{ number_format((float) $item->unit_price, 2, ',', '.') }}</td>
@@ -81,9 +83,9 @@
                             @endforeach
                         </tbody>
                         <tfoot class="border-t border-gray-mid bg-gray-light text-14 font-black">
-                            <tr><td colspan="4" class="px-12 py-10 text-right">Imponibile</td><td class="px-12 py-10 text-right">€ {{ number_format((float) $document->subtotal, 2, ',', '.') }}</td></tr>
-                            <tr><td colspan="4" class="px-12 py-10 text-right">IVA</td><td class="px-12 py-10 text-right">€ {{ number_format((float) $document->vat_total, 2, ',', '.') }}</td></tr>
-                            <tr><td colspan="4" class="px-12 py-10 text-right">Totale</td><td class="px-12 py-10 text-right">€ {{ number_format((float) $document->total, 2, ',', '.') }}</td></tr>
+                            <tr><td colspan="5" class="px-12 py-10 text-right">Imponibile</td><td class="px-12 py-10 text-right">€ {{ number_format((float) $document->subtotal, 2, ',', '.') }}</td></tr>
+                            <tr><td colspan="5" class="px-12 py-10 text-right">IVA</td><td class="px-12 py-10 text-right">€ {{ number_format((float) $document->vat_total, 2, ',', '.') }}</td></tr>
+                            <tr><td colspan="5" class="px-12 py-10 text-right">Totale</td><td class="px-12 py-10 text-right">€ {{ number_format((float) $document->total, 2, ',', '.') }}</td></tr>
                         </tfoot>
                     </table>
                 </div>

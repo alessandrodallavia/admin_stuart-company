@@ -10,6 +10,7 @@ class AdminDocumentItem extends Model
     protected $fillable = [
         'admin_document_id',
         'position',
+        'item_code',
         'description',
         'quantity',
         'unit_price',

@@ -68,7 +68,7 @@ class AdminDocumentPdfService
             'tipo_documento' => $this->documentTitle($document),
             'numero_documento' => $document->display_code,
             'data_documento' => $document->document_date->format('d/m/Y'),
-            'cliente' => sprintf('%05d', $document->id),
+            'cliente' => '00000',
             'tax_label' => $taxLabel,
             'tax_value' => $taxValue,
             'codice_destinatario' => Str::upper((string) $document->customer_recipient_code),
@@ -162,7 +162,7 @@ class AdminDocumentPdfService
     private function productRows(AdminDocument $document): array
     {
         return $document->items->map(fn ($item) => [
-            'codice' => '',
+            'codice' => $item->item_code ?: '',
             'descrizione' => $item->description,
             'um' => 'NR',
             'qta' => number_format((float) $item->quantity, 2, ',', '.'),

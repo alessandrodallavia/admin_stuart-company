@@ -46,6 +46,11 @@ class AdminDocumentXmlService
         foreach ($document->items as $index => $item) {
             $line = $this->append($xml, $goods, 'DettaglioLinee');
             $this->append($xml, $line, 'NumeroLinea', (string) ($index + 1));
+            if ($item->item_code) {
+                $articleCode = $this->append($xml, $line, 'CodiceArticolo');
+                $this->append($xml, $articleCode, 'CodiceTipo', 'CODICE');
+                $this->append($xml, $articleCode, 'CodiceValore', $item->item_code);
+            }
             $this->append($xml, $line, 'Descrizione', $item->description);
             $this->append($xml, $line, 'Quantita', $this->decimal($item->quantity));
             $this->append($xml, $line, 'PrezzoUnitario', $this->money($item->unit_price));

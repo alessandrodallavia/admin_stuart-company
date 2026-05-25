@@ -2,11 +2,12 @@
     $paymentMethods = $paymentMethods ?? collect();
     $oldItems = old('items');
     $items = $oldItems ?: ($document->exists ? $document->items->map(fn ($item) => [
+        'item_code' => $item->item_code,
         'description' => $item->description,
         'quantity' => $item->quantity,
         'unit_price' => $item->unit_price,
         'vat_rate' => $item->vat_rate,
-    ])->all() : [['description' => '', 'quantity' => 1, 'unit_price' => 0, 'vat_rate' => 22]]);
+    ])->all() : [['item_code' => '', 'description' => '', 'quantity' => 1, 'unit_price' => 0, 'vat_rate' => 22]]);
 
     $oldPayments = old('payments');
     $payments = $oldPayments ?: ($document->exists ? $document->paymentSchedules->map(fn ($payment) => [
@@ -141,9 +142,10 @@
             <button type="button" data-add-row="items" class="rounded-10 border border-gray-mid px-12 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">Aggiungi riga</button>
         </div>
         <div class="overflow-x-auto">
-            <table class="w-full min-w-[1040px] text-left">
+            <table class="w-full min-w-[1160px] text-left">
                 <thead class="bg-gray-light text-11 font-extrabold uppercase tracking-normal text-gray">
                     <tr>
+                        <th class="w-150 px-12 py-10">Codice</th>
                         <th class="px-12 py-10">Descrizione</th>
                         <th class="w-120 px-12 py-10">Quantità</th>
                         <th class="w-150 px-12 py-10">Prezzo</th>
@@ -154,6 +156,7 @@
                 <tbody id="items-rows" class="divide-y divide-gray-mid">
                     @foreach ($items as $index => $item)
                         <tr>
+                            <td class="px-12 py-10"><input name="items[{{ $index }}][item_code]" value="{{ $item['item_code'] ?? '' }}" placeholder="Codice" maxlength="80" class="w-full rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold uppercase focus:border-bullstar focus:ring-bullstar"></td>
                             <td class="px-12 py-10"><input name="items[{{ $index }}][description]" value="{{ $item['description'] ?? '' }}" placeholder="Descrizione riga" class="w-full rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
                             <td class="px-12 py-10"><input data-line-quantity name="items[{{ $index }}][quantity]" value="{{ $item['quantity'] ?? 1 }}" type="number" min="0.01" step="0.01" class="w-full rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
                             <td class="px-12 py-10"><input data-line-unit-price name="items[{{ $index }}][unit_price]" value="{{ $item['unit_price'] ?? 0 }}" type="number" min="0" step="0.01" class="w-full rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
@@ -164,15 +167,15 @@
                 </tbody>
                 <tfoot class="border-t border-gray-mid bg-gray-light text-14 font-black">
                     <tr>
-                        <td colspan="4" class="px-12 py-10 text-right">Imponibile</td>
+                        <td colspan="5" class="px-12 py-10 text-right">Imponibile</td>
                         <td class="px-12 py-10 text-right" data-summary-subtotal>€ 0,00</td>
                     </tr>
                     <tr>
-                        <td colspan="4" class="px-12 py-10 text-right">IVA</td>
+                        <td colspan="5" class="px-12 py-10 text-right">IVA</td>
                         <td class="px-12 py-10 text-right" data-summary-vat>€ 0,00</td>
                     </tr>
                     <tr>
-                        <td colspan="4" class="px-12 py-10 text-right">Totale</td>
+                        <td colspan="5" class="px-12 py-10 text-right">Totale</td>
                         <td class="px-12 py-10 text-right" data-summary-total>€ 0,00</td>
                     </tr>
                 </tfoot>
@@ -250,6 +253,7 @@
 
         const templates = {
             items: (index) => `<tr>
+                <td class="px-12 py-10"><input name="items[${index}][item_code]" placeholder="Codice" maxlength="80" class="w-full rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold uppercase focus:border-bullstar focus:ring-bullstar"></td>
                 <td class="px-12 py-10"><input name="items[${index}][description]" placeholder="Descrizione riga" class="w-full rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
                 <td class="px-12 py-10"><input data-line-quantity name="items[${index}][quantity]" value="1" type="number" min="0.01" step="0.01" class="w-full rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
                 <td class="px-12 py-10"><input data-line-unit-price name="items[${index}][unit_price]" value="0" type="number" min="0" step="0.01" class="w-full rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"></td>

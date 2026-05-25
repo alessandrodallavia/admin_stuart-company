@@ -267,6 +267,7 @@ class AdminDocumentService
 
             $document->items()->create([
                 'position' => $index + 1,
+                'item_code' => blank($item['item_code'] ?? null) ? null : trim((string) $item['item_code']),
                 'description' => $item['description'],
                 'quantity' => $quantity,
                 'unit_price' => $unitPrice,
