@@ -132,10 +132,7 @@ class AdminDocumentPdfService
 
             if (($pdf->GetY() + $rowHeight) - $yStartTable > $maxHeight) {
                 $remaining = $maxHeight - ($pdf->GetY() - $yStartTable);
-                while ($remaining > 0) {
-                    $pdf->drawEmptyRow($columns, $lastRowHeight);
-                    $remaining -= $lastRowHeight;
-                }
+                $this->fillTableSpace($pdf, $columns, $remaining, $lastRowHeight);
 
                 $pdf->drawFooterBlocco();
                 $pdf->AddPage();
@@ -150,13 +147,19 @@ class AdminDocumentPdfService
         }
 
         $remaining = $maxHeight - ($pdf->GetY() - $yStartTable);
-        while ($remaining > 0) {
-            $pdf->drawEmptyRow($columns, $lastRowHeight);
-            $remaining -= $lastRowHeight;
-        }
+        $this->fillTableSpace($pdf, $columns, $remaining, $lastRowHeight);
 
         $pdf->isLastPage = true;
         $pdf->drawFooterBlocco();
+    }
+
+    private function fillTableSpace(TcpdfDocumentoService $pdf, array $columns, float $remaining, float $preferredRowHeight): void
+    {
+        while ($remaining > 0.2) {
+            $rowHeight = min($preferredRowHeight, $remaining);
+            $pdf->drawEmptyRow($columns, $rowHeight);
+            $remaining -= $rowHeight;
+        }
     }
 
     private function productRows(AdminDocument $document): array
@@ -168,7 +171,7 @@ class AdminDocumentPdfService
             'qta' => number_format((float) $item->quantity, 2, ',', '.'),
             'prezzo' => number_format((float) $item->unit_price, 2, ',', '.'),
             'sconto' => '',
-            'importo' => number_format((float) $item->line_total, 2, ',', '.'),
+            'importo' => number_format((float) $item->line_subtotal, 2, ',', '.'),
             'ci' => number_format((float) $item->vat_rate, 0),
         ])->all();
     }

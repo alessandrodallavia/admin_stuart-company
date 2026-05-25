@@ -151,7 +151,7 @@
                         <th class="w-100 px-12 py-10">Q.tà</th>
                         <th class="w-120 px-12 py-10">Prezzo</th>
                         <th class="w-90 px-12 py-10">IVA %</th>
-                        <th class="w-120 px-12 py-10 text-right">Totale</th>
+                        <th class="w-120 px-12 py-10 text-right">Imponibile</th>
                         <th class="w-60 px-12 py-10 text-right"></th>
                     </tr>
                 </thead>
@@ -348,14 +348,13 @@
                 const vatRate = numberValue(row.querySelector('[data-line-vat-rate]'));
                 const lineSubtotal = quantity * unitPrice;
                 const lineVat = lineSubtotal * vatRate / 100;
-                const lineTotal = lineSubtotal + lineVat;
 
                 subtotal += lineSubtotal;
                 vat += lineVat;
 
                 const lineTotalElement = row.querySelector('[data-line-total]');
                 if (lineTotalElement) {
-                    lineTotalElement.textContent = money.format(lineTotal);
+                    lineTotalElement.textContent = money.format(lineSubtotal);
                 }
             });
 

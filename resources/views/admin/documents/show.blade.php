@@ -67,7 +67,7 @@
                                 <th class="px-12 py-10 text-right">Q.tà</th>
                                 <th class="px-12 py-10 text-right">Prezzo</th>
                                 <th class="px-12 py-10 text-right">IVA</th>
-                                <th class="px-12 py-10 text-right">Totale</th>
+                                <th class="px-12 py-10 text-right">Imponibile</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-mid">
@@ -78,7 +78,7 @@
                                     <td class="px-12 py-12 text-right text-14 font-semibold">{{ number_format((float) $item->quantity, 2, ',', '.') }}</td>
                                     <td class="px-12 py-12 text-right text-14 font-semibold">€ {{ number_format((float) $item->unit_price, 2, ',', '.') }}</td>
                                     <td class="px-12 py-12 text-right text-14 font-semibold">{{ number_format((float) $item->vat_rate, 2, ',', '.') }}%</td>
-                                    <td class="px-12 py-12 text-right text-14 font-black">€ {{ number_format((float) $item->line_total, 2, ',', '.') }}</td>
+                                    <td class="px-12 py-12 text-right text-14 font-black">€ {{ number_format((float) $item->line_subtotal, 2, ',', '.') }}</td>
                                 </tr>
                             @endforeach
                         </tbody>

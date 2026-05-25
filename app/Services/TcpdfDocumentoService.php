@@ -43,7 +43,7 @@ class TcpdfDocumentoService extends TCPDF
 
         // Margini come da tuo layout
         $this->SetMargins(7.5, 7.5, 7.5);
-        $this->SetAutoPageBreak(true, 10);
+        $this->SetAutoPageBreak(false, 0);
 
         $this->SetFont('roboto', '', 9);
 
