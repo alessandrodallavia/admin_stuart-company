@@ -259,7 +259,7 @@ class AdminDocumentService
                 continue;
             }
 
-            $quantity = (float) ($item['quantity'] ?? 1);
+            $quantity = blank($item['quantity'] ?? null) ? 0 : (float) $item['quantity'];
             $unitPrice = (float) ($item['unit_price'] ?? 0);
             $vatRate = (float) ($item['vat_rate'] ?? 22);
             $lineSubtotal = round($quantity * $unitPrice, 2);

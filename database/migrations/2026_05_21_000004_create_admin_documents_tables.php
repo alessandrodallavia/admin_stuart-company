@@ -47,7 +47,7 @@ return new class extends Migration
             $table->unsignedInteger('position')->default(1);
             $table->string('item_code', 80)->nullable();
             $table->string('description');
-            $table->decimal('quantity', 10, 2)->default(1);
+            $table->decimal('quantity', 10, 2)->default(0);
             $table->decimal('unit_price', 12, 2)->default(0);
             $table->decimal('vat_rate', 5, 2)->default(22);
             $table->decimal('line_subtotal', 12, 2)->default(0);

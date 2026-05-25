@@ -74,7 +74,7 @@
                             @foreach ($document->items as $item)
                                 <tr>
                                     <td class="px-12 py-12 text-14 font-semibold">{{ $item->item_code ?: '-' }}</td>
-                                    <td class="px-12 py-12 text-14 font-bold">{{ $item->description }}</td>
+                                    <td class="whitespace-pre-line px-12 py-12 text-14 font-bold">{{ $item->description }}</td>
                                     <td class="px-12 py-12 text-right text-14 font-semibold">{{ number_format((float) $item->quantity, 2, ',', '.') }}</td>
                                     <td class="px-12 py-12 text-right text-14 font-semibold">€ {{ number_format((float) $item->unit_price, 2, ',', '.') }}</td>
                                     <td class="px-12 py-12 text-right text-14 font-semibold">{{ number_format((float) $item->vat_rate, 2, ',', '.') }}%</td>
