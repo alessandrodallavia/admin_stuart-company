@@ -32,6 +32,14 @@ return [
             'label' => 'Creare e modificare documenti e pagamenti',
             'group' => 'Documenti',
         ],
+        'shipments.view' => [
+            'label' => 'Vedere spedizioni',
+            'group' => 'Spedizioni',
+        ],
+        'shipments.manage' => [
+            'label' => 'Creare e gestire spedizioni',
+            'group' => 'Spedizioni',
+        ],
         'admin_users.manage' => [
             'label' => 'Gestire utenti admin e permessi',
             'group' => 'Impostazioni',

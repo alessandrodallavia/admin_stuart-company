@@ -177,6 +177,35 @@
                     @endunless
                 @endforelse
             </section>
+
+            @if (auth('admin')->user()?->hasAdminPermission('shipments.view'))
+                <section class="rounded-10 border border-gray-mid bg-white p-16">
+                    <div class="flex items-start justify-between gap-12">
+                        <div>
+                            <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Spedizioni</p>
+                            <h2 class="mt-6 text-20 font-black leading-tight">{{ $document->shipments->count() }} collegate</h2>
+                        </div>
+                        @if (auth('admin')->user()?->hasAdminPermission('shipments.manage'))
+                            <a href="{{ route('admin.shipments.create', ['document_id' => $document->id]) }}" class="rounded-10 bg-bullstar px-10 py-8 text-11 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">Crea</a>
+                        @endif
+                    </div>
+                    <div class="mt-12 space-y-8">
+                        @forelse ($document->shipments as $shipment)
+                            <a href="{{ route('admin.shipments.show', $shipment) }}" class="block rounded-10 border border-gray-mid bg-gray-light p-12 transition hover:border-bullstar">
+                                <div class="flex items-start justify-between gap-10">
+                                    <div>
+                                        <p class="text-14 font-black">{{ $shipment->carrier_label }} {{ $shipment->tracking_number ?: '#' . $shipment->id }}</p>
+                                        <p class="mt-4 text-11 font-bold uppercase tracking-normal text-gray">{{ optional($shipment->shipped_at ?: $shipment->created_at)->format('d/m/Y H:i') }} · {{ $shipment->parcels_count }} colli</p>
+                                    </div>
+                                    <span class="rounded-full {{ $shipment->status === 'shipped' ? 'bg-whatsapp/10 text-whatsapp' : ($shipment->status === 'failed' ? 'bg-red-50 text-red-700' : 'bg-white text-gray') }} px-8 py-5 text-11 font-extrabold uppercase tracking-normal">{{ $shipment->status_label }}</span>
+                                </div>
+                            </a>
+                        @empty
+                            <p class="text-14 font-semibold text-gray">Nessuna spedizione collegata.</p>
+                        @endforelse
+                    </div>
+                </section>
+            @endif
         </aside>
     </section>
 @endsection

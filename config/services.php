@@ -47,7 +47,7 @@ return [
             'link_sent' => env('BREVO_STAGE_LINK_SENT', env('BREVO_FIRST_STAGE')),
             'order_completed' => env('BREVO_STAGE_ORDER_COMPLETED', env('BREVO_FIRST_STAGE')),
         ],
-        'webhook_token_inbound' => env('BREVO_WEBHOOK_TOKEN_INBOUND')
+        'webhook_token_inbound' => env('BREVO_WEBHOOK_TOKEN_INBOUND'),
     ],
 
     'whatsapp' => [
@@ -66,6 +66,32 @@ return [
         'currency' => env('STRIPE_CURRENCY', 'eur'),
         'success_url' => env('STRIPE_SUCCESS_URL', 'https://stuart-company.com/pagamento/completato'),
         'cancel_url' => env('STRIPE_CANCEL_URL', 'https://stuart-company.com/pagamento/annullato'),
+    ],
+
+    'dropbox' => [
+        'client_id' => env('DROPBOX_APP_KEY'),
+        'client_secret' => env('DROPBOX_APP_SECRET'),
+        'refresh_token' => env('DROPBOX_REFRESH_TOKEN'),
+    ],
+
+    'brt' => [
+        'username' => env('BRT_USERNAME'),
+        'password' => env('BRT_PASSWORD'),
+        'departure_depot' => env('BRT_DEPARTURE_DEPOT', '139'),
+    ],
+
+    'sda' => [
+        'username' => env('SDA_USERNAME'),
+        'password' => env('SDA_PASSWORD'),
+        'verify_ssl' => env('SDA_VERIFY_SSL', false),
+        'sender_name' => env('SDA_SENDER_NAME'),
+        'sender_address' => env('SDA_SENDER_ADDRESS'),
+        'sender_zip' => env('SDA_SENDER_ZIP'),
+        'sender_city' => env('SDA_SENDER_CITY'),
+        'sender_province' => env('SDA_SENDER_PROVINCE'),
+        'sender_phone' => env('SDA_SENDER_PHONE'),
+        'sender_email' => env('SDA_SENDER_EMAIL'),
+        'service_code' => env('SDA_SERVICE_CODE', 'S09'),
     ],
 
 ];

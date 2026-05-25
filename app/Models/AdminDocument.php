@@ -8,6 +8,7 @@ use App\Services\DocumentRelationService;
 use App\Traits\HasDocumentRelations;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class AdminDocument extends Model
@@ -149,6 +150,13 @@ class AdminDocument extends Model
     public function generatedDocuments(): HasMany
     {
         return $this->hasMany(self::class, 'source_document_id');
+    }
+
+    public function shipments(): BelongsToMany
+    {
+        return $this->belongsToMany(AdminShipment::class, 'admin_document_admin_shipment')
+            ->withTimestamps()
+            ->latest('admin_shipments.created_at');
     }
 
     public function getTypeLabelAttribute(): string

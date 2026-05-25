@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Admin\DocumentController as AdminDocumentController;
 use App\Http\Controllers\Admin\LeadController as AdminLeadController;
 use App\Http\Controllers\Admin\NotificationController as AdminNotificationController;
+use App\Http\Controllers\Admin\ShipmentController as AdminShipmentController;
 use App\Http\Controllers\Admin\WhatsappConversationController as AdminWhatsappConversationController;
 use Illuminate\Support\Facades\Route;
 
@@ -62,6 +63,20 @@ Route::name('admin.')->group(function () {
             Route::delete('/documents/{document}', [AdminDocumentController::class, 'destroy'])->name('documents.destroy');
             Route::post('/documents/{document}/duplicate', [AdminDocumentController::class, 'duplicate'])->name('documents.duplicate');
             Route::patch('/documents/{document}/payments', [AdminDocumentController::class, 'updatePayment'])->name('documents.payments.update');
+        });
+
+        Route::middleware('admin.permission:shipments.manage')->group(function () {
+            Route::get('/shipments/documents/search', [AdminShipmentController::class, 'documentSearch'])->name('shipments.documents.search');
+            Route::get('/shipments/create', [AdminShipmentController::class, 'create'])->name('shipments.create');
+            Route::post('/shipments', [AdminShipmentController::class, 'store'])->name('shipments.store');
+            Route::post('/shipments/bordero', [AdminShipmentController::class, 'bordero'])->name('shipments.bordero');
+            Route::post('/shipments/{shipment}/retry', [AdminShipmentController::class, 'retry'])->name('shipments.retry');
+            Route::post('/shipments/{shipment}/parcels/{parcel}/label', [AdminShipmentController::class, 'label'])->name('shipments.parcels.label');
+        });
+
+        Route::middleware('admin.permission:shipments.view')->group(function () {
+            Route::get('/shipments', [AdminShipmentController::class, 'index'])->name('shipments.index');
+            Route::get('/shipments/{shipment}', [AdminShipmentController::class, 'show'])->name('shipments.show');
         });
 
         Route::middleware('admin.permission:admin_users.manage')->group(function () {

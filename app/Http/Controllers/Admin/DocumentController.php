@@ -66,7 +66,7 @@ class DocumentController extends Controller
 
     public function show(AdminDocument $document): View
     {
-        $document->load(['items', 'paymentSchedules.paymentMethod', 'paymentMethod', 'sourceDocument', 'generatedDocuments']);
+        $document->load(['items', 'paymentSchedules.paymentMethod', 'paymentMethod', 'sourceDocument', 'generatedDocuments', 'shipments.parcels']);
 
         return view('admin.documents.show', [
             'document' => $document,

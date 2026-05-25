@@ -59,6 +59,14 @@
                             Documenti
                         </a>
                     @endif
+                    @if ($adminUser?->hasAdminPermission('shipments.view'))
+                        <a
+                            href="{{ route('admin.shipments.index') }}"
+                            class="rounded-10 border px-12 py-10 text-12 font-extrabold uppercase tracking-normal transition {{ $activeNav === 'shipments' ? 'border-bullstar bg-bullstar text-white' : 'border-gray-mid bg-white text-black-nike hover:border-black-nike' }}"
+                        >
+                            Spedizioni
+                        </a>
+                    @endif
                     @if ($adminUser?->canManageAdminUsers())
                         <a
                             href="{{ route('admin.users.index') }}"
