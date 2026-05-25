@@ -62,6 +62,8 @@ Route::name('admin.')->group(function () {
             Route::patch('/documents/{document}', [AdminDocumentController::class, 'update'])->name('documents.update');
             Route::delete('/documents/{document}', [AdminDocumentController::class, 'destroy'])->name('documents.destroy');
             Route::post('/documents/{document}/duplicate', [AdminDocumentController::class, 'duplicate'])->name('documents.duplicate');
+            Route::delete('/documents/{document}/relations/{relation}', [AdminDocumentController::class, 'destroyRelation'])->name('documents.relations.destroy');
+            Route::delete('/documents/{document}/source-links/{linkedDocument}', [AdminDocumentController::class, 'destroySourceLink'])->name('documents.source-links.destroy');
             Route::patch('/documents/{document}/payments', [AdminDocumentController::class, 'updatePayment'])->name('documents.payments.update');
         });
 

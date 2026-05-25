@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AdminDocument;
+use App\Models\DocumentRelation;
 use App\Models\DocumentsPaymentMethod;
 use App\Services\AdminDocumentPdfService;
 use App\Services\AdminDocumentService;
 use App\Services\AdminDocumentXmlService;
 use App\Services\DocumentGeneratorService;
+use App\Services\DocumentRelationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -72,6 +74,7 @@ class DocumentController extends Controller
             'document' => $document,
             'types' => AdminDocument::TYPES,
             'statuses' => AdminDocument::statusesFor($document->type),
+            'directRelations' => $this->directRelations($document),
         ]);
     }
 
@@ -146,6 +149,35 @@ class DocumentController extends Controller
         return redirect()
             ->route('admin.documents.edit', $newDocument)
             ->with('status', $data['type'] === $document->type ? 'Documento copiato. Puoi modificarlo prima di emetterlo.' : 'Documento generato. Controlla i dati prima di emetterlo.');
+    }
+
+    public function destroyRelation(AdminDocument $document, DocumentRelation $relation): RedirectResponse
+    {
+        abort_unless($this->relationBelongsToDocument($document, $relation), 404);
+
+        $this->clearSourceDocumentLink($relation);
+        $relation->delete();
+
+        return back()->with('status', 'Collegamento eliminato.');
+    }
+
+    public function destroySourceLink(AdminDocument $document, AdminDocument $linkedDocument): RedirectResponse
+    {
+        abort_unless(
+            (int) $document->source_document_id === (int) $linkedDocument->id
+                || (int) $linkedDocument->source_document_id === (int) $document->id,
+            404
+        );
+
+        if ((int) $document->source_document_id === (int) $linkedDocument->id) {
+            $document->forceFill(['source_document_id' => null])->save();
+        }
+
+        if ((int) $linkedDocument->source_document_id === (int) $document->id) {
+            $linkedDocument->forceFill(['source_document_id' => null])->save();
+        }
+
+        return back()->with('status', 'Collegamento eliminato.');
     }
 
     public function updatePayment(Request $request, AdminDocument $document, AdminDocumentService $service): RedirectResponse
@@ -229,6 +261,63 @@ class DocumentController extends Controller
         $data['customer_country'] = Str::upper($data['customer_country']);
 
         return $data;
+    }
+
+    private function directRelations(AdminDocument $document)
+    {
+        return $document->relations()
+            ->get()
+            ->map(function (DocumentRelation $relation) use ($document) {
+                $documentType = $document->currentDocumentType();
+                $relatedType = $relation->from_type === $documentType && (int) $relation->from_id === (int) $document->id
+                    ? $relation->to_type
+                    : $relation->from_type;
+                $relatedId = $relation->from_type === $documentType && (int) $relation->from_id === (int) $document->id
+                    ? $relation->to_id
+                    : $relation->from_id;
+
+                $relatedDocument = AdminDocument::query()
+                    ->where('type', DocumentRelationService::adminType($relatedType))
+                    ->find((int) $relatedId);
+
+                if (! $relatedDocument) {
+                    return null;
+                }
+
+                return [
+                    'relation' => $relation,
+                    'document' => $relatedDocument,
+                    'key' => $relatedType->value.'-'.$relatedDocument->id,
+                ];
+            })
+            ->filter()
+            ->values();
+    }
+
+    private function relationBelongsToDocument(AdminDocument $document, DocumentRelation $relation): bool
+    {
+        $type = $document->currentDocumentType();
+
+        return ($relation->from_type === $type && (int) $relation->from_id === (int) $document->id)
+            || ($relation->to_type === $type && (int) $relation->to_id === (int) $document->id);
+    }
+
+    private function clearSourceDocumentLink(DocumentRelation $relation): void
+    {
+        $fromDocument = AdminDocument::query()
+            ->where('type', DocumentRelationService::adminType($relation->from_type))
+            ->find((int) $relation->from_id);
+        $toDocument = AdminDocument::query()
+            ->where('type', DocumentRelationService::adminType($relation->to_type))
+            ->find((int) $relation->to_id);
+
+        if ($fromDocument && $toDocument && (int) $toDocument->source_document_id === (int) $fromDocument->id) {
+            $toDocument->forceFill(['source_document_id' => null])->save();
+        }
+
+        if ($fromDocument && $toDocument && (int) $fromDocument->source_document_id === (int) $toDocument->id) {
+            $fromDocument->forceFill(['source_document_id' => null])->save();
+        }
     }
 
     private function isValidItalianTaxCode(string $taxCode): bool

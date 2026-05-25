@@ -164,25 +164,47 @@
             <section class="rounded-10 border border-gray-mid bg-white p-16">
                 <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Collegamenti</p>
                 @php
-                    $shownRelatedKeys = collect($document->related_documents)
-                        ->map(fn ($relatedDocument) => $relatedDocument['type'].'-'.$relatedDocument['id'])
+                    $shownRelatedKeys = $directRelations
+                        ->map(fn ($directRelation) => $directRelation['key'])
                         ->all();
+                    $hasLinks = $directRelations->isNotEmpty() || $document->sourceDocument || $document->generatedDocuments->isNotEmpty();
                 @endphp
-                @foreach ($document->related_documents as $relatedDocument)
-                    <a href="{{ route('admin.documents.show', $relatedDocument['id']) }}" class="mt-8 block text-14 font-bold text-bullstar underline-offset-4 hover:underline">{{ $relatedDocument['label'] }}</a>
+                @foreach ($directRelations as $directRelation)
+                    <div class="mt-8 flex items-center justify-between gap-8">
+                        <a href="{{ route('admin.documents.show', $directRelation['document']) }}" class="min-w-0 text-14 font-bold text-bullstar underline-offset-4 hover:underline">{{ $directRelation['document']->type_label }} {{ $directRelation['document']->display_code }}</a>
+                        <form method="POST" action="{{ route('admin.documents.relations.destroy', [$document, $directRelation['relation']]) }}" onsubmit="return confirm('Eliminare questo collegamento?')">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="rounded-10 border border-gray-mid px-8 py-5 text-11 font-extrabold uppercase tracking-normal transition hover:border-black-nike">Scollega</button>
+                        </form>
+                    </div>
                 @endforeach
                 @if ($document->sourceDocument && ! in_array($document->sourceDocument->currentDocumentType()->value.'-'.$document->sourceDocument->id, $shownRelatedKeys, true))
-                    <a href="{{ route('admin.documents.show', $document->sourceDocument) }}" class="mt-8 block text-14 font-bold text-bullstar underline-offset-4 hover:underline">Origine: {{ $document->sourceDocument->type_label }} {{ $document->sourceDocument->display_code }}</a>
+                    <div class="mt-8 flex items-center justify-between gap-8">
+                        <a href="{{ route('admin.documents.show', $document->sourceDocument) }}" class="min-w-0 text-14 font-bold text-bullstar underline-offset-4 hover:underline">Origine: {{ $document->sourceDocument->type_label }} {{ $document->sourceDocument->display_code }}</a>
+                        <form method="POST" action="{{ route('admin.documents.source-links.destroy', [$document, $document->sourceDocument]) }}" onsubmit="return confirm('Eliminare questo collegamento?')">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="rounded-10 border border-gray-mid px-8 py-5 text-11 font-extrabold uppercase tracking-normal transition hover:border-black-nike">Scollega</button>
+                        </form>
+                    </div>
                 @endif
                 @forelse ($document->generatedDocuments as $generated)
                     @unless (in_array($generated->currentDocumentType()->value.'-'.$generated->id, $shownRelatedKeys, true))
-                        <a href="{{ route('admin.documents.show', $generated) }}" class="mt-8 block text-14 font-bold text-bullstar underline-offset-4 hover:underline">{{ $generated->type_label }} {{ $generated->display_code }}</a>
+                        <div class="mt-8 flex items-center justify-between gap-8">
+                            <a href="{{ route('admin.documents.show', $generated) }}" class="min-w-0 text-14 font-bold text-bullstar underline-offset-4 hover:underline">{{ $generated->type_label }} {{ $generated->display_code }}</a>
+                            <form method="POST" action="{{ route('admin.documents.source-links.destroy', [$document, $generated]) }}" onsubmit="return confirm('Eliminare questo collegamento?')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="rounded-10 border border-gray-mid px-8 py-5 text-11 font-extrabold uppercase tracking-normal transition hover:border-black-nike">Scollega</button>
+                            </form>
+                        </div>
                     @endunless
                 @empty
-                    @unless ($document->sourceDocument)
-                        <p class="mt-8 text-14 font-semibold text-gray">Nessun documento collegato.</p>
-                    @endunless
                 @endforelse
+                @unless ($hasLinks)
+                    <p class="mt-8 text-14 font-semibold text-gray">Nessun documento collegato.</p>
+                @endunless
             </section>
 
             @if (auth('admin')->user()?->hasAdminPermission('shipments.view'))

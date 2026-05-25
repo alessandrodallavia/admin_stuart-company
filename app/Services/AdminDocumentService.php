@@ -75,7 +75,7 @@ class AdminDocumentService
                 'document_date' => now()->toDateString(),
                 'status' => 'draft',
                 'payment_status' => $preservePaymentProgress ? $source->payment_status : 'unpaid',
-                'source_document_id' => $source->id,
+                'source_document_id' => $type === $source->type ? null : $source->id,
             ]);
 
             foreach ($source->items as $item) {
