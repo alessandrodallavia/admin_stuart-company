@@ -169,7 +169,7 @@ class AdminDocumentPdfService
             'descrizione' => $item->description,
             'um' => 'NR',
             'qta' => number_format((float) $item->quantity, 2, ',', '.'),
-            'prezzo' => number_format((float) $item->unit_price, 2, ',', '.'),
+            'prezzo' => $this->formatUnitPrice($item->unit_price),
             'sconto' => '',
             'importo' => number_format((float) $item->line_subtotal, 2, ',', '.'),
             'ci' => number_format((float) $item->vat_rate, 0),
@@ -186,6 +186,13 @@ class AdminDocumentPdfService
                 'vat_amount' => (float) $items->sum('line_vat'),
             ])
             ->values();
+    }
+
+    private function formatUnitPrice(mixed $value): string
+    {
+        $formatted = number_format((float) $value, 4, ',', '.');
+
+        return rtrim(rtrim($formatted, '0'), ',');
     }
 
     private function paymentDeadlines(AdminDocument $document): string
