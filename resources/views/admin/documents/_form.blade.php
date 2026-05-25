@@ -324,6 +324,11 @@
         let lastSyncedSinglePayment = null;
 
         const numberValue = (input) => Number.parseFloat(String(input?.value || '0').replace(',', '.')) || 0;
+        const roundMoney = (value) => {
+            const rounded = Math.round((Math.abs(value) + Number.EPSILON) * 100) / 100;
+
+            return value < 0 ? -rounded : rounded;
+        };
         const reindexRows = (tbody) => {
             tbody.querySelectorAll('tr').forEach((row, index) => {
                 row.querySelectorAll('[name]').forEach((field) => {
@@ -346,8 +351,8 @@
                 const quantity = numberValue(row.querySelector('[data-line-quantity]'));
                 const unitPrice = numberValue(row.querySelector('[data-line-unit-price]'));
                 const vatRate = numberValue(row.querySelector('[data-line-vat-rate]'));
-                const lineSubtotal = quantity * unitPrice;
-                const lineVat = lineSubtotal * vatRate / 100;
+                const lineSubtotal = roundMoney(quantity * unitPrice);
+                const lineVat = roundMoney(lineSubtotal * vatRate / 100);
 
                 subtotal += lineSubtotal;
                 vat += lineVat;
@@ -358,7 +363,9 @@
                 }
             });
 
-            const total = subtotal + vat;
+            subtotal = roundMoney(subtotal);
+            vat = roundMoney(vat);
+            const total = roundMoney(subtotal + vat);
             const paymentInputs = [...document.querySelectorAll('[data-payment-amount]')];
 
             if (paymentInputs.length === 1 && event?.target?.matches?.('[data-line-quantity], [data-line-unit-price], [data-line-vat-rate]')) {

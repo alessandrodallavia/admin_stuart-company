@@ -332,13 +332,13 @@ class AdminDocument extends Model
 
     public function refreshTotals(): void
     {
-        $subtotal = (float) $this->items()->sum('line_subtotal');
-        $vatTotal = (float) $this->items()->sum('line_vat');
+        $subtotal = round((float) $this->items()->sum('line_subtotal'), 2);
+        $vatTotal = round((float) $this->items()->sum('line_vat'), 2);
 
         $this->forceFill([
             'subtotal' => $subtotal,
             'vat_total' => $vatTotal,
-            'total' => $subtotal + $vatTotal,
+            'total' => round($subtotal + $vatTotal, 2),
         ])->save();
 
         $this->refreshPaymentStatus();

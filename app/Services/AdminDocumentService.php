@@ -274,7 +274,7 @@ class AdminDocumentService
                 'vat_rate' => $vatRate,
                 'line_subtotal' => $lineSubtotal,
                 'line_vat' => $lineVat,
-                'line_total' => $lineSubtotal + $lineVat,
+                'line_total' => round($lineSubtotal + $lineVat, 2),
             ]);
         }
     }
