@@ -347,7 +347,7 @@
                             </section>
 
                             @if ($selectedConversation)
-                                <a href="{{ route('admin.conversations.show', $selectedConversation) }}" class="block rounded-10 border border-whatsapp bg-whatsapp px-12 py-12 text-center text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-whatsapp/90">
+                                <a href="{{ route('admin.conversations.show', $selectedConversation) }}" target="_blank" class="block rounded-10 border border-whatsapp bg-whatsapp px-12 py-12 text-center text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-whatsapp/90">
                                     Apri chat WhatsApp
                                 </a>
                             @else
