@@ -5,6 +5,15 @@
 @section('active_nav', 'leads')
 
 @section('content')
+            <div class="mb-16 flex flex-wrap items-center justify-end gap-8">
+                <a href="{{ route('admin.leads.index') }}" class="rounded-10 border border-bullstar bg-bullstar px-12 py-10 text-12 font-extrabold uppercase tracking-normal text-white">
+                    Tabella
+                </a>
+                <a href="{{ route('admin.leads.board') }}" class="rounded-10 border border-gray-mid bg-white px-12 py-10 text-12 font-extrabold uppercase tracking-normal text-black-nike transition hover:border-black-nike">
+                    Riepilogo
+                </a>
+            </div>
+
             <section class="mb-16 grid gap-12 md:grid-cols-4">
                 <article class="rounded-10 border border-gray-mid bg-white p-16">
                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Lead totali</p>
@@ -15,8 +24,8 @@
                     <p class="mt-8 text-38 font-black leading-none tracking-normal">{{ $stats['open'] }}</p>
                 </article>
                 <article class="rounded-10 border border-gray-mid bg-white p-16">
-                    <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Su Brevo</p>
-                    <p class="mt-8 text-38 font-black leading-none tracking-normal">{{ $stats['with_brevo'] }}</p>
+                    <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Da lavorare</p>
+                    <p class="mt-8 text-38 font-black leading-none tracking-normal">{{ $stats['ready'] }}</p>
                 </article>
                 <article class="rounded-10 border border-gray-mid bg-white p-16">
                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Pagati</p>
@@ -92,11 +101,6 @@
                                         </td>
                                         <td class="px-12 py-12">
                                             <span class="inline-flex rounded-full bg-black-nike px-10 py-6 text-11 font-extrabold uppercase tracking-normal text-white">{{ $statusLabel }}</span>
-                                            @if ($lead->pipeline_lead_id)
-                                                <p class="mt-6 text-11 font-bold uppercase tracking-normal text-whatsapp">Brevo collegato</p>
-                                            @else
-                                                <p class="mt-6 text-11 font-bold uppercase tracking-normal text-gray">Brevo da collegare</p>
-                                            @endif
                                         </td>
                                         <td class="px-12 py-12">
                                             <p class="text-12 font-bold text-black-nike">
@@ -180,8 +184,8 @@
                                         <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Stato attuale</p>
                                         <p class="mt-6 text-18 font-black leading-tight">{{ $statusLabel }}</p>
                                     </div>
-                                    <span class="rounded-full {{ $selectedLead->pipeline_lead_id ? 'bg-whatsapp/10 text-whatsapp' : 'bg-brand/10 text-brand' }} px-10 py-6 text-11 font-extrabold uppercase tracking-normal">
-                                        {{ $selectedLead->pipeline_lead_id ? 'Brevo ok' : 'Da sync' }}
+                                    <span class="rounded-full bg-black-nike/10 px-10 py-6 text-11 font-extrabold uppercase tracking-normal text-black-nike">
+                                        Locale
                                     </span>
                                 </div>
                                 <form method="POST" action="{{ route('admin.leads.update', $selectedLead) }}" enctype="multipart/form-data" class="mt-12 space-y-10">
@@ -241,7 +245,7 @@
                                     </label>
 
                                     <button type="submit" class="w-full rounded-10 bg-bullstar px-12 py-10 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">
-                                        Aggiorna lead e Brevo
+                                        Aggiorna lead
                                     </button>
                                 </form>
                             </section>
@@ -272,7 +276,7 @@
                                         @csrf
                                         <label class="block">
                                             <span class="text-11 font-extrabold uppercase tracking-normal text-gray">Importo Stripe</span>
-                                            <input name="payment_amount" value="{{ old('payment_amount', $selectedLead->payment_amount ?: $selectedLead->quote_amount) }}" type="number" min="0.50" step="0.01" placeholder="0,00" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-9 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
+                                            <input name="payment_amount" value="{{ old('payment_amount', $selectedLead->payment_amount ?: $selectedLead->quote_amount) }}" type="number" min="0.50" step="0.01" placeholder="0,00" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
                                         </label>
                                         <button type="submit" class="w-full rounded-10 border border-black-nike bg-black-nike px-10 py-6 text-11 font-extrabold uppercase leading-none tracking-normal text-white transition hover:bg-black">
                                             Crea link Stripe
@@ -306,7 +310,7 @@
                                     <div class="flex items-center justify-between gap-12 rounded-10 bg-gray-light px-12 py-10">
                                         <div>
                                             <p class="text-14 font-black">Link pagamento</p>
-                                            <p class="mt-4 text-11 font-semibold text-gray">Salva link e importo + aggiorna Brevo</p>
+                                            <p class="mt-4 text-11 font-semibold text-gray">Salva link e importo sul lead</p>
                                         </div>
                                         <button disabled class="rounded-10 border border-gray-mid px-10 py-6 text-11 font-extrabold uppercase tracking-normal text-gray">Presto</button>
                                     </div>

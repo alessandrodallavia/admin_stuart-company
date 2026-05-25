@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Jobs\ProcessWhatsappWebhookJob;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 class WebhookController extends Controller
 {
@@ -17,8 +16,6 @@ class WebhookController extends Controller
 
         // 📩 EVENTO (POST)
         $data = $request->all();
-
-        Log::info('Webhook ricevuto', $data);
 
         // ⚡ dispatch async
         ProcessWhatsappWebhookJob::dispatch($data)->onQueue('admin');

@@ -8,7 +8,6 @@ use App\Models\WhatsappConversation;
 use App\Models\WhatsappMessage;
 use App\Notifications\AdminActionNotification;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 
@@ -26,6 +25,7 @@ class AdminNotificationService
                 body: $this->leadSummary($lead),
                 url: route('admin.leads.index', ['lead' => $lead]),
                 actionLabel: 'Apri lead',
+                sendEmail: false,
                 meta: ['lead_id' => $lead->id],
             ),
         );
@@ -44,6 +44,7 @@ class AdminNotificationService
                 body: "Pagamento ricevuto per {$name}. Importo: {$amount}.",
                 url: route('admin.leads.index', ['lead' => $lead]),
                 actionLabel: 'Apri lead',
+                sendEmail: false,
                 meta: ['lead_id' => $lead->id, 'amount' => $lead->payment_amount],
             ),
         );
@@ -52,13 +53,6 @@ class AdminNotificationService
     public function notifyWhatsappMessage(WhatsappConversation $conversation, WhatsappMessage $message): void
     {
         $label = $conversation->lead ? $this->leadName($conversation->lead) : $conversation->contact_phone;
-        $cooldownMinutes = max(1, (int) config('admin_notifications.whatsapp_email_cooldown_minutes', 5));
-        $emailAllowed = Cache::add(
-            "admin-notification:whatsapp-email:conversation:{$conversation->id}",
-            true,
-            now()->addMinutes($cooldownMinutes),
-        );
-
         $body = $message->body
             ? Str::limit($message->body, 180)
             : 'Ha inviato un nuovo contenuto WhatsApp.';
@@ -71,7 +65,7 @@ class AdminNotificationService
                 body: $body,
                 url: route('admin.conversations.show', ['conversation' => $conversation]),
                 actionLabel: 'Apri conversazione',
-                sendEmail: $emailAllowed,
+                sendEmail: false,
                 meta: [
                     'conversation_id' => $conversation->id,
                     'message_id' => $message->id,

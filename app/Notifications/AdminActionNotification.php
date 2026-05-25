@@ -19,7 +19,9 @@ class AdminActionNotification extends Notification implements ShouldQueue
         private string $actionLabel = 'Apri',
         private bool $sendEmail = true,
         private array $meta = [],
-    ) {}
+    ) {
+        $this->onQueue('admin');
+    }
 
     public function via(object $notifiable): array
     {
@@ -30,6 +32,14 @@ class AdminActionNotification extends Notification implements ShouldQueue
         }
 
         return $channels;
+    }
+
+    public function viaQueues(): array
+    {
+        return [
+            'database' => 'admin',
+            BrevoAdminEmailChannel::class => 'admin',
+        ];
     }
 
     public function toDatabase(object $notifiable): array

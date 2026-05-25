@@ -19,6 +19,34 @@ class LeadController extends Controller
 {
     private const QUOTE_PDF_DISK = 'local';
 
+    public function board(): View
+    {
+        $columns = $this->boardColumns();
+        $leads = Lead::query()
+            ->whereIn('status', collect($columns)->pluck('statuses')->flatten()->all())
+            ->latest()
+            ->get();
+
+        $boardColumns = collect($columns)
+            ->map(function (array $column) use ($leads) {
+                $columnLeads = $leads
+                    ->whereIn('status', $column['statuses'])
+                    ->values();
+
+                return [
+                    ...$column,
+                    'leads' => $columnLeads,
+                    'count' => $columnLeads->count(),
+                    'total' => $columnLeads->sum(fn (Lead $lead) => $this->boardLeadAmount($lead)),
+                ];
+            })
+            ->all();
+
+        return view('admin.leads.board', [
+            'columns' => $boardColumns,
+        ]);
+    }
+
     public function index(Request $request, ?Lead $lead = null): View
     {
         $status = $request->string('status')->toString();
@@ -133,7 +161,7 @@ class LeadController extends Controller
 
         return redirect()
             ->route('admin.leads.index', ['lead' => $lead])
-            ->with('status', 'Lead aggiornato. Brevo riceverà il cambio pipeline se il deal è collegato.');
+            ->with('status', 'Lead aggiornato.');
     }
 
     public function showQuotePdf(Lead $lead)
@@ -257,7 +285,7 @@ class LeadController extends Controller
         return [
             'total' => Lead::count(),
             'open' => Lead::whereNotIn('status', ['order_completed'])->count(),
-            'with_brevo' => Lead::whereNotNull('pipeline_lead_id')->count(),
+            'ready' => (int) ($counts['completed'] ?? 0),
             'paid' => (int) ($counts['order_completed'] ?? 0),
             'by_status' => collect($statuses)
                 ->mapWithKeys(fn ($label, $key) => [$key => (int) ($counts[$key] ?? 0)])
@@ -270,10 +298,45 @@ class LeadController extends Controller
         return [
             'pre' => 'Pre lead',
             'confirmed' => 'Confermato',
-            'completed' => 'Da lavorare',
-            'quote_sent' => 'Preventivo inviato',
-            'link_sent' => 'Link pagamento inviato',
-            'order_completed' => 'Ordine completato',
+            'completed' => 'Lavorare',
+            'quote_sent' => 'Prev. inv.',
+            'link_sent' => 'Link inv.',
+            'order_completed' => 'Completato',
         ];
+    }
+
+    private function boardColumns(): array
+    {
+        return [
+            [
+                'key' => 'new',
+                'label' => 'Nuovo lead',
+                'statuses' => ['pre', 'confirmed', 'completed'],
+                'accent' => 'text-black-nike',
+            ],
+            [
+                'key' => 'quote_sent',
+                'label' => 'Preventivo inviato',
+                'statuses' => ['quote_sent'],
+                'accent' => 'text-black-nike',
+            ],
+            [
+                'key' => 'link_sent',
+                'label' => 'Link inviato',
+                'statuses' => ['link_sent'],
+                'accent' => 'text-black-nike',
+            ],
+            [
+                'key' => 'completed',
+                'label' => 'Completato',
+                'statuses' => ['order_completed'],
+                'accent' => 'text-whatsapp',
+            ],
+        ];
+    }
+
+    private function boardLeadAmount(Lead $lead): float
+    {
+        return (float) ($lead->payment_amount ?: $lead->quote_amount ?: 0);
     }
 }

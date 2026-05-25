@@ -6,7 +6,6 @@ use App\Models\Lead;
 use App\Models\WhatsappConversation;
 use App\Models\WhatsappMessage;
 use App\Services\AdminNotificationService;
-use App\Services\BrevoEmailService;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -22,7 +21,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
 
     public function __construct(public $data) {}
 
-    public function handle(BrevoEmailService $emailService, AdminNotificationService $adminNotifications)
+    public function handle(AdminNotificationService $adminNotifications)
     {
         $value = $this->data['entry'][0]['changes'][0]['value'] ?? null;
 
@@ -76,7 +75,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
             }
 
             if ($type === 'text') {
-                $this->handleText($message, $from, $emailService, $lead, $conversation);
+                $this->handleText($message, $from, $lead, $conversation);
             }
 
             $conversation = $conversation->fresh(['lead']);
@@ -150,7 +149,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
         }
     }
 
-    private function handleText($message, $from, $emailService, ?Lead $lead, WhatsappConversation $conversation)
+    private function handleText($message, $from, ?Lead $lead, WhatsappConversation $conversation)
     {
         $text = $message['text']['body'] ?? '';
 
@@ -190,10 +189,6 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
 
                 $lead->status = 'completed';
                 $lead->save();
-
-                if (! $lead->pipeline_lead_id) {
-                    $this->createDeal($lead->fresh(), $emailService);
-                }
 
                 $this->requestHumanHandoff($conversation, 'Lead completato: prepara mockup e proposta.');
 
@@ -556,22 +551,5 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
         }
 
         $this->storeOutgoingMessage($conversation, 'interactive', $to, $body, $payload, $response);
-    }
-
-    private function createDeal($lead, $emailService)
-    {
-        $contactId = null;
-
-        if ($lead->email) {
-            $contactId = $emailService->syncLeadContact($lead);
-        }
-
-        $responseDeal = $emailService->createDealForLead($lead, $contactId);
-
-        if (! empty($responseDeal['id'])) {
-            Lead::where('id', $lead->id)->update([
-                'pipeline_lead_id' => $responseDeal['id'],
-            ]);
-        }
     }
 }

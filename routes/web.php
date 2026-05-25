@@ -35,6 +35,7 @@ Route::name('admin.')->group(function () {
         });
 
         Route::middleware('admin.permission:leads.view')->group(function () {
+            Route::get('/leads/board', [AdminLeadController::class, 'board'])->name('leads.board');
             Route::get('/leads/{lead?}', [AdminLeadController::class, 'index'])->name('leads.index');
             Route::get('/leads/{lead}/quote-pdf', [AdminLeadController::class, 'showQuotePdf'])->name('leads.quote-pdf');
         });
