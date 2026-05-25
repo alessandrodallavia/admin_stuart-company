@@ -188,7 +188,7 @@ class DocumentController extends Controller
             'items.*.item_code' => ['nullable', 'string', 'max:80'],
             'items.*.description' => ['nullable', 'string', 'max:5000'],
             'items.*.quantity' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
-            'items.*.unit_price' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+            'items.*.unit_price' => ['nullable', 'numeric', 'min:-99999999.99', 'max:99999999.99'],
             'items.*.vat_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'payments' => ['nullable', 'array'],
             'payments.*.due_date' => ['nullable', 'date'],
