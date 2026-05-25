@@ -142,48 +142,60 @@
             <button type="button" data-add-row="items" class="rounded-10 border border-gray-mid px-12 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">Aggiungi riga</button>
         </div>
         <div class="overflow-x-auto">
-            <table class="w-full min-w-[1240px] text-left">
+            <table class="w-full min-w-[1120px] text-left">
                 <thead class="bg-gray-light text-11 font-extrabold uppercase tracking-normal text-gray">
                     <tr>
-                        <th class="w-150 px-12 py-10">Codice</th>
+                        <th class="w-50 px-8 py-10"></th>
+                        <th class="w-120 px-12 py-10">Codice</th>
                         <th class="px-12 py-10">Descrizione</th>
-                        <th class="w-120 px-12 py-10">Quantità</th>
-                        <th class="w-150 px-12 py-10">Prezzo</th>
-                        <th class="w-120 px-12 py-10">IVA %</th>
-                        <th class="w-150 px-12 py-10 text-right">Totale riga</th>
-                        <th class="w-170 px-12 py-10 text-right">Azioni</th>
+                        <th class="w-100 px-12 py-10">Q.tà</th>
+                        <th class="w-120 px-12 py-10">Prezzo</th>
+                        <th class="w-90 px-12 py-10">IVA %</th>
+                        <th class="w-120 px-12 py-10 text-right">Totale</th>
+                        <th class="w-60 px-12 py-10 text-right"></th>
                     </tr>
                 </thead>
                 <tbody id="items-rows" class="divide-y divide-gray-mid">
                     @foreach ($items as $index => $item)
                         <tr>
-                            <td class="px-12 py-10"><input name="items[{{ $index }}][item_code]" value="{{ $item['item_code'] ?? '' }}" placeholder="Codice" maxlength="80" class="w-full rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold uppercase focus:border-bullstar focus:ring-bullstar"></td>
-                            <td class="px-12 py-10"><textarea name="items[{{ $index }}][description]" rows="2" placeholder="Descrizione riga" class="w-full resize-y rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">{{ $item['description'] ?? '' }}</textarea></td>
-                            <td class="px-12 py-10"><input data-line-quantity name="items[{{ $index }}][quantity]" value="{{ $item['quantity'] ?? 0 }}" type="number" min="0" step="0.01" class="w-full rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
-                            <td class="px-12 py-10"><input data-line-unit-price name="items[{{ $index }}][unit_price]" value="{{ $item['unit_price'] ?? 0 }}" type="number" min="0" step="0.01" class="w-full rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
-                            <td class="px-12 py-10"><input data-line-vat-rate name="items[{{ $index }}][vat_rate]" value="{{ $item['vat_rate'] ?? 22 }}" type="number" min="0" step="0.01" class="w-full rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
-                            <td class="px-12 py-10 text-right text-14 font-black" data-line-total>€ 0,00</td>
-                            <td class="px-12 py-10">
-                                <div class="flex justify-end gap-4">
-                                    <button type="button" data-move-row="up" class="rounded-8 border border-gray-mid px-7 py-5 text-11 font-extrabold uppercase tracking-normal hover:border-black-nike">Su</button>
-                                    <button type="button" data-move-row="down" class="rounded-8 border border-gray-mid px-7 py-5 text-11 font-extrabold uppercase tracking-normal hover:border-black-nike">Giù</button>
-                                    <button type="button" data-remove-item-row class="rounded-8 border border-gray-mid px-7 py-5 text-11 font-extrabold uppercase tracking-normal hover:border-black-nike">Elimina</button>
-                                </div>
+                            <td class="px-8 py-8 align-top">
+                                <button type="button" draggable="true" data-drag-item-row class="flex h-50 w-32 cursor-move flex-col items-center justify-center gap-4 rounded-10 border border-gray-mid hover:border-black-nike" title="Trascina riga" aria-label="Trascina riga">
+                                    <span class="block h-px w-16 bg-black-nike"></span>
+                                    <span class="block h-px w-16 bg-black-nike"></span>
+                                    <span class="block h-px w-16 bg-black-nike"></span>
+                                </button>
+                            </td>
+                            <td class="px-8 py-8 align-top"><input name="items[{{ $index }}][item_code]" value="{{ $item['item_code'] ?? '' }}" placeholder="Codice" maxlength="80" class="h-50 w-full rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold uppercase focus:border-bullstar focus:ring-bullstar"></td>
+                            <td class="px-8 py-8 align-top"><textarea name="items[{{ $index }}][description]" placeholder="Descrizione riga" class="h-50 w-full resize-y rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold focus:border-bullstar focus:ring-bullstar">{{ $item['description'] ?? '' }}</textarea></td>
+                            <td class="px-8 py-8 align-top"><input data-line-quantity name="items[{{ $index }}][quantity]" value="{{ $item['quantity'] ?? 0 }}" type="number" min="0" step="0.01" class="h-50 w-full rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
+                            <td class="px-8 py-8 align-top"><input data-line-unit-price name="items[{{ $index }}][unit_price]" value="{{ $item['unit_price'] ?? 0 }}" type="number" min="0" step="0.01" class="h-50 w-full rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
+                            <td class="px-8 py-8 align-top"><input data-line-vat-rate name="items[{{ $index }}][vat_rate]" value="{{ $item['vat_rate'] ?? 22 }}" type="number" min="0" step="0.01" class="h-50 w-full rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
+                            <td class="px-12 py-10 text-right align-top text-14 font-black"><span class="flex h-50 items-center justify-end" data-line-total>€ 0,00</span></td>
+                            <td class="px-8 py-8 align-top">
+                                <button type="button" data-remove-item-row class="flex h-50 w-32 items-center justify-center rounded-10 border border-gray-mid hover:border-black-nike" title="Elimina riga" aria-label="Elimina riga">
+                                    <svg class="h-16 w-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M3 6h18"></path>
+                                        <path d="M8 6V4h8v2"></path>
+                                        <path d="M19 6l-1 14H6L5 6"></path>
+                                        <path d="M10 11v5"></path>
+                                        <path d="M14 11v5"></path>
+                                    </svg>
+                                </button>
                             </td>
                         </tr>
                     @endforeach
                 </tbody>
                 <tfoot class="border-t border-gray-mid bg-gray-light text-14 font-black">
                     <tr>
-                        <td colspan="6" class="px-12 py-10 text-right">Imponibile</td>
+                        <td colspan="7" class="px-12 py-10 text-right">Imponibile</td>
                         <td class="px-12 py-10 text-right" data-summary-subtotal>€ 0,00</td>
                     </tr>
                     <tr>
-                        <td colspan="6" class="px-12 py-10 text-right">IVA</td>
+                        <td colspan="7" class="px-12 py-10 text-right">IVA</td>
                         <td class="px-12 py-10 text-right" data-summary-vat>€ 0,00</td>
                     </tr>
                     <tr>
-                        <td colspan="6" class="px-12 py-10 text-right">Totale</td>
+                        <td colspan="7" class="px-12 py-10 text-right">Totale</td>
                         <td class="px-12 py-10 text-right" data-summary-total>€ 0,00</td>
                     </tr>
                 </tfoot>
@@ -261,18 +273,29 @@
 
         const templates = {
             items: (index) => `<tr>
-                <td class="px-12 py-10"><input name="items[${index}][item_code]" placeholder="Codice" maxlength="80" class="w-full rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold uppercase focus:border-bullstar focus:ring-bullstar"></td>
-                <td class="px-12 py-10"><textarea name="items[${index}][description]" rows="2" placeholder="Descrizione riga" class="w-full resize-y rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"></textarea></td>
-                <td class="px-12 py-10"><input data-line-quantity name="items[${index}][quantity]" type="number" min="0" step="0.01" class="w-full rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
-                <td class="px-12 py-10"><input data-line-unit-price name="items[${index}][unit_price]" value="0" type="number" min="0" step="0.01" class="w-full rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
-                <td class="px-12 py-10"><input data-line-vat-rate name="items[${index}][vat_rate]" value="22" type="number" min="0" step="0.01" class="w-full rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
-                <td class="px-12 py-10 text-right text-14 font-black" data-line-total>€ 0,00</td>
-                <td class="px-12 py-10">
-                    <div class="flex justify-end gap-4">
-                        <button type="button" data-move-row="up" class="rounded-8 border border-gray-mid px-7 py-5 text-11 font-extrabold uppercase tracking-normal hover:border-black-nike">Su</button>
-                        <button type="button" data-move-row="down" class="rounded-8 border border-gray-mid px-7 py-5 text-11 font-extrabold uppercase tracking-normal hover:border-black-nike">Giù</button>
-                        <button type="button" data-remove-item-row class="rounded-8 border border-gray-mid px-7 py-5 text-11 font-extrabold uppercase tracking-normal hover:border-black-nike">Elimina</button>
-                    </div>
+                <td class="px-8 py-8 align-top">
+                    <button type="button" draggable="true" data-drag-item-row class="flex h-50 w-32 cursor-move flex-col items-center justify-center gap-4 rounded-10 border border-gray-mid hover:border-black-nike" title="Trascina riga" aria-label="Trascina riga">
+                        <span class="block h-px w-16 bg-black-nike"></span>
+                        <span class="block h-px w-16 bg-black-nike"></span>
+                        <span class="block h-px w-16 bg-black-nike"></span>
+                    </button>
+                </td>
+                <td class="px-8 py-8 align-top"><input name="items[${index}][item_code]" placeholder="Codice" maxlength="80" class="h-50 w-full rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold uppercase focus:border-bullstar focus:ring-bullstar"></td>
+                <td class="px-8 py-8 align-top"><textarea name="items[${index}][description]" placeholder="Descrizione riga" class="h-50 w-full resize-y rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"></textarea></td>
+                <td class="px-8 py-8 align-top"><input data-line-quantity name="items[${index}][quantity]" type="number" min="0" step="0.01" class="h-50 w-full rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
+                <td class="px-8 py-8 align-top"><input data-line-unit-price name="items[${index}][unit_price]" value="0" type="number" min="0" step="0.01" class="h-50 w-full rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
+                <td class="px-8 py-8 align-top"><input data-line-vat-rate name="items[${index}][vat_rate]" value="22" type="number" min="0" step="0.01" class="h-50 w-full rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
+                <td class="px-12 py-10 text-right align-top text-14 font-black"><span class="flex h-50 items-center justify-end" data-line-total>€ 0,00</span></td>
+                <td class="px-8 py-8 align-top">
+                    <button type="button" data-remove-item-row class="flex h-50 w-32 items-center justify-center rounded-10 border border-gray-mid hover:border-black-nike" title="Elimina riga" aria-label="Elimina riga">
+                        <svg class="h-16 w-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M3 6h18"></path>
+                            <path d="M8 6V4h8v2"></path>
+                            <path d="M19 6l-1 14H6L5 6"></path>
+                            <path d="M10 11v5"></path>
+                            <path d="M14 11v5"></path>
+                        </svg>
+                    </button>
                 </td>
             </tr>`,
             payments: (index) => `<tr>
@@ -358,30 +381,64 @@
             writeMoney('[data-payment-difference]', paymentTotal - total);
         }
 
-        document.getElementById('items-rows')?.addEventListener('click', (event) => {
-            const removeButton = event.target.closest('[data-remove-item-row]');
-            const moveButton = event.target.closest('[data-move-row]');
-            const row = event.target.closest('tr');
-            const target = document.getElementById('items-rows');
+        const itemRows = document.getElementById('items-rows');
+        let draggedItemRow = null;
 
-            if (!row || !target) {
+        itemRows?.addEventListener('click', (event) => {
+            const removeButton = event.target.closest('[data-remove-item-row]');
+            const row = event.target.closest('tr');
+            const target = itemRows;
+
+            if (!removeButton || !row || !target) {
                 return;
             }
 
-            if (removeButton) {
-                row.remove();
-            }
-
-            if (moveButton?.dataset.moveRow === 'up' && row.previousElementSibling) {
-                target.insertBefore(row, row.previousElementSibling);
-            }
-
-            if (moveButton?.dataset.moveRow === 'down' && row.nextElementSibling) {
-                target.insertBefore(row.nextElementSibling, row);
-            }
-
+            row.remove();
             reindexRows(target);
             recalculateDocument();
+        });
+
+        itemRows?.addEventListener('dragstart', (event) => {
+            const handle = event.target.closest('[data-drag-item-row]');
+
+            if (!handle) {
+                return;
+            }
+
+            draggedItemRow = handle.closest('tr');
+            draggedItemRow?.classList.add('bg-gray-light');
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', '');
+        });
+
+        itemRows?.addEventListener('dragover', (event) => {
+            if (!draggedItemRow) {
+                return;
+            }
+
+            const targetRow = event.target.closest('tr');
+
+            if (!targetRow || targetRow === draggedItemRow) {
+                return;
+            }
+
+            event.preventDefault();
+
+            const bounds = targetRow.getBoundingClientRect();
+            const insertAfter = event.clientY > bounds.top + bounds.height / 2;
+            itemRows.insertBefore(draggedItemRow, insertAfter ? targetRow.nextSibling : targetRow);
+        });
+
+        itemRows?.addEventListener('drop', (event) => {
+            event.preventDefault();
+            reindexRows(itemRows);
+            recalculateDocument();
+        });
+
+        itemRows?.addEventListener('dragend', () => {
+            draggedItemRow?.classList.remove('bg-gray-light');
+            draggedItemRow = null;
+            reindexRows(itemRows);
         });
 
         form?.addEventListener('input', recalculateDocument);
