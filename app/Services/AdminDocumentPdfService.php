@@ -191,8 +191,9 @@ class AdminDocumentPdfService
     private function formatUnitPrice(mixed $value): string
     {
         $formatted = number_format((float) $value, 4, ',', '.');
+        $formatted = preg_replace('/0{1,2}$/', '', $formatted);
 
-        return rtrim(rtrim($formatted, '0'), ',');
+        return rtrim($formatted, ',');
     }
 
     private function paymentDeadlines(AdminDocument $document): string

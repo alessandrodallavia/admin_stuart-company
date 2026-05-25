@@ -81,7 +81,7 @@
                                     <td class="px-12 py-12 text-14 font-semibold">{{ $item->item_code ?: '-' }}</td>
                                     <td class="whitespace-pre-line px-12 py-12 text-14 font-bold">{{ $item->description }}</td>
                                     <td class="px-12 py-12 text-right text-14 font-semibold">{{ number_format((float) $item->quantity, 2, ',', '.') }}</td>
-                                    <td class="px-12 py-12 text-right text-14 font-semibold">€ {{ rtrim(rtrim(number_format((float) $item->unit_price, 4, ',', '.'), '0'), ',') }}</td>
+                                    <td class="px-12 py-12 text-right text-14 font-semibold">€ {{ rtrim(preg_replace('/0{1,2}$/', '', number_format((float) $item->unit_price, 4, ',', '.')), ',') }}</td>
                                     <td class="px-12 py-12 text-right text-14 font-semibold">{{ number_format((float) $item->vat_rate, 2, ',', '.') }}%</td>
                                     <td class="px-12 py-12 text-right text-14 font-black">€ {{ number_format((float) $item->line_subtotal, 2, ',', '.') }}</td>
                                 </tr>
