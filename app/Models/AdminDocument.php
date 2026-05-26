@@ -169,6 +169,19 @@ class AdminDocument extends Model
         return self::statusLabelFor($this->type, $this->status);
     }
 
+    public function getStatusBadgeClassAttribute(): string
+    {
+        return match ($this->status) {
+            'draft' => 'bg-gray-light text-gray',
+            'sent' => 'bg-bullstar/10 text-bullstar',
+            'accepted', 'confirmed', 'purchased', 'issued' => 'bg-blue-50 text-blue-700',
+            'completed', 'paid' => 'bg-whatsapp/10 text-whatsapp',
+            'completed_partially' => 'bg-amber-50 text-amber-700',
+            'rejected', 'cancelled' => 'bg-red-50 text-red-700',
+            default => 'bg-black-nike text-white',
+        };
+    }
+
     public function getPaymentStatusLabelAttribute(): string
     {
         return match ($this->type) {

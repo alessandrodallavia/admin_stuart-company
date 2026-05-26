@@ -5,7 +5,7 @@
             <p class="mt-8 text-38 font-black leading-none tracking-normal">{{ $stats['total'] }}</p>
         </article>
         <article class="rounded-10 border border-gray-mid bg-white p-16">
-            <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Residuo da incassare</p>
+            <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Residuo fatture</p>
             <p class="mt-8 text-30 font-black leading-none tracking-normal">€ {{ number_format((float) $stats['open_total'], 2, ',', '.') }}</p>
         </article>
         <article class="rounded-10 border border-gray-mid bg-white p-16">
@@ -71,6 +71,9 @@
             <div class="flex flex-wrap gap-8">
                 <a href="{{ route('admin.documents.payments') }}" class="rounded-10 border border-gray-mid px-12 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">Pagamenti</a>
                 <a href="{{ route('admin.documents.import-xml') }}" class="rounded-10 border border-gray-mid px-12 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">Importa XML</a>
+                <form id="sdi-export-form" method="GET" action="{{ route('admin.documents.export-sdi') }}">
+                    <button type="submit" class="rounded-10 border border-gray-mid px-12 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">Export SDI Aruba</button>
+                </form>
                 @foreach ($types as $value => $label)
                     <a href="{{ route('admin.documents.create', ['type' => $value]) }}" class="rounded-10 bg-bullstar px-12 py-8 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">+ {{ $label }}</a>
                 @endforeach
@@ -81,6 +84,9 @@
             <table class="w-full min-w-[1000px] text-left">
                 <thead class="border-b border-gray-mid bg-gray-light text-11 font-extrabold uppercase tracking-normal text-gray">
                     <tr>
+                        <th class="w-48 px-12 py-12">
+                            <input type="checkbox" data-toggle-sdi-selection class="rounded border-gray-mid text-bullstar focus:ring-bullstar" aria-label="Seleziona tutte le fatture esportabili">
+                        </th>
                         <th class="px-12 py-12">Documento</th>
                         <th class="px-12 py-12">Cliente</th>
                         <th class="px-12 py-12">Stato</th>
@@ -92,6 +98,13 @@
                 <tbody class="divide-y divide-gray-mid">
                     @forelse ($documents as $document)
                         <tr>
+                            <td class="px-12 py-12 align-top">
+                                @if ($document->type === 'invoice' && ! in_array($document->status, ['draft', 'cancelled'], true))
+                                    <input form="sdi-export-form" name="document_ids[]" value="{{ $document->id }}" type="checkbox" data-sdi-selection class="rounded border-gray-mid text-bullstar focus:ring-bullstar" aria-label="Seleziona {{ $document->type_label }} {{ $document->display_code }} per export SDI">
+                                @else
+                                    <span class="block h-16 w-16 rounded border border-gray-mid bg-gray-light"></span>
+                                @endif
+                            </td>
                             <td class="px-12 py-12">
                                 <p class="text-14 font-black">{{ $document->type_label }} {{ $document->display_code }}</p>
                                 <p class="mt-4 text-11 font-semibold text-gray">{{ optional($document->document_date)->format('d/m/Y') }} · {{ $document->items_count }} righe</p>
@@ -100,12 +113,15 @@
                                 <p class="max-w-[260px] truncate text-14 font-bold">{{ $document->customer_name }}</p>
                                 <p class="mt-4 max-w-[260px] truncate text-11 font-semibold text-gray">{{ $document->customer_email ?: $document->customer_phone ?: 'Contatto non indicato' }}</p>
                             </td>
-                            <td class="px-12 py-12"><span class="rounded-full bg-black-nike px-10 py-6 text-11 font-extrabold uppercase tracking-normal text-white">{{ $document->status_label }}</span></td>
+                            <td class="px-12 py-12"><span class="rounded-full {{ $document->status_badge_class }} px-10 py-6 text-11 font-extrabold uppercase tracking-normal">{{ $document->status_label }}</span></td>
                             <td class="px-12 py-12"><span class="rounded-full {{ $document->payment_status === 'paid' ? 'bg-whatsapp/10 text-whatsapp' : 'bg-gray-light text-gray' }} px-10 py-6 text-11 font-extrabold uppercase tracking-normal">{{ $document->payment_status_label }}</span></td>
                             <td class="px-12 py-12 text-right text-14 font-black">€ {{ number_format((float) $document->total, 2, ',', '.') }}</td>
                             <td class="px-12 py-12 text-right">
                                 <div class="flex justify-end gap-6">
                                     <a href="{{ route('admin.documents.preview', $document) }}" target="_blank" class="rounded-10 border border-gray-mid px-10 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">PDF</a>
+                                    @if ($document->type === 'invoice')
+                                        <a href="{{ route('admin.documents.xml', $document) }}" class="rounded-10 border border-gray-mid px-10 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">XML</a>
+                                    @endif
                                     <form method="POST" action="{{ route('admin.documents.duplicate', $document) }}">
                                         @csrf
                                         <input type="hidden" name="type" value="{{ $document->type }}">
@@ -117,7 +133,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-16 py-28">
+                            <td colspan="7" class="px-16 py-28">
                                 <div class="rounded-10 border border-dashed border-gray-mid bg-gray-light p-20 text-14 font-semibold text-gray">Nessun documento con questi filtri.</div>
                             </td>
                         </tr>
@@ -131,3 +147,13 @@
         </div>
     </section>
 </div>
+
+@push('scripts')
+    <script>
+        document.querySelector('[data-toggle-sdi-selection]')?.addEventListener('change', (event) => {
+            document.querySelectorAll('[data-sdi-selection]').forEach((checkbox) => {
+                checkbox.checked = event.target.checked;
+            });
+        });
+    </script>
+@endpush

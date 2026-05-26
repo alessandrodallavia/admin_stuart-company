@@ -53,7 +53,7 @@
                         @endif
                     </div>
                     <div class="text-left md:text-right">
-                        <span class="rounded-full bg-black-nike px-10 py-6 text-11 font-extrabold uppercase tracking-normal text-white">{{ $document->status_label }}</span>
+                        <span class="rounded-full {{ $document->status_badge_class }} px-10 py-6 text-11 font-extrabold uppercase tracking-normal">{{ $document->status_label }}</span>
                         <p class="mt-10 text-30 font-black">€ {{ number_format((float) $document->total, 2, ',', '.') }}</p>
                     </div>
                 </div>

@@ -93,6 +93,7 @@ class Index extends Component
     {
         $documents = AdminDocument::query()
             ->with('paymentSchedules')
+            ->where('type', 'invoice')
             ->get()
             ->keyBy(fn (AdminDocument $document) => $this->nodeKey($document->currentDocumentType(), $document->id));
 
@@ -172,10 +173,6 @@ class Index extends Component
     {
         return match ($document->type) {
             'invoice' => 10,
-            'offline_order' => 20,
-            'proforma' => 30,
-            'quote' => 40,
-            'delivery_note' => 50,
             default => 100,
         };
     }

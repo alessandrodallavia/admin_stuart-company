@@ -17,6 +17,8 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use ZipArchive;
 
 class DocumentController extends Controller
 {
@@ -96,6 +98,48 @@ class DocumentController extends Controller
         return response($xml)
             ->header('Content-Type', 'application/xml')
             ->header('Content-Disposition', 'attachment; filename="'.$xmlService->filename($document).'"');
+    }
+
+    public function exportSdi(Request $request, AdminDocumentXmlService $xmlService): RedirectResponse|BinaryFileResponse
+    {
+        $documentIds = collect($request->input('document_ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($documentIds->isEmpty()) {
+            return back()->with('status', 'Seleziona almeno una fattura da esportare per Aruba.');
+        }
+
+        $documents = AdminDocument::query()
+            ->where('type', 'invoice')
+            ->whereIn('id', $documentIds)
+            ->whereNotIn('status', ['draft', 'cancelled'])
+            ->orderBy('document_date')
+            ->orderBy('number')
+            ->get();
+
+        if ($documents->isEmpty()) {
+            return back()->with('status', 'Nessuna fattura valida tra quelle selezionate. Bozze e annullate non vengono esportate.');
+        }
+
+        $zipPath = storage_path('app/private/export-fatture-sdi-'.now()->format('Ymd-His').'.zip');
+        $zip = new ZipArchive();
+
+        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            return back()->with('status', 'Export SDI non riuscito. Riprova tra poco.');
+        }
+
+        foreach ($documents as $document) {
+            $zip->addFromString($xmlService->filename($document), $xmlService->output($document));
+        }
+
+        $zip->close();
+
+        return response()
+            ->download($zipPath, 'fatture-sdi-aruba-'.now()->format('Ymd-His').'.zip', ['Content-Type' => 'application/zip'])
+            ->deleteFileAfterSend();
     }
 
     public function edit(AdminDocument $document): View

@@ -11,6 +11,12 @@ export default {
         './resources/**/*.js',
         './resources/**/*.vue',
     ],
+    safelist: [
+        'bg-amber-50',
+        'text-amber-700',
+        'bg-blue-50',
+        'text-blue-700',
+    ],
     theme: {
         extend: {
             screens: {

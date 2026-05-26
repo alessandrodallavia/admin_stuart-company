@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            return;
+        }
+
         if (Schema::hasColumn('admin_document_items', 'description')) {
             DB::statement('ALTER TABLE admin_document_items MODIFY description TEXT NOT NULL');
         }
@@ -19,6 +23,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            return;
+        }
+
         if (Schema::hasColumn('admin_document_items', 'description')) {
             DB::statement('ALTER TABLE admin_document_items MODIFY description VARCHAR(255) NOT NULL');
         }

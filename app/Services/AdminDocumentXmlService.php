@@ -93,7 +93,11 @@ class AdminDocumentXmlService
 
     public function filename(AdminDocument $document): string
     {
-        return str($document->display_code)->slug('-')->lower().'.xml';
+        $company = config('documents.company');
+        $sender = $this->upper(($company['country'] ?? 'IT').preg_replace('/\W+/', '', (string) ($company['vat_number'] ?? '')));
+        $progressive = str_pad(strtoupper(base_convert((string) max(1, (int) $document->id), 10, 36)), 5, '0', STR_PAD_LEFT);
+
+        return $sender.'_'.substr($progressive, -5).'.xml';
     }
 
     private function appendTransmissionData(DOMDocument $xml, DOMElement $header, AdminDocument $document): void

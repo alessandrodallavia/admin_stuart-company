@@ -92,9 +92,45 @@ class AdminDocumentService
             }
 
             $document->refreshTotals();
+            $this->ensurePreservedPaymentProgress($source, $document, $preservePaymentProgress);
 
             return $document->fresh(['items', 'paymentSchedules']);
         });
+    }
+
+    private function ensurePreservedPaymentProgress(AdminDocument $source, AdminDocument $document, bool $preservePaymentProgress): void
+    {
+        if (! $preservePaymentProgress || $source->payment_status !== 'paid' || $document->payment_status === 'paid') {
+            return;
+        }
+
+        $schedules = $document->paymentSchedules()->orderBy('due_date')->orderBy('id')->get();
+
+        if ($schedules->isEmpty()) {
+            $schedules = collect([$document->paymentSchedules()->create([
+                'due_date' => $document->document_date,
+                'method' => $this->paymentMethodName($document->payment_method ?: 'MP05'),
+                'payment_method_code' => $document->payment_method ?: 'MP05',
+                'amount' => (float) $document->total,
+                'paid_amount' => 0,
+                'paid_at' => null,
+                'status' => 'unpaid',
+            ])]);
+        }
+
+        $remaining = (float) $document->total;
+
+        foreach ($schedules as $schedule) {
+            $paidAmount = min((float) $schedule->amount ?: $remaining, $remaining);
+            $this->applyPaymentToSchedule($schedule, $paidAmount, now()->toDateString());
+            $remaining = round($remaining - $paidAmount, 2);
+
+            if ($remaining <= 0) {
+                break;
+            }
+        }
+
+        $document->refreshPaymentStatus();
     }
 
     public function markPayment(AdminDocument $document, int $scheduleId, float $paidAmount, ?string $paidAt): void
