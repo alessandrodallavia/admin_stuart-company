@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\Admin\DocumentController;
 use App\Models\AdminDocument;
 use App\Services\AdminDocumentService;
 use App\Services\AdminDocumentXmlService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use ReflectionMethod;
 use Tests\TestCase;
 
 class AdminDocumentWorkflowTest extends TestCase
@@ -105,7 +107,36 @@ class AdminDocumentWorkflowTest extends TestCase
         $service = app(AdminDocumentXmlService::class);
 
         $this->assertMatchesRegularExpression('/^IT05040450289_[A-Z0-9]{5}\.xml$/', $service->filename($invoice));
+        $this->assertStringContainsString('<ProgressivoInvio>7</ProgressivoInvio>', $service->output($invoice));
         $this->assertStringContainsString('<DatiPagamento>', $service->output($invoice));
         $this->assertStringContainsString('<ImportoPagamento>122.00</ImportoPagamento>', $service->output($invoice));
+    }
+
+    public function test_export_marks_selected_invoices_as_sent(): void
+    {
+        $invoice = AdminDocument::create([
+            'type' => 'invoice',
+            'fiscal_type' => 'TD01',
+            'number' => 8,
+            'year' => 2026,
+            'code' => 'FPR 8/26',
+            'document_date' => '2026-05-26',
+            'status' => 'issued',
+            'payment_status' => 'unpaid',
+            'payment_conditions' => 'TP02',
+            'payment_method' => 'MP05',
+            'currency' => 'EUR',
+            'customer_name' => 'Mario Rossi',
+            'customer_country' => 'IT',
+            'subtotal' => 100,
+            'vat_total' => 22,
+            'total' => 122,
+        ]);
+
+        $method = new ReflectionMethod(DocumentController::class, 'markInvoicesAsSent');
+        $method->setAccessible(true);
+        $method->invoke(app(DocumentController::class), collect([$invoice]));
+
+        $this->assertSame('sent', $invoice->fresh()->status);
     }
 }

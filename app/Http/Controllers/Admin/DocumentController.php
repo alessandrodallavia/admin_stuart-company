@@ -94,6 +94,7 @@ class DocumentController extends Controller
         abort_unless($document->type === 'invoice', 404);
 
         $xml = $xmlService->output($document);
+        $this->markInvoicesAsSent(collect([$document]));
 
         return response($xml)
             ->header('Content-Type', 'application/xml')
@@ -136,6 +137,7 @@ class DocumentController extends Controller
         }
 
         $zip->close();
+        $this->markInvoicesAsSent($documents);
 
         return response()
             ->download($zipPath, 'fatture-sdi-aruba-'.now()->format('Ymd-His').'.zip', ['Content-Type' => 'application/zip'])
@@ -344,6 +346,15 @@ class DocumentController extends Controller
 
         return ($relation->from_type === $type && (int) $relation->from_id === (int) $document->id)
             || ($relation->to_type === $type && (int) $relation->to_id === (int) $document->id);
+    }
+
+    private function markInvoicesAsSent($documents): void
+    {
+        AdminDocument::query()
+            ->whereIn('id', $documents->pluck('id'))
+            ->where('type', 'invoice')
+            ->whereNotIn('status', ['draft', 'cancelled'])
+            ->update(['status' => 'sent']);
     }
 
     private function clearSourceDocumentLink(DocumentRelation $relation): void

@@ -107,7 +107,7 @@ class AdminDocumentXmlService
         $sender = $this->append($xml, $data, 'IdTrasmittente');
         $this->append($xml, $sender, 'IdPaese', $company['country']);
         $this->append($xml, $sender, 'IdCodice', $company['vat_number']);
-        $this->append($xml, $data, 'ProgressivoInvio', substr(preg_replace('/\W+/', '', $document->display_code), 0, 10) ?: (string) $document->id);
+        $this->append($xml, $data, 'ProgressivoInvio', (string) ($document->number ?: $document->id));
         $this->append($xml, $data, 'FormatoTrasmissione', 'FPR12');
         $this->append($xml, $data, 'CodiceDestinatario', $this->upper($document->customer_recipient_code ?: '0000000'));
         if ($document->customer_pec) {
