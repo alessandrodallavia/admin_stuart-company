@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Http\Controllers\Admin\DocumentController;
 use App\Models\AdminDocument;
+use App\Models\AdminUser;
 use App\Services\AdminDocumentService;
 use App\Services\AdminDocumentXmlService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -13,6 +14,152 @@ use Tests\TestCase;
 class AdminDocumentWorkflowTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_documents_index_is_grouped_by_document_area(): void
+    {
+        $admin = AdminUser::create([
+            'name' => 'Admin Test',
+            'email' => 'admin@example.test',
+            'password' => 'password',
+            'role' => 'owner',
+            'is_active' => true,
+        ]);
+
+        AdminDocument::create([
+            'type' => 'quote',
+            'number' => 1,
+            'year' => 2026,
+            'code' => 'PREV-1',
+            'document_date' => '2026-05-26',
+            'status' => 'sent',
+            'payment_status' => 'not_managed',
+            'payment_conditions' => 'TP02',
+            'currency' => 'EUR',
+            'customer_name' => 'Mario Rossi',
+            'customer_country' => 'IT',
+            'subtotal' => 100,
+            'vat_total' => 22,
+            'total' => 122,
+        ]);
+        AdminDocument::create([
+            'type' => 'invoice',
+            'fiscal_type' => 'TD01',
+            'number' => 7,
+            'year' => 2026,
+            'code' => 'FPR 7/26',
+            'document_date' => '2026-05-27',
+            'status' => 'issued',
+            'payment_status' => 'unpaid',
+            'payment_conditions' => 'TP02',
+            'currency' => 'EUR',
+            'customer_name' => 'Luigi Verdi',
+            'customer_country' => 'IT',
+            'subtotal' => 200,
+            'vat_total' => 44,
+            'total' => 244,
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/documents')
+            ->assertOk()
+            ->assertSee('Aree documenti')
+            ->assertSee('Archivio per area')
+            ->assertSee('Preventivo PREV-1')
+            ->assertSee('Fattura FPR 7/26')
+            ->assertSee('Apri area');
+    }
+
+    public function test_documents_area_only_shows_create_button_for_current_type(): void
+    {
+        $admin = AdminUser::create([
+            'name' => 'Admin Test',
+            'email' => 'admin-area@example.test',
+            'password' => 'password',
+            'role' => 'owner',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/documents?type=invoice')
+            ->assertOk()
+            ->assertSee('+ Fattura')
+            ->assertDontSee('+ Ordine offline')
+            ->assertDontSee('+ Preventivo');
+    }
+
+    public function test_documents_filters_are_contextual_and_auto_submitted(): void
+    {
+        $admin = AdminUser::create([
+            'name' => 'Admin Test',
+            'email' => 'admin-filters@example.test',
+            'password' => 'password',
+            'role' => 'owner',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/documents?type=invoice')
+            ->assertOk()
+            ->assertSee('name="type" value="invoice"', false)
+            ->assertSee('data-auto-filter-form', false)
+            ->assertSee('data-auto-filter-input', false)
+            ->assertDontSee('<span class="text-12 font-extrabold uppercase tracking-normal text-gray">Tipo</span>', false)
+            ->assertDontSee('Filtra');
+    }
+
+    public function test_status_filter_uses_current_document_type_statuses(): void
+    {
+        $admin = AdminUser::create([
+            'name' => 'Admin Test',
+            'email' => 'admin-statuses@example.test',
+            'password' => 'password',
+            'role' => 'owner',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/documents?type=quote')
+            ->assertOk()
+            ->assertSee('Inviato')
+            ->assertDontSee('Inviata SDI')
+            ->assertDontSee('Emessa');
+
+        $this->actingAs($admin, 'admin')
+            ->get('/documents?type=invoice')
+            ->assertOk()
+            ->assertSee('Inviata SDI')
+            ->assertSee('Emessa');
+
+        $this->actingAs($admin, 'admin')
+            ->get('/documents')
+            ->assertOk()
+            ->assertDontSee('<span class="text-12 font-extrabold uppercase tracking-normal text-gray">Stato</span>', false);
+    }
+
+    public function test_invoice_tools_are_only_visible_inside_invoice_area(): void
+    {
+        $admin = AdminUser::create([
+            'name' => 'Admin Test',
+            'email' => 'admin-invoice-tools@example.test',
+            'password' => 'password',
+            'role' => 'owner',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/documents?type=invoice')
+            ->assertOk()
+            ->assertSee('Pagamenti')
+            ->assertSee('Importa XML')
+            ->assertSee('Export SDI Aruba');
+
+        $this->actingAs($admin, 'admin')
+            ->get('/documents?type=offline_order')
+            ->assertOk()
+            ->assertDontSee('Pagamenti')
+            ->assertDontSee('Importa XML')
+            ->assertDontSee('Export SDI Aruba');
+    }
 
     public function test_paid_order_payment_is_preserved_when_generating_invoice(): void
     {

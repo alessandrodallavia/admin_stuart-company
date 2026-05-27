@@ -15,7 +15,7 @@ class Index extends Component
     public function render()
     {
         $type = request()->string('type')->toString();
-        $status = request()->string('status')->toString();
+        $status = $type !== '' ? request()->string('status')->toString() : '';
         $paymentStatus = request()->string('payment_status')->toString();
         $search = trim(request()->string('search')->toString() ?: request()->string('q')->toString());
         $searchNumber = trim(request()->string('search_number')->toString());
@@ -24,7 +24,7 @@ class Index extends Component
             'documents' => AdminDocument::query()
                 ->withCount('items')
                 ->when($type !== '', fn ($query) => $query->where('type', $type))
-                ->when($status !== '', fn ($query) => $query->where('status', $status))
+                ->when($type !== '' && $status !== '', fn ($query) => $query->where('status', $status))
                 ->when($paymentStatus !== '', fn ($query) => $query->where('payment_status', $paymentStatus))
                 ->when($searchNumber !== '', fn ($query) => $this->applyNumberSearch($query, $searchNumber))
                 ->when($search !== '', function ($query) use ($search) {
@@ -46,7 +46,7 @@ class Index extends Component
                 ->paginate(15)
                 ->withQueryString(),
             'types' => AdminDocument::TYPES,
-            'statuses' => AdminDocument::allStatuses(),
+            'statuses' => $type !== '' ? AdminDocument::statusesFor($type) : [],
             'paymentStatuses' => AdminDocument::PAYMENT_STATUSES,
             'currentType' => $type,
             'currentStatus' => $status,
@@ -54,6 +54,7 @@ class Index extends Component
             'search' => $search,
             'searchNumber' => $searchNumber,
             'stats' => $this->stats(),
+            'documentAreas' => $this->documentAreas(),
         ]);
     }
 
@@ -77,16 +78,42 @@ class Index extends Component
 
     private function stats(): array
     {
+        $byType = AdminDocument::query()
+            ->selectRaw('type, count(*) as aggregate')
+            ->groupBy('type')
+            ->pluck('aggregate', 'type')
+            ->all();
+
         return [
             'total' => AdminDocument::count(),
             'open_total' => $this->openTotal(),
             'overdue' => AdminDocument::where('payment_status', 'overdue')->count(),
-            'by_type' => AdminDocument::query()
-                ->selectRaw('type, count(*) as aggregate')
+            'by_type' => $byType,
+            'totals_by_type' => AdminDocument::query()
+                ->selectRaw('type, sum(total) as aggregate')
                 ->groupBy('type')
                 ->pluck('aggregate', 'type')
                 ->all(),
         ];
+    }
+
+    private function documentAreas(): array
+    {
+        return collect(AdminDocument::TYPES)
+            ->map(fn (string $label, string $type) => [
+                'type' => $type,
+                'label' => $label,
+                'description' => match ($type) {
+                    'quote' => 'Richieste, offerte e trattative aperte',
+                    'proforma' => 'Proforme e acconti prima della fattura',
+                    'offline_order' => 'Ordini interni e avanzamento acquisto',
+                    'delivery_note' => 'Documenti di trasporto e consegne',
+                    'invoice' => 'Fatture, XML, SDI e incassi',
+                    default => 'Documenti amministrativi',
+                },
+            ])
+            ->values()
+            ->all();
     }
 
     private function openTotal(): float
