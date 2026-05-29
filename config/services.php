@@ -80,6 +80,12 @@ return [
         'currency' => env('GOOGLE_ADS_CURRENCY', 'EUR'),
     ],
 
+    'ga4' => [
+        'measurement_id' => env('GA4_MEASUREMENT_ID', 'G-ZMHBX4W5QX'),
+        'api_secret' => env('GA4_API_SECRET'),
+        'debug_mode' => env('GA4_DEBUG_MODE', false),
+    ],
+
     'dropbox' => [
         'client_id' => env('DROPBOX_APP_KEY'),
         'client_secret' => env('DROPBOX_APP_SECRET'),

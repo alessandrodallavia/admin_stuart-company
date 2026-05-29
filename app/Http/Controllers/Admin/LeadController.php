@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Lead;
 use App\Models\WhatsappConversation;
+use App\Services\Ga4MeasurementService;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -96,9 +98,10 @@ class LeadController extends Controller
         ]);
     }
 
-    public function update(Request $request, Lead $lead): RedirectResponse
+    public function update(Request $request, Lead $lead, Ga4MeasurementService $ga4): RedirectResponse
     {
         $statuses = array_keys($this->statuses());
+        $previousStatus = $lead->status;
 
         $data = $request->validate([
             'name' => ['nullable', 'string', 'max:100'],
@@ -158,10 +161,41 @@ class LeadController extends Controller
         }
 
         $lead->fill($attributes)->save();
+        $lead->refresh();
+
+        $this->sendQuoteSentEvent($lead, $previousStatus, $ga4);
 
         return redirect()
             ->route('admin.leads.index', ['lead' => $lead])
             ->with('status', 'Lead aggiornato.');
+    }
+
+    private function sendQuoteSentEvent(Lead $lead, ?string $previousStatus, Ga4MeasurementService $ga4): void
+    {
+        if ($lead->status !== 'quote_sent' || $previousStatus === 'quote_sent' || $lead->ga4_quote_sent_at) {
+            return;
+        }
+
+        try {
+            $ga4->sendQuoteSent($lead);
+
+            $lead->forceFill([
+                'ga4_quote_sent_at' => now(),
+                'ga4_quote_sent_status' => 'sent',
+                'ga4_quote_sent_error' => null,
+            ])->save();
+        } catch (\Throwable $exception) {
+            Log::warning('Invio quote_sent a GA4 fallito', [
+                'lead_id' => $lead->id,
+                'lead_uuid' => $lead->uuid,
+                'error' => $exception->getMessage(),
+            ]);
+
+            $lead->forceFill([
+                'ga4_quote_sent_status' => 'failed',
+                'ga4_quote_sent_error' => $exception->getMessage(),
+            ])->save();
+        }
     }
 
     public function showQuotePdf(Lead $lead)
