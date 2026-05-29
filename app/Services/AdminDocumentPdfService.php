@@ -86,21 +86,21 @@ class AdminDocumentPdfService
             'totale_imponibile' => number_format((float) $document->subtotal, 2, ',', '.'),
             'totale_iva' => number_format((float) $document->vat_total, 2, ',', '.'),
             'totale_fattura' => number_format((float) $document->total, 2, ',', '.'),
-            'causale_trasporto' => 'Vendita',
-            'trasporto_cura' => '',
-            'data_inizio_trasporto' => optional($document->document_date)->format('d/m/Y'),
-            'aspetto_beni' => '',
-            'n_colli' => '',
-            'peso_lordo' => '',
-            'peso_netto' => '',
-            'carrier' => '',
+            'causale_trasporto' => $document->transport_reason ?: 'Vendita',
+            'trasporto_cura' => $document->transport_care ?: '',
+            'data_inizio_trasporto' => optional($document->transport_start_date ?: $document->document_date)->format('d/m/Y'),
+            'aspetto_beni' => $document->goods_appearance ?: '',
+            'n_colli' => $document->parcels_count ?: '',
+            'peso_lordo' => $document->gross_weight_kg ?: '',
+            'peso_netto' => $document->net_weight_kg ?: '',
+            'carrier' => $document->carrier_name ?: '',
         ];
     }
 
     private function drawRows(TcpdfDocumentoService $pdf, array $columns, array $products): void
     {
         $yStartTable = $pdf->GetY();
-        $maxHeight = 110;
+        $maxHeight = $pdf->isDeliveryNote ? 146 : 110;
         $lastRowHeight = 6.5;
         $pdf->isLastPage = false;
 
@@ -153,7 +153,6 @@ class AdminDocumentPdfService
             'descrizione' => $item->description,
             'um' => 'NR',
             'qta' => number_format((float) $item->quantity, 2, ',', '.'),
-            'ci' => number_format((float) $item->vat_rate, 0),
         ] : [
             'codice' => $item->item_code ?: '',
             'descrizione' => $item->description,
@@ -171,10 +170,9 @@ class AdminDocumentPdfService
         if ($document->type === 'delivery_note') {
             return [
                 ['Codice', 35.00, 'codice'],
-                ['Descrizione', 116.00, 'descrizione'],
+                ['Descrizione', 123.00, 'descrizione'],
                 ['U.M.', 12.00, 'um'],
                 ['Q.ta', 24.00, 'qta'],
-                ['C.I.', 7.00, 'ci'],
             ];
         }
 

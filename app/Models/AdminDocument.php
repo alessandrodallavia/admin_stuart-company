@@ -99,6 +99,14 @@ class AdminDocument extends Model
         'shipping_province',
         'shipping_postal_code',
         'shipping_country',
+        'transport_reason',
+        'transport_care',
+        'transport_start_date',
+        'goods_appearance',
+        'parcels_count',
+        'gross_weight_kg',
+        'net_weight_kg',
+        'carrier_name',
         'source_document_id',
         'xml_filename',
         'xml_hash',
@@ -113,9 +121,12 @@ class AdminDocument extends Model
     {
         return [
             'document_date' => 'date',
+            'transport_start_date' => 'date',
             'subtotal' => 'decimal:2',
             'vat_total' => 'decimal:2',
             'total' => 'decimal:2',
+            'gross_weight_kg' => 'decimal:2',
+            'net_weight_kg' => 'decimal:2',
             'xml_imported' => 'boolean',
         ];
     }

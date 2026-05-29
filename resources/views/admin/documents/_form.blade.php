@@ -174,6 +174,47 @@
         </div>
     </section>
 
+    <section data-delivery-note-section class="rounded-10 border border-gray-mid bg-white p-16">
+        <div class="mb-12">
+            <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Trasporto</p>
+            <h2 class="mt-4 text-20 font-black leading-tight">Dati DDT</h2>
+        </div>
+        <div class="grid gap-12 lg:grid-cols-4">
+            <label class="block">
+                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Causale trasporto</span>
+                <input name="transport_reason" value="{{ old('transport_reason', $document->transport_reason ?: 'Vendita') }}" maxlength="255" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+            </label>
+            <label class="block">
+                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Trasporto a cura</span>
+                <input name="transport_care" value="{{ old('transport_care', $document->transport_care) }}" maxlength="255" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+            </label>
+            <label class="block">
+                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Data inizio trasporto</span>
+                <input name="transport_start_date" value="{{ old('transport_start_date', optional($document->transport_start_date ?: $document->document_date)->format('Y-m-d')) }}" type="date" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+            </label>
+            <label class="block">
+                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Aspetto beni</span>
+                <input name="goods_appearance" value="{{ old('goods_appearance', $document->goods_appearance) }}" maxlength="255" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+            </label>
+            <label class="block">
+                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">N. colli</span>
+                <input name="parcels_count" value="{{ old('parcels_count', $document->parcels_count) }}" type="number" min="0" step="1" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+            </label>
+            <label class="block">
+                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Peso lordo kg</span>
+                <input name="gross_weight_kg" value="{{ old('gross_weight_kg', $document->gross_weight_kg) }}" type="number" min="0" step="0.01" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+            </label>
+            <label class="block">
+                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Peso netto kg</span>
+                <input name="net_weight_kg" value="{{ old('net_weight_kg', $document->net_weight_kg) }}" type="number" min="0" step="0.01" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+            </label>
+            <label class="block">
+                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Vettore</span>
+                <input name="carrier_name" value="{{ old('carrier_name', $document->carrier_name) }}" maxlength="255" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+            </label>
+        </div>
+    </section>
+
     <section class="overflow-hidden rounded-10 border border-gray-mid bg-white">
         <div class="flex items-center justify-between gap-12 border-b border-gray-mid px-16 py-12">
             <div>
@@ -517,6 +558,9 @@
 
             document.querySelectorAll('[data-ddt-money-field], [data-payment-section]').forEach((element) => {
                 element.classList.toggle('hidden', isDeliveryNote);
+            });
+            document.querySelectorAll('[data-delivery-note-section]').forEach((element) => {
+                element.classList.toggle('hidden', !isDeliveryNote);
             });
         }
 

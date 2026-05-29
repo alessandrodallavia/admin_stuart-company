@@ -152,6 +152,22 @@
                 </section>
             @endif
 
+            @if ($document->type === 'delivery_note')
+                <section class="rounded-10 border border-gray-mid bg-white p-16">
+                    <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Trasporto</p>
+                    <div class="mt-10 space-y-5 text-14 font-semibold text-gray">
+                        <p>Causale {{ $document->transport_reason ?: 'Vendita' }}</p>
+                        <p>Trasporto a cura {{ $document->transport_care ?: '-' }}</p>
+                        <p>Data inizio {{ optional($document->transport_start_date ?: $document->document_date)->format('d/m/Y') }}</p>
+                        <p>Aspetto {{ $document->goods_appearance ?: '-' }}</p>
+                        <p>Colli {{ $document->parcels_count ?: '-' }}</p>
+                        <p>Peso lordo {{ $document->gross_weight_kg ? number_format((float) $document->gross_weight_kg, 2, ',', '.') . ' kg' : '-' }}</p>
+                        <p>Peso netto {{ $document->net_weight_kg ? number_format((float) $document->net_weight_kg, 2, ',', '.') . ' kg' : '-' }}</p>
+                        <p>Vettore {{ $document->carrier_name ?: '-' }}</p>
+                    </div>
+                </section>
+            @endif
+
             @unless ($document->type === 'delivery_note')
                 <section class="rounded-10 border border-gray-mid bg-white p-16">
                     <div class="flex items-start justify-between gap-12">

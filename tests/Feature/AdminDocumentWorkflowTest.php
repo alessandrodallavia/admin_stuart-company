@@ -310,6 +310,14 @@ class AdminDocumentWorkflowTest extends TestCase
             'shipping_province' => 'PD',
             'shipping_postal_code' => '35100',
             'shipping_country' => 'IT',
+            'transport_reason' => 'Vendita',
+            'transport_care' => 'Mittente',
+            'transport_start_date' => '2026-05-30',
+            'goods_appearance' => 'Cartoni',
+            'parcels_count' => 3,
+            'gross_weight_kg' => 12.50,
+            'net_weight_kg' => 10.25,
+            'carrier_name' => 'BRT',
             'subtotal' => 100,
             'vat_total' => 22,
             'total' => 122,
@@ -324,12 +332,26 @@ class AdminDocumentWorkflowTest extends TestCase
         $columns = collect($columnsMethod->invoke($service, $deliveryNote))->pluck(0)->all();
         $header = $headerMethod->invoke($service, $deliveryNote);
 
-        $this->assertSame(['Codice', 'Descrizione', 'U.M.', 'Q.ta', 'C.I.'], $columns);
+        $this->assertSame(['Codice', 'Descrizione', 'U.M.', 'Q.ta'], $columns);
         $this->assertNotContains('Prezzo', $columns);
         $this->assertNotContains('Importo', $columns);
+        $this->assertNotContains('C.I.', $columns);
         $this->assertContains('CLUB TENNIS PADOVA', $header['shipping_address']);
         $this->assertContains('VIA SPEDIZIONE 10', $header['shipping_address']);
         $this->assertContains('35100 PADOVA (PD)', $header['shipping_address']);
+
+        $footerMethod = new ReflectionMethod(AdminDocumentPdfService::class, 'footerData');
+        $footerMethod->setAccessible(true);
+        $footer = $footerMethod->invoke($service, $deliveryNote);
+
+        $this->assertSame('Vendita', $footer['causale_trasporto']);
+        $this->assertSame('Mittente', $footer['trasporto_cura']);
+        $this->assertSame('30/05/2026', $footer['data_inizio_trasporto']);
+        $this->assertSame('Cartoni', $footer['aspetto_beni']);
+        $this->assertSame(3, $footer['n_colli']);
+        $this->assertSame('12.50', (string) $footer['peso_lordo']);
+        $this->assertSame('10.25', (string) $footer['peso_netto']);
+        $this->assertSame('BRT', $footer['carrier']);
     }
 
     public function test_generated_documents_show_the_document_chain(): void
