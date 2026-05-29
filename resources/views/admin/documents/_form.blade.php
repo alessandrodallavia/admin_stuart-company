@@ -19,6 +19,11 @@
         'paid_at' => optional($payment->paid_at)->format('Y-m-d'),
         'notes' => $payment->notes,
     ])->all() : [['due_date' => now()->format('Y-m-d'), 'method' => 'Bonifico bancario', 'payment_method_code' => 'MP05', 'amount' => 0, 'paid_amount' => 0, 'paid_at' => '', 'notes' => '']]);
+
+    $transportReasonOptions = ['Vendita', 'Reso', 'Conto visione', 'Conto lavorazione', 'Riparazione', 'Sostituzione', 'Omaggio', 'Trasferimento'];
+    $transportCareOptions = ['Mittente', 'Destinatario', 'Vettore'];
+    $goodsAppearanceOptions = ['Cartoni', 'Scatole', 'Bancale', 'Buste', 'Colli', 'A vista'];
+    $carrierOptions = ['BRT', 'SDA', 'DHL', 'GLS', 'TNT', 'UPS', 'Ritiro cliente', 'Nostro mezzo'];
 @endphp
 
 <form method="POST" action="{{ $document->exists ? route('admin.documents.update', $document) : route('admin.documents.store') }}" class="space-y-16" data-document-form>
@@ -174,47 +179,6 @@
         </div>
     </section>
 
-    <section data-delivery-note-section class="rounded-10 border border-gray-mid bg-white p-16">
-        <div class="mb-12">
-            <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Trasporto</p>
-            <h2 class="mt-4 text-20 font-black leading-tight">Dati DDT</h2>
-        </div>
-        <div class="grid gap-12 lg:grid-cols-4">
-            <label class="block">
-                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Causale trasporto</span>
-                <input name="transport_reason" value="{{ old('transport_reason', $document->transport_reason ?: 'Vendita') }}" maxlength="255" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
-            </label>
-            <label class="block">
-                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Trasporto a cura</span>
-                <input name="transport_care" value="{{ old('transport_care', $document->transport_care) }}" maxlength="255" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
-            </label>
-            <label class="block">
-                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Data inizio trasporto</span>
-                <input name="transport_start_date" value="{{ old('transport_start_date', optional($document->transport_start_date ?: $document->document_date)->format('Y-m-d')) }}" type="date" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
-            </label>
-            <label class="block">
-                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Aspetto beni</span>
-                <input name="goods_appearance" value="{{ old('goods_appearance', $document->goods_appearance) }}" maxlength="255" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
-            </label>
-            <label class="block">
-                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">N. colli</span>
-                <input name="parcels_count" value="{{ old('parcels_count', $document->parcels_count) }}" type="number" min="0" step="1" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
-            </label>
-            <label class="block">
-                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Peso lordo kg</span>
-                <input name="gross_weight_kg" value="{{ old('gross_weight_kg', $document->gross_weight_kg) }}" type="number" min="0" step="0.01" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
-            </label>
-            <label class="block">
-                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Peso netto kg</span>
-                <input name="net_weight_kg" value="{{ old('net_weight_kg', $document->net_weight_kg) }}" type="number" min="0" step="0.01" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
-            </label>
-            <label class="block">
-                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Vettore</span>
-                <input name="carrier_name" value="{{ old('carrier_name', $document->carrier_name) }}" maxlength="255" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
-            </label>
-        </div>
-    </section>
-
     <section class="overflow-hidden rounded-10 border border-gray-mid bg-white">
         <div class="flex items-center justify-between gap-12 border-b border-gray-mid px-16 py-12">
             <div>
@@ -282,6 +246,84 @@
                     </tr>
                 </tfoot>
             </table>
+        </div>
+    </section>
+
+    <section data-delivery-note-section class="rounded-10 border border-gray-mid bg-white p-16">
+        <div class="mb-12">
+            <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Trasporto</p>
+            <h2 class="mt-4 text-20 font-black leading-tight">Dati DDT</h2>
+        </div>
+        <div class="grid gap-12 lg:grid-cols-4">
+            @php
+                $selectedTransportReason = old('transport_reason', $document->transport_reason ?: 'Vendita');
+                $selectedTransportCare = old('transport_care', $document->transport_care);
+                $selectedGoodsAppearance = old('goods_appearance', $document->goods_appearance);
+                $selectedCarrierName = old('carrier_name', $document->carrier_name);
+            @endphp
+            <label class="block">
+                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Causale trasporto</span>
+                <select name="transport_reason" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                    @unless (blank($selectedTransportReason) || in_array($selectedTransportReason, $transportReasonOptions, true))
+                        <option value="{{ $selectedTransportReason }}" selected>{{ $selectedTransportReason }}</option>
+                    @endunless
+                    @foreach ($transportReasonOptions as $option)
+                        <option value="{{ $option }}" @selected($selectedTransportReason === $option)>{{ $option }}</option>
+                    @endforeach
+                </select>
+            </label>
+            <label class="block">
+                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Trasporto a cura</span>
+                <select name="transport_care" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                    <option value="" @selected(blank($selectedTransportCare))></option>
+                    @unless (blank($selectedTransportCare) || in_array($selectedTransportCare, $transportCareOptions, true))
+                        <option value="{{ $selectedTransportCare }}" selected>{{ $selectedTransportCare }}</option>
+                    @endunless
+                    @foreach ($transportCareOptions as $option)
+                        <option value="{{ $option }}" @selected($selectedTransportCare === $option)>{{ $option }}</option>
+                    @endforeach
+                </select>
+            </label>
+            <label class="block">
+                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Data inizio trasporto</span>
+                <input name="transport_start_date" value="{{ old('transport_start_date', optional($document->transport_start_date ?: $document->document_date)->format('Y-m-d')) }}" type="date" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+            </label>
+            <label class="block">
+                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Aspetto beni</span>
+                <select name="goods_appearance" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                    <option value="" @selected(blank($selectedGoodsAppearance))></option>
+                    @unless (blank($selectedGoodsAppearance) || in_array($selectedGoodsAppearance, $goodsAppearanceOptions, true))
+                        <option value="{{ $selectedGoodsAppearance }}" selected>{{ $selectedGoodsAppearance }}</option>
+                    @endunless
+                    @foreach ($goodsAppearanceOptions as $option)
+                        <option value="{{ $option }}" @selected($selectedGoodsAppearance === $option)>{{ $option }}</option>
+                    @endforeach
+                </select>
+            </label>
+            <label class="block">
+                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">N. colli</span>
+                <input name="parcels_count" value="{{ old('parcels_count', $document->parcels_count) }}" type="number" min="0" step="1" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+            </label>
+            <label class="block">
+                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Peso lordo kg</span>
+                <input name="gross_weight_kg" value="{{ old('gross_weight_kg', $document->gross_weight_kg) }}" type="number" min="0" step="0.01" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+            </label>
+            <label class="block">
+                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Peso netto kg</span>
+                <input name="net_weight_kg" value="{{ old('net_weight_kg', $document->net_weight_kg) }}" type="number" min="0" step="0.01" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+            </label>
+            <label class="block">
+                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Vettore</span>
+                <select name="carrier_name" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                    <option value="" @selected(blank($selectedCarrierName))></option>
+                    @unless (blank($selectedCarrierName) || in_array($selectedCarrierName, $carrierOptions, true))
+                        <option value="{{ $selectedCarrierName }}" selected>{{ $selectedCarrierName }}</option>
+                    @endunless
+                    @foreach ($carrierOptions as $option)
+                        <option value="{{ $option }}" @selected($selectedCarrierName === $option)>{{ $option }}</option>
+                    @endforeach
+                </select>
+            </label>
         </div>
     </section>
 
