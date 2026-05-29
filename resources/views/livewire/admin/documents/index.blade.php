@@ -1,5 +1,6 @@
 @php
     $activeArea = collect($documentAreas)->firstWhere('type', $currentType);
+    $isDeliveryNoteArea = $currentType === 'delivery_note';
     $documentGroups = $currentType === ''
         ? collect($documentAreas)
             ->map(fn ($area) => array_merge($area, [
@@ -62,7 +63,7 @@
     </section>
 
     <section class="mb-16 overflow-hidden rounded-10 border border-gray-mid bg-white">
-        <form method="GET" action="{{ route('admin.documents.index') }}" data-auto-filter-form class="grid gap-12 p-16 xl:grid-cols-[160px_minmax(220px,1fr)_180px_180px_auto] xl:items-end">
+        <form method="GET" action="{{ route('admin.documents.index') }}" data-auto-filter-form class="grid gap-12 p-16 {{ $isDeliveryNoteArea ? 'xl:grid-cols-[160px_minmax(220px,1fr)_180px_auto]' : 'xl:grid-cols-[160px_minmax(220px,1fr)_180px_180px_auto]' }} xl:items-end">
             @if ($currentType !== '')
                 <input type="hidden" name="type" value="{{ $currentType }}">
             @endif
@@ -85,15 +86,17 @@
                     </select>
                 </label>
             @endif
-            <label class="block">
-                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Pagamento</span>
-                <select name="payment_status" data-auto-filter-select class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
-                    <option value="">Tutti</option>
-                    @foreach ($paymentStatuses as $value => $label)
-                        <option value="{{ $value }}" @selected($currentPaymentStatus === $value)>{{ $label }}</option>
-                    @endforeach
-                </select>
-            </label>
+            @unless ($isDeliveryNoteArea)
+                <label class="block">
+                    <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Pagamento</span>
+                    <select name="payment_status" data-auto-filter-select class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                        <option value="">Tutti</option>
+                        @foreach ($paymentStatuses as $value => $label)
+                            <option value="{{ $value }}" @selected($currentPaymentStatus === $value)>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </label>
+            @endunless
             <div class="flex gap-8">
                 <a href="{{ $currentType === '' ? route('admin.documents.index') : route('admin.documents.index', ['type' => $currentType]) }}" class="rounded-10 border border-gray-mid px-16 py-10 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">Reset</a>
             </div>
@@ -121,7 +124,7 @@
         </div>
 
         <div class="overflow-x-auto">
-            <table class="w-full min-w-[1000px] text-left">
+            <table class="w-full {{ $isDeliveryNoteArea ? 'min-w-[840px]' : 'min-w-[1000px]' }} text-left">
                 <thead class="border-b border-gray-mid bg-gray-light text-11 font-extrabold uppercase tracking-normal text-gray">
                     <tr>
                         <th class="w-48 px-12 py-12">
@@ -130,8 +133,10 @@
                         <th class="px-12 py-12">Documento</th>
                         <th class="px-12 py-12">Cliente</th>
                         <th class="px-12 py-12">Stato</th>
-                        <th class="px-12 py-12">Pagamento</th>
-                        <th class="px-12 py-12 text-right">Totale</th>
+                        @unless ($isDeliveryNoteArea)
+                            <th class="px-12 py-12">Pagamento</th>
+                            <th class="px-12 py-12 text-right">Totale</th>
+                        @endunless
                         <th class="px-12 py-12"></th>
                     </tr>
                 </thead>
@@ -179,8 +184,18 @@
                                         <p class="mt-4 max-w-[260px] truncate text-11 font-semibold text-gray">{{ $document->customer_email ?: $document->customer_phone ?: 'Contatto non indicato' }}</p>
                                     </td>
                                     <td class="px-12 py-12"><span class="rounded-full {{ $document->status_badge_class }} px-10 py-6 text-11 font-extrabold uppercase tracking-normal">{{ $document->status_label }}</span></td>
-                                    <td class="px-12 py-12"><span class="rounded-full {{ $document->payment_status === 'paid' ? 'bg-whatsapp/10 text-whatsapp' : 'bg-gray-light text-gray' }} px-10 py-6 text-11 font-extrabold uppercase tracking-normal">{{ $document->payment_status_label }}</span></td>
-                                    <td class="px-12 py-12 text-right text-14 font-black">€ {{ number_format((float) $document->total, 2, ',', '.') }}</td>
+                                    @unless ($isDeliveryNoteArea)
+                                        <td class="px-12 py-12">
+                                            @unless ($document->type === 'delivery_note')
+                                                <span class="rounded-full {{ $document->payment_status === 'paid' ? 'bg-whatsapp/10 text-whatsapp' : 'bg-gray-light text-gray' }} px-10 py-6 text-11 font-extrabold uppercase tracking-normal">{{ $document->payment_status_label }}</span>
+                                            @endunless
+                                        </td>
+                                        <td class="px-12 py-12 text-right text-14 font-black">
+                                            @unless ($document->type === 'delivery_note')
+                                                € {{ number_format((float) $document->total, 2, ',', '.') }}
+                                            @endunless
+                                        </td>
+                                    @endunless
                                     <td class="px-12 py-12 text-right">
                                         <div class="flex justify-end gap-6">
                                             <a href="{{ route('admin.documents.preview', $document) }}" target="_blank" class="rounded-10 border border-gray-mid px-10 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">PDF</a>

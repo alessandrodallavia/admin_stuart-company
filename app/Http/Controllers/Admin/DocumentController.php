@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Enums\DocumentType;
 use App\Models\AdminDocument;
 use App\Models\DocumentRelation;
 use App\Models\DocumentsPaymentMethod;
@@ -17,6 +18,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 use Illuminate\View\View;
+use Throwable;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use ZipArchive;
 
@@ -77,6 +79,7 @@ class DocumentController extends Controller
             'types' => AdminDocument::TYPES,
             'statuses' => AdminDocument::statusesFor($document->type),
             'directRelations' => $this->directRelations($document),
+            'relationCandidates' => $this->relationCandidates($document),
         ]);
     }
 
@@ -195,6 +198,33 @@ class DocumentController extends Controller
         return redirect()
             ->route('admin.documents.edit', $newDocument)
             ->with('status', $data['type'] === $document->type ? 'Documento copiato. Puoi modificarlo prima di emetterlo.' : 'Documento generato. Controlla i dati prima di emetterlo.');
+    }
+
+    public function storeRelation(Request $request, AdminDocument $document): RedirectResponse
+    {
+        $data = $request->validate([
+            'related_document_id' => ['required', 'integer', Rule::exists('admin_documents', 'id')],
+        ]);
+
+        $relatedDocument = AdminDocument::findOrFail((int) $data['related_document_id']);
+
+        try {
+            DocumentRelationService::link(
+                $document->currentDocumentType(),
+                $document->id,
+                $relatedDocument->currentDocumentType(),
+                $relatedDocument->id,
+                'manual'
+            );
+        } catch (Throwable $e) {
+            return back()
+                ->withInput()
+                ->withErrors(['related_document_id' => $e->getMessage()]);
+        }
+
+        $this->syncSourceDocumentLink($document, $relatedDocument);
+
+        return back()->with('status', 'Documento collegato.');
     }
 
     public function destroyRelation(AdminDocument $document, DocumentRelation $relation): RedirectResponse
@@ -358,6 +388,27 @@ class DocumentController extends Controller
             ->values();
     }
 
+    private function relationCandidates(AdminDocument $document)
+    {
+        $linkedIds = $this->directRelations($document)
+            ->pluck('document.id')
+            ->push($document->source_document_id)
+            ->merge($document->generatedDocuments->pluck('id'))
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->push($document->id)
+            ->unique()
+            ->values();
+
+        return AdminDocument::query()
+            ->whereNotIn('id', $linkedIds)
+            ->where('customer_name', $document->customer_name)
+            ->latest('document_date')
+            ->latest('id')
+            ->limit(80)
+            ->get();
+    }
+
     private function relationBelongsToDocument(AdminDocument $document, DocumentRelation $relation): bool
     {
         $type = $document->currentDocumentType();
@@ -373,6 +424,35 @@ class DocumentController extends Controller
             ->where('type', 'invoice')
             ->whereNotIn('status', ['draft', 'cancelled'])
             ->update(['status' => 'sent']);
+    }
+
+    private function syncSourceDocumentLink(AdminDocument $document, AdminDocument $relatedDocument): void
+    {
+        $ordered = collect([$document, $relatedDocument])
+            ->sortBy(fn (AdminDocument $item) => $this->documentFlowOrder($item->currentDocumentType()))
+            ->values();
+
+        $source = $ordered->first();
+        $target = $ordered->last();
+
+        if ((int) $source->id === (int) $target->id) {
+            return;
+        }
+
+        if ($this->documentFlowOrder($source->currentDocumentType()) < $this->documentFlowOrder($target->currentDocumentType())) {
+            $target->forceFill(['source_document_id' => $source->id])->save();
+        }
+    }
+
+    private function documentFlowOrder(DocumentType $type): int
+    {
+        return match ($type) {
+            DocumentType::QUOTE => 10,
+            DocumentType::PROFORMA => 20,
+            DocumentType::ORDER => 30,
+            DocumentType::DELIVERY_NOTE => 40,
+            DocumentType::INVOICE => 50,
+        };
     }
 
     private function clearSourceDocumentLink(DocumentRelation $relation): void

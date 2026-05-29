@@ -450,6 +450,39 @@ class AdminDocumentWorkflowTest extends TestCase
             ->assertDontSee('Pagamenti');
     }
 
+    public function test_delivery_note_area_does_not_show_payment_columns(): void
+    {
+        $admin = AdminUser::create([
+            'name' => 'Admin Test',
+            'email' => 'admin-ddt-index@example.test',
+            'password' => 'password',
+            'role' => 'owner',
+            'is_active' => true,
+        ]);
+
+        AdminDocument::create([
+            'type' => 'delivery_note',
+            'number' => 11,
+            'year' => 2026,
+            'code' => 'DDT-11',
+            'document_date' => '2026-05-29',
+            'status' => 'sent',
+            'payment_status' => 'unpaid',
+            'payment_conditions' => 'TP02',
+            'currency' => 'EUR',
+            'customer_name' => 'Mario Rossi',
+            'customer_country' => 'IT',
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/documents?type=delivery_note')
+            ->assertOk()
+            ->assertSee('DDT DDT-11')
+            ->assertDontSee('Pagamento')
+            ->assertDontSee('Non pagato')
+            ->assertDontSee('Totale');
+    }
+
     public function test_delivery_note_does_not_persist_amounts_or_payments(): void
     {
         $deliveryNote = app(AdminDocumentService::class)->create([
@@ -534,5 +567,64 @@ class AdminDocumentWorkflowTest extends TestCase
         $this->assertEquals(0.0, (float) $deliveryNote->fresh()->total);
         $this->assertNull($deliveryNote->fresh()->payment_method);
         $this->assertSame(0, $deliveryNote->paymentSchedules()->count());
+    }
+
+    public function test_admin_can_link_existing_documents_manually(): void
+    {
+        $admin = AdminUser::create([
+            'name' => 'Admin Test',
+            'email' => 'admin-manual-link@example.test',
+            'password' => 'password',
+            'role' => 'owner',
+            'is_active' => true,
+        ]);
+
+        $order = AdminDocument::create([
+            'type' => 'offline_order',
+            'number' => 9,
+            'year' => 2026,
+            'code' => 'OFF-9',
+            'document_date' => '2026-05-29',
+            'status' => 'confirmed',
+            'payment_status' => 'unpaid',
+            'payment_conditions' => 'TP02',
+            'currency' => 'EUR',
+            'customer_name' => 'Mario Rossi',
+            'customer_country' => 'IT',
+        ]);
+        $deliveryNote = AdminDocument::create([
+            'type' => 'delivery_note',
+            'number' => 10,
+            'year' => 2026,
+            'code' => 'DDT-10',
+            'document_date' => '2026-05-29',
+            'status' => 'sent',
+            'payment_status' => 'unpaid',
+            'payment_conditions' => 'TP02',
+            'currency' => 'EUR',
+            'customer_name' => 'Mario Rossi',
+            'customer_country' => 'IT',
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->post(route('admin.documents.relations.store', $order), [
+                'related_document_id' => $deliveryNote->id,
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('document_relations', [
+            'from_type' => 'delivery_note',
+            'from_id' => $deliveryNote->id,
+            'to_type' => 'order',
+            'to_id' => $order->id,
+            'relation_type' => 'manual',
+        ]);
+        $this->assertSame($order->id, $deliveryNote->fresh()->source_document_id);
+
+        $this->actingAs($admin, 'admin')
+            ->get(route('admin.documents.show', $order))
+            ->assertOk()
+            ->assertSee('Collega documento esistente')
+            ->assertSee('DDT DDT-10');
     }
 }

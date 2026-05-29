@@ -214,6 +214,26 @@
 
             <section class="rounded-10 border border-gray-mid bg-white p-16">
                 <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Collegamenti</p>
+                @if (auth('admin')->user()?->hasAdminPermission('documents.manage'))
+                    <form method="POST" action="{{ route('admin.documents.relations.store', $document) }}" class="mt-10 space-y-8 rounded-10 border border-gray-mid bg-gray-light p-12">
+                        @csrf
+                        <label class="block">
+                            <span class="text-11 font-extrabold uppercase tracking-normal text-gray">Collega documento esistente</span>
+                            <select name="related_document_id" class="mt-6 w-full rounded-10 border-gray-mid px-10 py-8 text-13 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                <option value="">Seleziona documento</option>
+                                @foreach ($relationCandidates as $candidate)
+                                    <option value="{{ $candidate->id }}" @selected((int) old('related_document_id') === (int) $candidate->id)>
+                                        {{ $candidate->type_label }} {{ $candidate->display_code }} · {{ optional($candidate->document_date)->format('d/m/Y') }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </label>
+                        @error('related_document_id')
+                            <p class="text-12 font-bold text-red-700">{{ $message }}</p>
+                        @enderror
+                        <button type="submit" class="w-full rounded-10 bg-black-nike px-10 py-8 text-11 font-extrabold uppercase tracking-normal text-white transition hover:bg-black">Collega</button>
+                    </form>
+                @endif
                 @php
                     $shownRelatedKeys = $directRelations
                         ->map(fn ($directRelation) => $directRelation['key'])
