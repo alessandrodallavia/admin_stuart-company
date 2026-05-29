@@ -54,25 +54,41 @@
                     </div>
                     <div class="text-left md:text-right">
                         <span class="rounded-full {{ $document->status_badge_class }} px-10 py-6 text-11 font-extrabold uppercase tracking-normal">{{ $document->status_label }}</span>
-                        <p class="mt-10 text-30 font-black">€ {{ number_format((float) $document->total, 2, ',', '.') }}</p>
+                        @unless ($document->type === 'delivery_note')
+                            <p class="mt-10 text-30 font-black">€ {{ number_format((float) $document->total, 2, ',', '.') }}</p>
+                        @endunless
                     </div>
                 </div>
             </section>
+
+            @if ($document->related_documents->isNotEmpty())
+                <section class="rounded-10 border border-gray-mid bg-white p-16">
+                    <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Filiera documenti</p>
+                    <div class="mt-10 flex flex-wrap items-center gap-8">
+                        <span class="rounded-full bg-black-nike px-10 py-6 text-11 font-extrabold uppercase tracking-normal text-white">{{ $document->type_label }} {{ $document->display_code }}</span>
+                        @foreach ($document->related_documents as $relatedDocument)
+                            <a href="{{ route('admin.documents.show', ['document' => $relatedDocument['id']]) }}" class="rounded-full {{ $relatedDocument['class'] }} px-10 py-6 text-11 font-extrabold uppercase tracking-normal underline-offset-4 hover:underline">{{ $relatedDocument['label'] }}</a>
+                        @endforeach
+                    </div>
+                </section>
+            @endif
 
             <section class="overflow-hidden rounded-10 border border-gray-mid bg-white">
                 <div class="border-b border-gray-mid px-16 py-12">
                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Righe documento</p>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full min-w-[920px] text-left">
+                    <table class="w-full {{ $document->type === 'delivery_note' ? 'min-w-[680px]' : 'min-w-[920px]' }} text-left">
                         <thead class="bg-gray-light text-11 font-extrabold uppercase tracking-normal text-gray">
                             <tr>
                                 <th class="px-12 py-10">Codice</th>
                                 <th class="px-12 py-10">Descrizione</th>
                                 <th class="px-12 py-10 text-right">Q.tà</th>
-                                <th class="px-12 py-10 text-right">Prezzo</th>
-                                <th class="px-12 py-10 text-right">IVA</th>
-                                <th class="px-12 py-10 text-right">Imponibile</th>
+                                @unless ($document->type === 'delivery_note')
+                                    <th class="px-12 py-10 text-right">Prezzo</th>
+                                    <th class="px-12 py-10 text-right">IVA</th>
+                                    <th class="px-12 py-10 text-right">Imponibile</th>
+                                @endunless
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-mid">
@@ -81,17 +97,21 @@
                                     <td class="px-12 py-12 text-14 font-semibold">{{ $item->item_code ?: '-' }}</td>
                                     <td class="whitespace-pre-line px-12 py-12 text-14 font-bold">{{ $item->description }}</td>
                                     <td class="px-12 py-12 text-right text-14 font-semibold">{{ number_format((float) $item->quantity, 2, ',', '.') }}</td>
-                                    <td class="px-12 py-12 text-right text-14 font-semibold">€ {{ rtrim(preg_replace('/0{1,2}$/', '', number_format((float) $item->unit_price, 4, ',', '.')), ',') }}</td>
-                                    <td class="px-12 py-12 text-right text-14 font-semibold">{{ number_format((float) $item->vat_rate, 2, ',', '.') }}%</td>
-                                    <td class="px-12 py-12 text-right text-14 font-black">€ {{ number_format((float) $item->line_subtotal, 2, ',', '.') }}</td>
+                                    @unless ($document->type === 'delivery_note')
+                                        <td class="px-12 py-12 text-right text-14 font-semibold">€ {{ rtrim(preg_replace('/0{1,2}$/', '', number_format((float) $item->unit_price, 4, ',', '.')), ',') }}</td>
+                                        <td class="px-12 py-12 text-right text-14 font-semibold">{{ number_format((float) $item->vat_rate, 2, ',', '.') }}%</td>
+                                        <td class="px-12 py-12 text-right text-14 font-black">€ {{ number_format((float) $item->line_subtotal, 2, ',', '.') }}</td>
+                                    @endunless
                                 </tr>
                             @endforeach
                         </tbody>
-                        <tfoot class="border-t border-gray-mid bg-gray-light text-14 font-black">
-                            <tr><td colspan="5" class="px-12 py-10 text-right">Imponibile</td><td class="px-12 py-10 text-right">€ {{ number_format((float) $document->subtotal, 2, ',', '.') }}</td></tr>
-                            <tr><td colspan="5" class="px-12 py-10 text-right">IVA</td><td class="px-12 py-10 text-right">€ {{ number_format((float) $document->vat_total, 2, ',', '.') }}</td></tr>
-                            <tr><td colspan="5" class="px-12 py-10 text-right">Totale</td><td class="px-12 py-10 text-right">€ {{ number_format((float) $document->total, 2, ',', '.') }}</td></tr>
-                        </tfoot>
+                        @unless ($document->type === 'delivery_note')
+                            <tfoot class="border-t border-gray-mid bg-gray-light text-14 font-black">
+                                <tr><td colspan="5" class="px-12 py-10 text-right">Imponibile</td><td class="px-12 py-10 text-right">€ {{ number_format((float) $document->subtotal, 2, ',', '.') }}</td></tr>
+                                <tr><td colspan="5" class="px-12 py-10 text-right">IVA</td><td class="px-12 py-10 text-right">€ {{ number_format((float) $document->vat_total, 2, ',', '.') }}</td></tr>
+                                <tr><td colspan="5" class="px-12 py-10 text-right">Totale</td><td class="px-12 py-10 text-right">€ {{ number_format((float) $document->total, 2, ',', '.') }}</td></tr>
+                            </tfoot>
+                        @endunless
                     </table>
                 </div>
             </section>
@@ -119,47 +139,62 @@
                 </div>
             </section>
 
-            <section class="rounded-10 border border-gray-mid bg-white p-16">
-                <div class="flex items-start justify-between gap-12">
-                    <div>
-                        <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Pagamenti</p>
-                        <h2 class="mt-6 text-20 font-black leading-tight">{{ $document->payment_status_label }}</h2>
+            @if ($document->shipping_name || $document->shipping_address || $document->shipping_city || $document->shipping_postal_code)
+                <section class="rounded-10 border border-gray-mid bg-white p-16">
+                    <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Destinazione</p>
+                    <h2 class="mt-6 text-20 font-black leading-tight">{{ $document->shipping_name ?: $document->customer_name }}</h2>
+                    <div class="mt-10 space-y-5 text-14 font-semibold text-gray">
+                        <p>{{ $document->shipping_phone ?: $document->customer_phone ?: 'Telefono non indicato' }}</p>
+                        <p>{{ trim(collect([$document->shipping_address, $document->shipping_street_number])->filter()->implode(' ')) ?: 'Indirizzo non indicato' }}</p>
+                        <p>{{ trim(($document->shipping_postal_code ? $document->shipping_postal_code . ' ' : '') . ($document->shipping_city ?: '') . ($document->shipping_province ? ' (' . $document->shipping_province . ')' : '')) ?: 'Città non indicata' }}</p>
+                        <p>{{ $document->shipping_country ?: $document->customer_country ?: 'IT' }}</p>
                     </div>
-                    <span class="rounded-full {{ $document->payment_status === 'paid' ? 'bg-whatsapp/10 text-whatsapp' : 'bg-gray-light text-gray' }} px-10 py-6 text-11 font-extrabold uppercase tracking-normal">{{ $document->payment_status_label }}</span>
-                </div>
-                <div class="mt-10 space-y-4 text-13 font-semibold text-gray">
-                    <p>Condizioni {{ $document->payment_conditions ?: 'TP02' }}</p>
-                    @if ($document->payment_method || $document->bank_name || $document->bank_iban)
-                        <p>{{ $document->payment_method }}{{ $document->paymentMethod?->name ? ' - '.$document->paymentMethod->name : '' }}</p>
-                        @if ($document->bank_name || $document->bank_iban)
-                            <p>{{ collect([$document->bank_name, $document->bank_iban, $document->bank_bic])->filter()->implode(' · ') }}</p>
+                </section>
+            @endif
+
+            @unless ($document->type === 'delivery_note')
+                <section class="rounded-10 border border-gray-mid bg-white p-16">
+                    <div class="flex items-start justify-between gap-12">
+                        <div>
+                            <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Pagamenti</p>
+                            <h2 class="mt-6 text-20 font-black leading-tight">{{ $document->payment_status_label }}</h2>
+                        </div>
+                        <span class="rounded-full {{ $document->payment_status === 'paid' ? 'bg-whatsapp/10 text-whatsapp' : 'bg-gray-light text-gray' }} px-10 py-6 text-11 font-extrabold uppercase tracking-normal">{{ $document->payment_status_label }}</span>
+                    </div>
+                    <div class="mt-10 space-y-4 text-13 font-semibold text-gray">
+                        <p>Condizioni {{ $document->payment_conditions ?: 'TP02' }}</p>
+                        @if ($document->payment_method || $document->bank_name || $document->bank_iban)
+                            <p>{{ $document->payment_method }}{{ $document->paymentMethod?->name ? ' - '.$document->paymentMethod->name : '' }}</p>
+                            @if ($document->bank_name || $document->bank_iban)
+                                <p>{{ collect([$document->bank_name, $document->bank_iban, $document->bank_bic])->filter()->implode(' · ') }}</p>
+                            @endif
                         @endif
-                    @endif
-                </div>
-                <div class="mt-12 space-y-10">
-                    @forelse ($document->paymentSchedules as $payment)
-                        <form method="POST" action="{{ route('admin.documents.payments.update', $document) }}" class="rounded-10 border border-gray-mid bg-gray-light p-12">
-                            @csrf
-                            @method('PATCH')
-                            <input type="hidden" name="schedule_id" value="{{ $payment->id }}">
-                            <div class="flex items-start justify-between gap-10">
-                                <div>
-                                    <p class="text-14 font-black">€ {{ number_format((float) $payment->amount, 2, ',', '.') }}</p>
-                                    <p class="mt-4 text-11 font-bold uppercase tracking-normal text-gray">{{ optional($payment->due_date)->format('d/m/Y') }} · {{ $payment->payment_method_code ?: '--' }} {{ $payment->paymentMethod?->name ?: $payment->method ?: 'Metodo non indicato' }}</p>
+                    </div>
+                    <div class="mt-12 space-y-10">
+                        @forelse ($document->paymentSchedules as $payment)
+                            <form method="POST" action="{{ route('admin.documents.payments.update', $document) }}" class="rounded-10 border border-gray-mid bg-gray-light p-12">
+                                @csrf
+                                @method('PATCH')
+                                <input type="hidden" name="schedule_id" value="{{ $payment->id }}">
+                                <div class="flex items-start justify-between gap-10">
+                                    <div>
+                                        <p class="text-14 font-black">€ {{ number_format((float) $payment->amount, 2, ',', '.') }}</p>
+                                        <p class="mt-4 text-11 font-bold uppercase tracking-normal text-gray">{{ optional($payment->due_date)->format('d/m/Y') }} · {{ $payment->payment_method_code ?: '--' }} {{ $payment->paymentMethod?->name ?: $payment->method ?: 'Metodo non indicato' }}</p>
+                                    </div>
+                                    <span class="rounded-full bg-white px-8 py-5 text-11 font-extrabold uppercase tracking-normal text-gray">{{ $payment->status_label }}</span>
                                 </div>
-                                <span class="rounded-full bg-white px-8 py-5 text-11 font-extrabold uppercase tracking-normal text-gray">{{ $payment->status_label }}</span>
-                            </div>
-                            <div class="mt-10 grid gap-8 md:grid-cols-2 xl:grid-cols-1">
-                                <input name="paid_amount" value="{{ $payment->paid_amount }}" type="number" min="0" step="0.01" class="rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
-                                <input name="paid_at" value="{{ optional($payment->paid_at)->format('Y-m-d') }}" type="date" class="rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
-                            </div>
-                            <button type="submit" class="mt-8 w-full rounded-10 bg-black-nike px-12 py-8 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-black">Aggiorna pagamento</button>
-                        </form>
-                    @empty
-                        <p class="mt-10 text-14 font-semibold text-gray">Nessuna scadenza inserita.</p>
-                    @endforelse
-                </div>
-            </section>
+                                <div class="mt-10 grid gap-8 md:grid-cols-2 xl:grid-cols-1">
+                                    <input name="paid_amount" value="{{ $payment->paid_amount }}" type="number" min="0" step="0.01" class="rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                    <input name="paid_at" value="{{ optional($payment->paid_at)->format('Y-m-d') }}" type="date" class="rounded-10 border-gray-mid px-10 py-8 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                </div>
+                                <button type="submit" class="mt-8 w-full rounded-10 bg-black-nike px-12 py-8 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-black">Aggiorna pagamento</button>
+                            </form>
+                        @empty
+                            <p class="mt-10 text-14 font-semibold text-gray">Nessuna scadenza inserita.</p>
+                        @endforelse
+                    </div>
+                </section>
+            @endunless
 
             <section class="rounded-10 border border-gray-mid bg-white p-16">
                 <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Collegamenti</p>

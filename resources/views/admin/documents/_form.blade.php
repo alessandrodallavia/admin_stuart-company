@@ -133,6 +133,47 @@
         </div>
     </section>
 
+    <section class="rounded-10 border border-gray-mid bg-white p-16">
+        <div class="mb-12">
+            <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Destinazione</p>
+            <h2 class="mt-4 text-20 font-black leading-tight">Indirizzo spedizione</h2>
+        </div>
+        <div class="grid gap-12 lg:grid-cols-3">
+            <label class="block lg:col-span-2">
+                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Destinatario</span>
+                <input name="shipping_name" value="{{ old('shipping_name', $document->shipping_name) }}" maxlength="255" placeholder="{{ $document->customer_name ?: 'Come intestazione' }}" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+            </label>
+            <label class="block">
+                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Telefono consegna</span>
+                <input name="shipping_phone" value="{{ old('shipping_phone', $document->shipping_phone) }}" maxlength="40" placeholder="{{ $document->customer_phone ?: 'Come intestazione' }}" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+            </label>
+            <label class="block lg:col-span-2">
+                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Indirizzo</span>
+                <input name="shipping_address" value="{{ old('shipping_address', $document->shipping_address) }}" maxlength="255" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+            </label>
+            <label class="block">
+                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Numero civico</span>
+                <input name="shipping_street_number" value="{{ old('shipping_street_number', $document->shipping_street_number) }}" maxlength="30" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+            </label>
+            <label class="block">
+                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Città</span>
+                <input name="shipping_city" value="{{ old('shipping_city', $document->shipping_city) }}" maxlength="120" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+            </label>
+            <label class="block">
+                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Provincia</span>
+                <input name="shipping_province" value="{{ old('shipping_province', $document->shipping_province) }}" maxlength="10" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold uppercase focus:border-bullstar focus:ring-bullstar">
+            </label>
+            <label class="block">
+                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">CAP</span>
+                <input name="shipping_postal_code" value="{{ old('shipping_postal_code', $document->shipping_postal_code) }}" maxlength="20" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+            </label>
+            <label class="block">
+                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Paese</span>
+                <input name="shipping_country" value="{{ old('shipping_country', $document->shipping_country) }}" maxlength="2" placeholder="{{ $document->customer_country ?: 'IT' }}" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold uppercase focus:border-bullstar focus:ring-bullstar">
+            </label>
+        </div>
+    </section>
+
     <section class="overflow-hidden rounded-10 border border-gray-mid bg-white">
         <div class="flex items-center justify-between gap-12 border-b border-gray-mid px-16 py-12">
             <div>
@@ -149,9 +190,9 @@
                         <th class="w-120 px-12 py-10">Codice</th>
                         <th class="px-12 py-10">Descrizione</th>
                         <th class="w-100 px-12 py-10">Q.tà</th>
-                        <th class="w-120 px-12 py-10">Prezzo</th>
-                        <th class="w-90 px-12 py-10">IVA %</th>
-                        <th class="w-120 px-12 py-10 text-right">Imponibile</th>
+                        <th data-ddt-money-field class="w-120 px-12 py-10">Prezzo</th>
+                        <th data-ddt-money-field class="w-90 px-12 py-10">IVA %</th>
+                        <th data-ddt-money-field class="w-120 px-12 py-10 text-right">Imponibile</th>
                         <th class="w-60 px-12 py-10 text-right"></th>
                     </tr>
                 </thead>
@@ -168,9 +209,9 @@
                             <td class="px-8 py-8 align-top"><input name="items[{{ $index }}][item_code]" value="{{ $item['item_code'] ?? '' }}" placeholder="Codice" maxlength="80" class="h-50 w-full rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold uppercase focus:border-bullstar focus:ring-bullstar"></td>
                             <td class="px-8 py-8 align-top"><textarea name="items[{{ $index }}][description]" placeholder="Descrizione riga" class="h-50 w-full resize-y rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold focus:border-bullstar focus:ring-bullstar">{{ $item['description'] ?? '' }}</textarea></td>
                             <td class="px-8 py-8 align-top"><input data-line-quantity name="items[{{ $index }}][quantity]" value="{{ $item['quantity'] ?? 0 }}" type="number" min="0" step="0.01" class="h-50 w-full rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
-                            <td class="px-8 py-8 align-top"><input data-line-unit-price name="items[{{ $index }}][unit_price]" value="{{ $item['unit_price'] ?? 0 }}" type="number" step="0.0001" class="h-50 w-full rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
-                            <td class="px-8 py-8 align-top"><input data-line-vat-rate name="items[{{ $index }}][vat_rate]" value="{{ $item['vat_rate'] ?? 22 }}" type="number" min="0" step="0.01" class="h-50 w-full rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
-                            <td class="px-12 py-10 text-right align-top text-14 font-black"><span class="flex h-50 items-center justify-end" data-line-total>€ 0,00</span></td>
+                            <td data-ddt-money-field class="px-8 py-8 align-top"><input data-line-unit-price name="items[{{ $index }}][unit_price]" value="{{ $item['unit_price'] ?? 0 }}" type="number" step="0.0001" class="h-50 w-full rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
+                            <td data-ddt-money-field class="px-8 py-8 align-top"><input data-line-vat-rate name="items[{{ $index }}][vat_rate]" value="{{ $item['vat_rate'] ?? 22 }}" type="number" min="0" step="0.01" class="h-50 w-full rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
+                            <td data-ddt-money-field class="px-12 py-10 text-right align-top text-14 font-black"><span class="flex h-50 items-center justify-end" data-line-total>€ 0,00</span></td>
                             <td class="px-8 py-8 align-top">
                                 <button type="button" data-remove-item-row class="flex h-50 w-32 items-center justify-center rounded-10 border border-gray-mid hover:border-black-nike" title="Elimina riga" aria-label="Elimina riga">
                                     <svg class="h-16 w-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -185,7 +226,7 @@
                         </tr>
                     @endforeach
                 </tbody>
-                <tfoot class="border-t border-gray-mid bg-gray-light text-14 font-black">
+                <tfoot data-ddt-money-field class="border-t border-gray-mid bg-gray-light text-14 font-black">
                     <tr>
                         <td colspan="7" class="px-12 py-10 text-right">Imponibile</td>
                         <td class="px-12 py-10 text-right" data-summary-subtotal>€ 0,00</td>
@@ -203,7 +244,7 @@
         </div>
     </section>
 
-    <section class="overflow-hidden rounded-10 border border-gray-mid bg-white">
+    <section data-payment-section class="overflow-hidden rounded-10 border border-gray-mid bg-white">
         <div class="flex items-center justify-between gap-12 border-b border-gray-mid px-16 py-12">
             <div>
                 <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Pagamenti</p>
@@ -283,9 +324,9 @@
                 <td class="px-8 py-8 align-top"><input name="items[${index}][item_code]" placeholder="Codice" maxlength="80" class="h-50 w-full rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold uppercase focus:border-bullstar focus:ring-bullstar"></td>
                 <td class="px-8 py-8 align-top"><textarea name="items[${index}][description]" placeholder="Descrizione riga" class="h-50 w-full resize-y rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"></textarea></td>
                 <td class="px-8 py-8 align-top"><input data-line-quantity name="items[${index}][quantity]" type="number" min="0" step="0.01" class="h-50 w-full rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
-                <td class="px-8 py-8 align-top"><input data-line-unit-price name="items[${index}][unit_price]" value="0" type="number" step="0.0001" class="h-50 w-full rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
-                <td class="px-8 py-8 align-top"><input data-line-vat-rate name="items[${index}][vat_rate]" value="22" type="number" min="0" step="0.01" class="h-50 w-full rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
-                <td class="px-12 py-10 text-right align-top text-14 font-black"><span class="flex h-50 items-center justify-end" data-line-total>€ 0,00</span></td>
+                <td data-ddt-money-field class="px-8 py-8 align-top"><input data-line-unit-price name="items[${index}][unit_price]" value="0" type="number" step="0.0001" class="h-50 w-full rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
+                <td data-ddt-money-field class="px-8 py-8 align-top"><input data-line-vat-rate name="items[${index}][vat_rate]" value="22" type="number" min="0" step="0.01" class="h-50 w-full rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
+                <td data-ddt-money-field class="px-12 py-10 text-right align-top text-14 font-black"><span class="flex h-50 items-center justify-end" data-line-total>€ 0,00</span></td>
                 <td class="px-8 py-8 align-top">
                     <button type="button" data-remove-item-row class="flex h-50 w-32 items-center justify-center rounded-10 border border-gray-mid hover:border-black-nike" title="Elimina riga" aria-label="Elimina riga">
                         <svg class="h-16 w-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -467,8 +508,19 @@
             if (fiscalTypeField) {
                 fiscalTypeField.classList.toggle('hidden', event.target.value !== 'invoice');
             }
+
+            toggleDeliveryNoteFields();
         });
         form?.querySelector('[data-fiscal-type-field]')?.classList.toggle('hidden', form?.querySelector('[data-document-type]')?.value !== 'invoice');
+        function toggleDeliveryNoteFields() {
+            const isDeliveryNote = form?.querySelector('[data-document-type]')?.value === 'delivery_note';
+
+            document.querySelectorAll('[data-ddt-money-field], [data-payment-section]').forEach((element) => {
+                element.classList.toggle('hidden', isDeliveryNote);
+            });
+        }
+
+        toggleDeliveryNoteFields();
         recalculateDocument();
     </script>
 @endpush

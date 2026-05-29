@@ -6,6 +6,7 @@ use App\Models\Lead;
 use App\Models\WhatsappConversation;
 use App\Models\WhatsappMessage;
 use App\Services\AdminNotificationService;
+use App\Services\GoogleAdsConversionService;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -21,7 +22,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
 
     public function __construct(public $data) {}
 
-    public function handle(AdminNotificationService $adminNotifications)
+    public function handle(AdminNotificationService $adminNotifications, GoogleAdsConversionService $googleAdsConversions)
     {
         $value = $this->data['entry'][0]['changes'][0]['value'] ?? null;
 
@@ -61,6 +62,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
 
             $storedMessage = $this->storeIncomingMessage($conversation, $message, $from);
             $this->deleteAutomaticFollowUpsAfterCustomerReply($conversation);
+            $this->uploadWhatsappConversion($lead, $storedMessage, $googleAdsConversions);
 
             if ($conversation->mode === 'manual') {
                 if ($storedMessage->wasRecentlyCreated) {
@@ -358,6 +360,39 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
         ])->save();
 
         return $storedMessage;
+    }
+
+    private function uploadWhatsappConversion(?Lead $lead, WhatsappMessage $message, GoogleAdsConversionService $googleAdsConversions): void
+    {
+        if (! $lead || ! $message->wasRecentlyCreated || ! $lead->gclid || $lead->google_ads_whatsapp_conversion_sent_at) {
+            return;
+        }
+
+        try {
+            $googleAdsConversions->uploadWhatsappMessageReceived(
+                gclid: $lead->gclid,
+                orderId: 'whatsapp-'.($lead->uuid ?: $lead->id),
+                conversionTime: $message->received_at ?? $message->created_at ?? now(),
+            );
+
+            $lead->forceFill([
+                'google_ads_whatsapp_conversion_sent_at' => now(),
+                'google_ads_whatsapp_conversion_status' => 'sent',
+                'google_ads_whatsapp_conversion_error' => null,
+            ])->save();
+        } catch (\Throwable $exception) {
+            Log::warning('Invio conversione WhatsApp a Google Ads fallito', [
+                'lead_id' => $lead->id,
+                'lead_uuid' => $lead->uuid,
+                'message_id' => $message->id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            $lead->forceFill([
+                'google_ads_whatsapp_conversion_status' => 'failed',
+                'google_ads_whatsapp_conversion_error' => $exception->getMessage(),
+            ])->save();
+        }
     }
 
     private function deleteAutomaticFollowUpsAfterCustomerReply(WhatsappConversation $conversation): void

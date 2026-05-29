@@ -5,8 +5,10 @@ namespace Tests\Feature;
 use App\Http\Controllers\Admin\DocumentController;
 use App\Models\AdminDocument;
 use App\Models\AdminUser;
+use App\Services\AdminDocumentPdfService;
 use App\Services\AdminDocumentService;
 use App\Services\AdminDocumentXmlService;
+use App\Services\DocumentGeneratorService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use ReflectionMethod;
 use Tests\TestCase;
@@ -285,5 +287,230 @@ class AdminDocumentWorkflowTest extends TestCase
         $method->invoke(app(DocumentController::class), collect([$invoice]));
 
         $this->assertSame('sent', $invoice->fresh()->status);
+    }
+
+    public function test_delivery_note_pdf_uses_shipping_address_and_hides_amount_columns(): void
+    {
+        $deliveryNote = AdminDocument::create([
+            'type' => 'delivery_note',
+            'number' => 3,
+            'year' => 2026,
+            'code' => 'DDT-3',
+            'document_date' => '2026-05-29',
+            'status' => 'sent',
+            'payment_status' => 'unpaid',
+            'payment_conditions' => 'TP02',
+            'currency' => 'EUR',
+            'customer_name' => 'Mario Rossi',
+            'customer_country' => 'IT',
+            'shipping_name' => 'Club Tennis Padova',
+            'shipping_address' => 'Via Spedizione',
+            'shipping_street_number' => '10',
+            'shipping_city' => 'Padova',
+            'shipping_province' => 'PD',
+            'shipping_postal_code' => '35100',
+            'shipping_country' => 'IT',
+            'subtotal' => 100,
+            'vat_total' => 22,
+            'total' => 122,
+        ]);
+
+        $service = app(AdminDocumentPdfService::class);
+        $columnsMethod = new ReflectionMethod(AdminDocumentPdfService::class, 'columns');
+        $columnsMethod->setAccessible(true);
+        $headerMethod = new ReflectionMethod(AdminDocumentPdfService::class, 'headerData');
+        $headerMethod->setAccessible(true);
+
+        $columns = collect($columnsMethod->invoke($service, $deliveryNote))->pluck(0)->all();
+        $header = $headerMethod->invoke($service, $deliveryNote);
+
+        $this->assertSame(['Codice', 'Descrizione', 'U.M.', 'Q.ta', 'C.I.'], $columns);
+        $this->assertNotContains('Prezzo', $columns);
+        $this->assertNotContains('Importo', $columns);
+        $this->assertContains('CLUB TENNIS PADOVA', $header['shipping_address']);
+        $this->assertContains('VIA SPEDIZIONE 10', $header['shipping_address']);
+        $this->assertContains('35100 PADOVA (PD)', $header['shipping_address']);
+    }
+
+    public function test_generated_documents_show_the_document_chain(): void
+    {
+        $admin = AdminUser::create([
+            'name' => 'Admin Test',
+            'email' => 'admin-links@example.test',
+            'password' => 'password',
+            'role' => 'owner',
+            'is_active' => true,
+        ]);
+
+        $order = AdminDocument::create([
+            'type' => 'offline_order',
+            'number' => 4,
+            'year' => 2026,
+            'code' => 'OFF-4',
+            'document_date' => '2026-05-29',
+            'status' => 'confirmed',
+            'payment_status' => 'unpaid',
+            'payment_conditions' => 'TP02',
+            'currency' => 'EUR',
+            'customer_name' => 'Mario Rossi',
+            'customer_country' => 'IT',
+            'subtotal' => 100,
+            'vat_total' => 22,
+            'total' => 122,
+        ]);
+        $order->items()->create([
+            'position' => 1,
+            'description' => 'Scarpe test',
+            'quantity' => 1,
+            'unit_price' => 100,
+            'vat_rate' => 22,
+            'line_subtotal' => 100,
+            'line_vat' => 22,
+            'line_total' => 122,
+        ]);
+
+        $deliveryNote = app(DocumentGeneratorService::class)->fromOrderToDeliveryNote($order->id);
+
+        $this->actingAs($admin, 'admin')
+            ->get(route('admin.documents.show', $deliveryNote))
+            ->assertOk()
+            ->assertSee('Filiera documenti')
+            ->assertSee('Ordine offline OFF-4')
+            ->assertSee('DDT BOZZA');
+    }
+
+    public function test_delivery_note_detail_does_not_show_prices_or_payments(): void
+    {
+        $admin = AdminUser::create([
+            'name' => 'Admin Test',
+            'email' => 'admin-ddt-detail@example.test',
+            'password' => 'password',
+            'role' => 'owner',
+            'is_active' => true,
+        ]);
+
+        $deliveryNote = AdminDocument::create([
+            'type' => 'delivery_note',
+            'number' => 5,
+            'year' => 2026,
+            'code' => 'DDT-5',
+            'document_date' => '2026-05-29',
+            'status' => 'sent',
+            'payment_status' => 'unpaid',
+            'payment_conditions' => 'TP02',
+            'currency' => 'EUR',
+            'customer_name' => 'Mario Rossi',
+            'customer_country' => 'IT',
+            'subtotal' => 100,
+            'vat_total' => 22,
+            'total' => 122,
+        ]);
+        $deliveryNote->items()->create([
+            'position' => 1,
+            'description' => 'Scarpe test',
+            'quantity' => 1,
+            'unit_price' => 100,
+            'vat_rate' => 22,
+            'line_subtotal' => 100,
+            'line_vat' => 22,
+            'line_total' => 122,
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->get(route('admin.documents.show', $deliveryNote))
+            ->assertOk()
+            ->assertSee('Scarpe test')
+            ->assertDontSee('Prezzo')
+            ->assertDontSee('Imponibile')
+            ->assertDontSee('Totale')
+            ->assertDontSee('€ 100,00')
+            ->assertDontSee('€ 122,00')
+            ->assertDontSee('Pagamenti');
+    }
+
+    public function test_delivery_note_does_not_persist_amounts_or_payments(): void
+    {
+        $deliveryNote = app(AdminDocumentService::class)->create([
+            'type' => 'delivery_note',
+            'document_date' => '2026-05-29',
+            'status' => 'sent',
+            'payment_conditions' => 'TP02',
+            'currency' => 'EUR',
+            'customer_name' => 'Mario Rossi',
+            'customer_country' => 'IT',
+            'items' => [[
+                'description' => 'Scarpe test',
+                'quantity' => 2,
+                'unit_price' => 100,
+                'vat_rate' => 22,
+            ]],
+            'payments' => [[
+                'due_date' => '2026-05-29',
+                'payment_method_code' => 'MP05',
+                'amount' => 244,
+                'paid_amount' => 0,
+            ]],
+        ]);
+
+        $item = $deliveryNote->items()->first();
+
+        $this->assertEquals(0.0, (float) $item->unit_price);
+        $this->assertEquals(0.0, (float) $item->vat_rate);
+        $this->assertEquals(0.0, (float) $item->line_subtotal);
+        $this->assertEquals(0.0, (float) $item->line_vat);
+        $this->assertEquals(0.0, (float) $item->line_total);
+        $this->assertEquals(0.0, (float) $deliveryNote->fresh()->subtotal);
+        $this->assertEquals(0.0, (float) $deliveryNote->fresh()->vat_total);
+        $this->assertEquals(0.0, (float) $deliveryNote->fresh()->total);
+        $this->assertNull($deliveryNote->fresh()->payment_method);
+        $this->assertSame(0, $deliveryNote->paymentSchedules()->count());
+    }
+
+    public function test_delivery_note_generated_from_order_does_not_copy_amounts_or_payments(): void
+    {
+        $order = AdminDocument::create([
+            'type' => 'offline_order',
+            'number' => 6,
+            'year' => 2026,
+            'code' => 'OFF-6',
+            'document_date' => '2026-05-29',
+            'status' => 'confirmed',
+            'payment_status' => 'unpaid',
+            'payment_conditions' => 'TP02',
+            'payment_method' => 'MP05',
+            'currency' => 'EUR',
+            'customer_name' => 'Mario Rossi',
+            'customer_country' => 'IT',
+            'subtotal' => 100,
+            'vat_total' => 22,
+            'total' => 122,
+        ]);
+        $order->items()->create([
+            'position' => 1,
+            'description' => 'Scarpe test',
+            'quantity' => 1,
+            'unit_price' => 100,
+            'vat_rate' => 22,
+            'line_subtotal' => 100,
+            'line_vat' => 22,
+            'line_total' => 122,
+        ]);
+        $order->paymentSchedules()->create([
+            'due_date' => '2026-05-29',
+            'method' => 'Bonifico bancario',
+            'payment_method_code' => 'MP05',
+            'amount' => 122,
+            'paid_amount' => 0,
+            'status' => 'unpaid',
+        ]);
+
+        $deliveryNote = app(DocumentGeneratorService::class)->fromOrderToDeliveryNote($order->id);
+        $item = $deliveryNote->items()->first();
+
+        $this->assertEquals(0.0, (float) $item->unit_price);
+        $this->assertEquals(0.0, (float) $item->line_total);
+        $this->assertEquals(0.0, (float) $deliveryNote->fresh()->total);
+        $this->assertNull($deliveryNote->fresh()->payment_method);
+        $this->assertSame(0, $deliveryNote->paymentSchedules()->count());
     }
 }

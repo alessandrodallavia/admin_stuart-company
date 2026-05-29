@@ -68,6 +68,18 @@ return [
         'cancel_url' => env('STRIPE_CANCEL_URL', 'https://stuart-company.com/pagamento/annullato'),
     ],
 
+    'google_ads' => [
+        'developer_token' => env('GOOGLE_ADS_DEVELOPER_TOKEN'),
+        'client_id' => env('GOOGLE_ADS_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_ADS_CLIENT_SECRET'),
+        'refresh_token' => env('GOOGLE_ADS_REFRESH_TOKEN'),
+        'customer_id' => env('GOOGLE_ADS_CUSTOMER_ID'),
+        'login_customer_id' => env('GOOGLE_ADS_LOGIN_CUSTOMER_ID'),
+        'whatsapp_conversion_action_id' => env('GOOGLE_ADS_WHATSAPP_CONVERSION_ACTION_ID'),
+        'whatsapp_conversion_value' => (float) env('GOOGLE_ADS_WHATSAPP_CONVERSION_VALUE', 1),
+        'currency' => env('GOOGLE_ADS_CURRENCY', 'EUR'),
+    ],
+
     'dropbox' => [
         'client_id' => env('DROPBOX_APP_KEY'),
         'client_secret' => env('DROPBOX_APP_SECRET'),

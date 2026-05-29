@@ -132,15 +132,15 @@ class AdminShipmentService
         return [
             'admin_document_id' => $document->id,
             'reference' => $document->display_code,
-            'recipient_name' => $document->customer_name,
+            'recipient_name' => $document->shipping_name ?: $document->customer_name,
             'recipient_email' => $document->customer_email,
-            'recipient_phone' => $document->customer_phone,
-            'recipient_address' => $document->customer_address,
-            'recipient_street_number' => $document->customer_street_number,
-            'recipient_city' => $document->customer_city,
-            'recipient_province' => $document->customer_province,
-            'recipient_postal_code' => $document->customer_postal_code,
-            'recipient_country' => $document->customer_country ?: 'IT',
+            'recipient_phone' => $document->shipping_phone ?: $document->customer_phone,
+            'recipient_address' => $document->shipping_address ?: $document->customer_address,
+            'recipient_street_number' => $document->shipping_street_number ?: $document->customer_street_number,
+            'recipient_city' => $document->shipping_city ?: $document->customer_city,
+            'recipient_province' => $document->shipping_province ?: $document->customer_province,
+            'recipient_postal_code' => $document->shipping_postal_code ?: $document->customer_postal_code,
+            'recipient_country' => $document->shipping_country ?: $document->customer_country ?: 'IT',
         ];
     }
 

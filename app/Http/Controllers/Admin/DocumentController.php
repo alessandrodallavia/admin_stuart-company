@@ -260,6 +260,14 @@ class DocumentController extends Controller
             'customer_province' => ['nullable', 'string', 'max:10'],
             'customer_postal_code' => ['nullable', 'string', 'max:20'],
             'customer_country' => ['required', 'string', 'size:2'],
+            'shipping_name' => ['nullable', 'string', 'max:255'],
+            'shipping_phone' => ['nullable', 'string', 'max:40'],
+            'shipping_address' => ['nullable', 'string', 'max:255'],
+            'shipping_street_number' => ['nullable', 'string', 'max:30'],
+            'shipping_city' => ['nullable', 'string', 'max:120'],
+            'shipping_province' => ['nullable', 'string', 'max:10'],
+            'shipping_postal_code' => ['nullable', 'string', 'max:20'],
+            'shipping_country' => ['nullable', 'string', 'size:2'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'payment_conditions' => ['required', Rule::in(['TP00', 'TP01', 'TP02'])],
             'items' => ['required', 'array', 'min:1'],
@@ -305,6 +313,8 @@ class DocumentController extends Controller
         $data['customer_recipient_code'] = Str::upper(trim((string) ($data['customer_recipient_code'] ?? ''))) ?: null;
         $data['customer_province'] = Str::upper(trim((string) ($data['customer_province'] ?? ''))) ?: null;
         $data['customer_country'] = Str::upper($data['customer_country']);
+        $data['shipping_province'] = Str::upper(trim((string) ($data['shipping_province'] ?? ''))) ?: null;
+        $data['shipping_country'] = Str::upper(trim((string) ($data['shipping_country'] ?? ''))) ?: null;
 
         return $data;
     }

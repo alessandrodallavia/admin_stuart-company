@@ -13,16 +13,7 @@ class AdminDocumentPdfService
     {
         $document->loadMissing(['items', 'paymentSchedules.paymentMethod', 'paymentMethod']);
 
-        $columns = [
-            ['Codice', 30.50],
-            ['Descrizione', 79.00],
-            ['U.M.', 7.00],
-            ['Q.ta', 21.50],
-            ['Prezzo', 20.50],
-            ['Sc.', 10.00],
-            ['Importo', 18.5],
-            ['C.I.', 7.00],
-        ];
+        $columns = $this->columns($document);
 
         $pdf = new TcpdfDocumentoService;
         $pdf->setDocumentType($document->type === 'delivery_note', $document->type === 'quote');
@@ -64,7 +55,7 @@ class AdminDocumentPdfService
                 $document->customer_recipient_code ? 'Cod.Dest. '.Str::upper($document->customer_recipient_code) : '',
                 $document->customer_pec ? 'PEC '.$document->customer_pec : '',
             ])),
-            'shipping_address' => [],
+            'shipping_address' => $this->shippingAddress($document),
             'tipo_documento' => $this->documentTitle($document),
             'numero_documento' => $document->display_code,
             'data_documento' => $document->document_date->format('d/m/Y'),
@@ -80,8 +71,8 @@ class AdminDocumentPdfService
             'banca_appoggio' => $this->bankName($document),
             'annotazioni' => '',
             'invio_fattura' => $document->customer_email ?: '',
-            'reference_name' => '',
-            'reference_phone' => '',
+            'reference_name' => $document->shipping_name ?: $document->customer_name,
+            'reference_phone' => $document->shipping_phone ?: $document->customer_phone ?: '',
         ];
     }
 
@@ -114,16 +105,9 @@ class AdminDocumentPdfService
         $pdf->isLastPage = false;
 
         foreach ($products as $product) {
-            $values = [
-                $product['codice'],
-                $product['descrizione'],
-                $product['um'],
-                $product['qta'],
-                $product['prezzo'],
-                $product['sconto'],
-                $product['importo'],
-                $product['ci'],
-            ];
+            $values = collect($columns)
+                ->map(fn ($column) => $product[$column[2]] ?? '')
+                ->all();
 
             $rowHeight = 0;
             foreach ($columns as $index => $column) {
@@ -164,7 +148,13 @@ class AdminDocumentPdfService
 
     private function productRows(AdminDocument $document): array
     {
-        return $document->items->map(fn ($item) => [
+        return $document->items->map(fn ($item) => $document->type === 'delivery_note' ? [
+            'codice' => $item->item_code ?: '',
+            'descrizione' => $item->description,
+            'um' => 'NR',
+            'qta' => number_format((float) $item->quantity, 2, ',', '.'),
+            'ci' => number_format((float) $item->vat_rate, 0),
+        ] : [
             'codice' => $item->item_code ?: '',
             'descrizione' => $item->description,
             'um' => 'NR',
@@ -174,6 +164,60 @@ class AdminDocumentPdfService
             'importo' => number_format((float) $item->line_subtotal, 2, ',', '.'),
             'ci' => number_format((float) $item->vat_rate, 0),
         ])->all();
+    }
+
+    private function columns(AdminDocument $document): array
+    {
+        if ($document->type === 'delivery_note') {
+            return [
+                ['Codice', 35.00, 'codice'],
+                ['Descrizione', 116.00, 'descrizione'],
+                ['U.M.', 12.00, 'um'],
+                ['Q.ta', 24.00, 'qta'],
+                ['C.I.', 7.00, 'ci'],
+            ];
+        }
+
+        return [
+            ['Codice', 30.50, 'codice'],
+            ['Descrizione', 79.00, 'descrizione'],
+            ['U.M.', 7.00, 'um'],
+            ['Q.ta', 21.50, 'qta'],
+            ['Prezzo', 20.50, 'prezzo'],
+            ['Sc.', 10.00, 'sconto'],
+            ['Importo', 18.5, 'importo'],
+            ['C.I.', 7.00, 'ci'],
+        ];
+    }
+
+    private function shippingAddress(AdminDocument $document): array
+    {
+        if (! $this->hasShippingAddress($document)) {
+            return [];
+        }
+
+        return array_values(array_filter([
+            Str::upper($document->shipping_name ?: $document->customer_name),
+            Str::upper($this->shippingAddressLine($document)),
+            Str::upper(trim(($document->shipping_postal_code ? $document->shipping_postal_code.' ' : '').($document->shipping_city ?: '').($document->shipping_province ? ' ('.$document->shipping_province.')' : ''))),
+            Str::upper($document->shipping_country ?: ''),
+            $document->shipping_phone ? 'TEL '.$document->shipping_phone : '',
+        ]));
+    }
+
+    private function hasShippingAddress(AdminDocument $document): bool
+    {
+        return filled($document->shipping_address)
+            || filled($document->shipping_city)
+            || filled($document->shipping_postal_code)
+            || filled($document->shipping_name);
+    }
+
+    private function shippingAddressLine(AdminDocument $document): string
+    {
+        return trim(collect([$document->shipping_address, $document->shipping_street_number])
+            ->filter(fn ($value) => filled($value))
+            ->implode(' '));
     }
 
     private function vatSummaries(AdminDocument $document): Collection

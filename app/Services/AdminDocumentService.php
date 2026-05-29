@@ -56,6 +56,14 @@ class AdminDocumentService
                     'customer_province',
                     'customer_postal_code',
                     'customer_country',
+                    'shipping_name',
+                    'shipping_phone',
+                    'shipping_address',
+                    'shipping_street_number',
+                    'shipping_city',
+                    'shipping_province',
+                    'shipping_postal_code',
+                    'shipping_country',
                     'currency',
                     'notes',
                     'subtotal',
@@ -76,19 +84,33 @@ class AdminDocumentService
                 'status' => 'draft',
                 'payment_status' => $preservePaymentProgress ? $source->payment_status : 'unpaid',
                 'source_document_id' => $type === $source->type ? null : $source->id,
+                ...($type === 'delivery_note' ? [
+                    'payment_method' => null,
+                    'bank_name' => null,
+                    'bank_iban' => null,
+                    'bank_bic' => null,
+                ] : []),
             ]);
 
             foreach ($source->items as $item) {
-                $document->items()->create(Arr::except($item->toArray(), ['id', 'admin_document_id', 'created_at', 'updated_at']));
+                $attributes = Arr::except($item->toArray(), ['id', 'admin_document_id', 'created_at', 'updated_at']);
+
+                if ($type === 'delivery_note') {
+                    $attributes = $this->withoutAmounts($attributes);
+                }
+
+                $document->items()->create($attributes);
             }
 
-            foreach ($source->paymentSchedules as $payment) {
-                $document->paymentSchedules()->create([
-                    ...Arr::except($payment->toArray(), ['id', 'admin_document_id', 'created_at', 'updated_at', 'paid_amount', 'paid_at', 'status']),
-                    'paid_amount' => $preservePaymentProgress ? $payment->paid_amount : 0,
-                    'paid_at' => $preservePaymentProgress ? $payment->paid_at : null,
-                    'status' => $preservePaymentProgress ? $payment->status : 'unpaid',
-                ]);
+            if ($type !== 'delivery_note') {
+                foreach ($source->paymentSchedules as $payment) {
+                    $document->paymentSchedules()->create([
+                        ...Arr::except($payment->toArray(), ['id', 'admin_document_id', 'created_at', 'updated_at', 'paid_amount', 'paid_at', 'status']),
+                        'paid_amount' => $preservePaymentProgress ? $payment->paid_amount : 0,
+                        'paid_at' => $preservePaymentProgress ? $payment->paid_at : null,
+                        'status' => $preservePaymentProgress ? $payment->status : 'unpaid',
+                    ]);
+                }
             }
 
             $document->refreshTotals();
@@ -277,6 +299,14 @@ class AdminDocumentService
             'customer_province',
             'customer_postal_code',
             'customer_country',
+            'shipping_name',
+            'shipping_phone',
+            'shipping_address',
+            'shipping_street_number',
+            'shipping_city',
+            'shipping_province',
+            'shipping_postal_code',
+            'shipping_country',
             'notes',
             'payment_conditions',
         ]) + [
@@ -296,10 +326,10 @@ class AdminDocumentService
             }
 
             $quantity = blank($item['quantity'] ?? null) ? 0 : (float) $item['quantity'];
-            $unitPrice = (float) ($item['unit_price'] ?? 0);
-            $vatRate = (float) ($item['vat_rate'] ?? 22);
-            $lineSubtotal = round($quantity * $unitPrice, 2);
-            $lineVat = round($lineSubtotal * $vatRate / 100, 2);
+            $unitPrice = $document->type === 'delivery_note' ? 0 : (float) ($item['unit_price'] ?? 0);
+            $vatRate = $document->type === 'delivery_note' ? 0 : (float) ($item['vat_rate'] ?? 22);
+            $lineSubtotal = $document->type === 'delivery_note' ? 0 : round($quantity * $unitPrice, 2);
+            $lineVat = $document->type === 'delivery_note' ? 0 : round($lineSubtotal * $vatRate / 100, 2);
 
             $document->items()->create([
                 'position' => $index + 1,
@@ -318,6 +348,10 @@ class AdminDocumentService
     private function syncPayments(AdminDocument $document, array $payments): void
     {
         $document->paymentSchedules()->delete();
+
+        if ($document->type === 'delivery_note') {
+            return;
+        }
 
         foreach ($payments as $payment) {
             if (blank($payment['due_date'] ?? null) || ! isset($payment['amount'])) {
@@ -341,6 +375,15 @@ class AdminDocumentService
 
     private function paymentSnapshot(array $data): array
     {
+        if (($data['type'] ?? null) === 'delivery_note') {
+            return [
+                'payment_method' => null,
+                'bank_name' => null,
+                'bank_iban' => null,
+                'bank_bic' => null,
+            ];
+        }
+
         $methodCode = collect($data['payments'] ?? [])
             ->pluck('payment_method_code')
             ->filter()
@@ -424,5 +467,17 @@ class AdminDocumentService
             $prefix,
             $number ?: $this->nextNumber($type, $year)
         );
+    }
+
+    private function withoutAmounts(array $attributes): array
+    {
+        return [
+            ...$attributes,
+            'unit_price' => 0,
+            'vat_rate' => 0,
+            'line_subtotal' => 0,
+            'line_vat' => 0,
+            'line_total' => 0,
+        ];
     }
 }
