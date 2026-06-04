@@ -64,8 +64,12 @@ return [
         'public_key' => env('STRIPE_PUBLIC_KEY'),
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
         'currency' => env('STRIPE_CURRENCY', 'eur'),
-        'success_url' => env('STRIPE_SUCCESS_URL', 'https://stuart-company.com/pagamento/completato'),
-        'cancel_url' => env('STRIPE_CANCEL_URL', 'https://stuart-company.com/pagamento/annullato'),
+        'success_url' => env('STRIPE_SUCCESS_URL', rtrim(env('PUBLIC_SITE_URL', 'https://stuart-company.com'), '/') . '/pagamento/completato'),
+        'cancel_url' => env('STRIPE_CANCEL_URL', rtrim(env('PUBLIC_SITE_URL', 'https://stuart-company.com'), '/') . '/pagamento/annullato'),
+    ],
+
+    'public_site' => [
+        'url' => rtrim(env('PUBLIC_SITE_URL', 'https://stuart-company.com'), '/'),
     ],
 
     'google_ads' => [

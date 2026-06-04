@@ -43,7 +43,9 @@ Route::name('admin.')->group(function () {
 
         Route::middleware('admin.permission:leads.manage')->group(function () {
             Route::patch('/leads/{lead}', [AdminLeadController::class, 'update'])->name('leads.update');
+            Route::post('/leads/{lead}/quote-pdf/whatsapp', [AdminLeadController::class, 'sendQuotePdfWhatsapp'])->name('leads.quote-pdf.whatsapp');
             Route::post('/leads/{lead}/stripe-payment-link', [AdminLeadController::class, 'createStripePaymentLink'])->name('leads.stripe-payment-link');
+            Route::post('/leads/{lead}/stripe-payment-link/whatsapp', [AdminLeadController::class, 'sendStripePaymentLinkWhatsapp'])->name('leads.stripe-payment-link.whatsapp');
         });
 
         Route::middleware('admin.permission:documents.view')->group(function () {

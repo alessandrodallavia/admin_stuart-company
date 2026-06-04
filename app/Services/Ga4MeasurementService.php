@@ -12,6 +12,43 @@ class Ga4MeasurementService
 {
     public function sendQuoteSent(Lead $lead): void
     {
+        $this->sendLeadEvent($lead, 'quote_sent', [
+            'value' => (float) ($lead->quote_amount ?: 0),
+            'quote_amount' => (float) ($lead->quote_amount ?: 0),
+        ]);
+    }
+
+    public function sendPaymentLinkSent(Lead $lead): void
+    {
+        $this->sendLeadEvent($lead, 'payment_link_sent', [
+            'value' => (float) ($lead->payment_amount ?: $lead->quote_amount ?: 0),
+            'payment_amount' => (float) ($lead->payment_amount ?: 0),
+            'quote_amount' => (float) ($lead->quote_amount ?: 0),
+        ]);
+    }
+
+    public function sendPurchase(Lead $lead): void
+    {
+        $value = (float) ($lead->payment_amount ?: $lead->quote_amount ?: 0);
+
+        $this->sendLeadEvent($lead, 'purchase', [
+            'transaction_id' => (string) ($lead->quote_number ?: "lead-{$lead->id}"),
+            'value' => $value,
+            'payment_amount' => $value,
+            'quote_amount' => (float) ($lead->quote_amount ?: 0),
+            'items' => [
+                [
+                    'item_id' => (string) ($lead->quote_number ?: "lead-{$lead->id}"),
+                    'item_name' => 'Ordine personalizzato',
+                    'price' => $value,
+                    'quantity' => 1,
+                ],
+            ],
+        ]);
+    }
+
+    private function sendLeadEvent(Lead $lead, string $eventName, array $extraParams = []): void
+    {
         $measurementId = (string) config('services.ga4.measurement_id');
         $apiSecret = (string) config('services.ga4.api_secret');
 
@@ -22,13 +59,11 @@ class Ga4MeasurementService
         $clientId = $lead->ga_client_id ?: $this->fallbackClientId($lead);
         $params = [
             'currency' => 'EUR',
-            'value' => (float) ($lead->quote_amount ?: 0),
             'lead_id' => (string) $lead->id,
             'lead_uuid' => (string) $lead->uuid,
             'quote_number' => (string) $lead->quote_number,
-            'quote_amount' => (float) ($lead->quote_amount ?: 0),
             'engagement_time_msec' => 1,
-        ];
+        ] + $extraParams;
 
         if ($lead->ga_session_id) {
             $params['session_id'] = (int) $lead->ga_session_id;
@@ -55,7 +90,7 @@ class Ga4MeasurementService
             'timestamp_micros' => now()->getTimestampMs() * 1000,
             'events' => [
                 [
-                    'name' => 'quote_sent',
+                    'name' => $eventName,
                     'params' => $params,
                 ],
             ],
@@ -74,7 +109,7 @@ class Ga4MeasurementService
         }
 
         if (! $response->successful()) {
-            Log::warning('Invio quote_sent a GA4 fallito', [
+            Log::warning("Invio {$eventName} a GA4 fallito", [
                 'lead_id' => $lead->id,
                 'status' => $response->status(),
                 'body' => $response->body(),

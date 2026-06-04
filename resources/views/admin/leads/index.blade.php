@@ -139,7 +139,7 @@
                                             </div>
                                         </td>
                                         <td class="px-12 py-12">
-                                            <p class="text-12 font-bold text-black-nike">{{ optional($lead->created_at)->format('d/m/Y H:i') }}</p>
+                                            <p class="text-12 font-bold text-black-nike">{{ optional($lead->created_at)?->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</p>
                                             <p class="mt-4 max-w-[170px] truncate text-11 font-semibold text-gray">{{ $lead->landing_page ?: $lead->entry_page ?: 'Pagina non salvata' }}</p>
                                         </td>
                                         <td class="px-12 py-12 text-right">
@@ -259,8 +259,14 @@
                                         <a href="{{ route('admin.leads.quote-pdf', $selectedLead) }}" target="_blank" class="mt-8 block truncate text-12 font-bold text-bullstar underline-offset-4 hover:underline">
                                             {{ $selectedLead->quote_pdf_filename ?: 'Apri PDF preventivo' }}
                                         </a>
+                                        <form method="POST" action="{{ route('admin.leads.quote-pdf.whatsapp', $selectedLead) }}" class="mt-8">
+                                            @csrf
+                                            <button type="submit" class="w-full rounded-10 border border-whatsapp bg-whatsapp px-10 py-8 text-11 font-extrabold uppercase leading-none tracking-normal text-white transition hover:bg-whatsapp/90">
+                                                Invia PDF su WhatsApp
+                                            </button>
+                                        </form>
                                         @if ($selectedLead->quote_pdf_uploaded_at)
-                                            <p class="mt-4 text-11 font-semibold text-gray">Caricato il {{ $selectedLead->quote_pdf_uploaded_at->format('d/m/Y H:i') }}</p>
+                                            <p class="mt-4 text-11 font-semibold text-gray">Caricato il {{ $selectedLead->quote_pdf_uploaded_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</p>
                                         @endif
                                     @else
                                         <p class="mt-8 text-12 font-semibold text-gray">PDF non caricato</p>
@@ -271,6 +277,12 @@
                                     <p class="mt-8 text-18 font-black">{{ $selectedLead->payment_amount ? '€ ' . number_format((float) $selectedLead->payment_amount, 2, ',', '.') : '-' }}</p>
                                     @if ($selectedLead->payment_link)
                                         <a href="{{ $selectedLead->payment_link }}" target="_blank" class="mt-8 block truncate text-12 font-bold text-bullstar underline-offset-4 hover:underline">Apri link</a>
+                                        <form method="POST" action="{{ route('admin.leads.stripe-payment-link.whatsapp', $selectedLead) }}" class="mt-8">
+                                            @csrf
+                                            <button type="submit" class="w-full rounded-10 border border-whatsapp bg-whatsapp px-10 py-8 text-11 font-extrabold uppercase leading-none tracking-normal text-white transition hover:bg-whatsapp/90">
+                                                Invia su WhatsApp
+                                            </button>
+                                        </form>
                                     @endif
                                     <form method="POST" action="{{ route('admin.leads.stripe-payment-link', $selectedLead) }}" class="mt-10 space-y-8">
                                         @csrf
