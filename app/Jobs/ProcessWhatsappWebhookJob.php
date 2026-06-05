@@ -64,6 +64,14 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
             $this->deleteAutomaticFollowUpsAfterCustomerReply($conversation);
             $this->uploadWhatsappConversion($lead, $storedMessage, $googleAdsConversions);
 
+            if ($this->isPaymentChoiceRequest($message)) {
+                if ($storedMessage->wasRecentlyCreated) {
+                    $this->handlePaymentChoiceRequest($message, $from, $lead, $conversation, $adminNotifications);
+                }
+
+                continue;
+            }
+
             if ($conversation->mode === 'manual') {
                 if ($storedMessage->wasRecentlyCreated) {
                     $adminNotifications->notifyWhatsappMessage($conversation->fresh(['lead']), $storedMessage);
@@ -74,6 +82,10 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
 
             if ($type === 'button') {
                 $this->handleButton($message, $from, $conversation);
+            }
+
+            if ($type === 'interactive') {
+                $this->handleInteractive($message, $from, $conversation);
             }
 
             if ($type === 'text') {
@@ -151,6 +163,90 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
         }
     }
 
+    private function handleInteractive($message, $from, WhatsappConversation $conversation)
+    {
+        $replyId = $message['interactive']['button_reply']['id']
+            ?? $message['interactive']['list_reply']['id']
+            ?? null;
+
+        if (in_array($replyId, ['pay_now_link_request', 'bank_transfer_proforma_request'], true)) {
+            return;
+        }
+    }
+
+    private function isPaymentChoiceRequest(array $message): bool
+    {
+        return ($message['type'] ?? null) === 'interactive'
+            && in_array($message['interactive']['button_reply']['id'] ?? null, [
+                'pay_now_link_request',
+                'bank_transfer_proforma_request',
+            ], true);
+    }
+
+    private function handlePaymentChoiceRequest(array $message, string $from, ?Lead $lead, WhatsappConversation $conversation, AdminNotificationService $adminNotifications): void
+    {
+        $replyId = $message['interactive']['button_reply']['id'] ?? null;
+
+        if ($replyId === 'pay_now_link_request') {
+            $this->handlePayNowLinkRequest($from, $lead, $conversation);
+
+            return;
+        }
+
+        if ($replyId === 'bank_transfer_proforma_request') {
+            $this->handleBankTransferProformaRequest($from, $lead, $conversation, $adminNotifications);
+        }
+    }
+
+    private function handlePayNowLinkRequest(string $from, ?Lead $lead, WhatsappConversation $conversation): void
+    {
+        if (! $lead || ! $lead->payment_link) {
+            $this->sendText($from, 'Ti rispondo a breve con il link corretto per procedere al pagamento.', $conversation);
+            $this->requestHumanHandoff($conversation, 'Paga ora richiesto, ma link Stripe mancante o lead non collegato.');
+
+            return;
+        }
+
+        $amount = $lead->payment_amount ? number_format((float) $lead->payment_amount, 2, ',', '.') : null;
+        $body = $amount
+            ? "Clicca sul pulsante \"Paga ora\" per procedere al pagamento.\n\nImporto: € {$amount}"
+            : 'Clicca sul pulsante "Paga ora" per procedere al pagamento.';
+
+        $this->sendCtaUrl($from, $body, 'Paga ora', $lead->payment_link, $conversation);
+    }
+
+    private function handleBankTransferProformaRequest(string $from, ?Lead $lead, WhatsappConversation $conversation, AdminNotificationService $adminNotifications): void
+    {
+        if (! $lead) {
+            $this->sendText($from, 'Perfetto, ti rispondo a breve con la proforma e i dati per il bonifico bancario.', $conversation);
+            $this->requestHumanHandoff($conversation, 'Bonifico bancario richiesto, ma nessun lead collegato alla conversazione.');
+
+            return;
+        }
+
+        if ($lead->phone !== $from) {
+            $lead->phone = $from;
+        }
+
+        if (! $conversation->lead_id) {
+            $conversation->forceFill(['lead_id' => $lead->id])->save();
+        }
+
+        if (! $lead->whatsapp_conversation_id) {
+            $lead->whatsapp_conversation_id = $conversation->id;
+        }
+
+        if ($lead->status !== 'order_completed') {
+            $lead->status = 'proforma_pending';
+        }
+
+        $lead->save();
+
+        $this->sendText($from, 'Perfetto, ti invio subito la proforma con tutti i dati bancari per il bonifico.', $conversation);
+        $this->requestHumanHandoff($conversation, 'Il cliente ha richiesto pagamento con bonifico: inviare proforma con dati bancari.');
+        $adminNotifications->notifyBankTransferProformaRequested($lead->fresh());
+    }
+
     private function handleText($message, $from, ?Lead $lead, WhatsappConversation $conversation)
     {
         $text = $message['text']['body'] ?? '';
@@ -217,6 +313,40 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
         }
 
         $this->storeOutgoingMessage($conversation, 'text', $to, $body, $payload, $response);
+    }
+
+    private function sendCtaUrl(string $to, string $body, string $buttonText, string $url, ?WhatsappConversation $conversation = null): void
+    {
+        $payload = [
+            'messaging_product' => 'whatsapp',
+            'to' => $to,
+            'type' => 'interactive',
+            'interactive' => [
+                'type' => 'cta_url',
+                'body' => [
+                    'text' => $body,
+                ],
+                'footer' => [
+                    'text' => 'Stuart Company',
+                ],
+                'action' => [
+                    'name' => 'cta_url',
+                    'parameters' => [
+                        'display_text' => $buttonText,
+                        'url' => $url,
+                    ],
+                ],
+            ],
+        ];
+
+        $response = Http::withToken(config('services.whatsapp.token'))
+            ->post('https://graph.facebook.com/v25.0/'.config('services.whatsapp.phone_number_id').'/messages', $payload);
+
+        if (! $conversation) {
+            $conversation = $this->getConversation($to);
+        }
+
+        $this->storeOutgoingMessage($conversation, 'interactive', $to, $body, $payload, $response);
     }
 
     private function storeOutgoingMessage(WhatsappConversation $conversation, string $type, string $to, ?string $body, array $payload, $response): void

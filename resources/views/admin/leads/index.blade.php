@@ -110,6 +110,8 @@
                                                     'completed' => 'Invio preventivo',
                                                     'quote_sent' => 'Invio link pagamento',
                                                     'link_sent' => 'Pagamento cliente',
+                                                    'proforma_pending' => 'Invio proforma bonifico',
+                                                    'payment_pending' => 'In attesa conferma fondi',
                                                     'order_completed' => 'Concluso',
                                                     default => 'Verifica lead',
                                                 } }}
@@ -306,33 +308,6 @@
                                 <div class="rounded-10 border border-gray-mid p-12">
                                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Richiesta</p>
                                     <p class="mt-8 whitespace-pre-line text-14 font-semibold leading-[20px] text-black-nike">{{ $selectedLead->message ?: 'Nessun messaggio salvato.' }}</p>
-                                </div>
-                            </section>
-
-                            <section class="rounded-10 border border-gray-mid p-12">
-                                <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Automazioni previste</p>
-                                <div class="mt-12 space-y-8">
-                                    <div class="flex items-center justify-between gap-12 rounded-10 bg-gray-light px-12 py-10">
-                                        <div>
-                                            <p class="text-14 font-black">Invia preventivo</p>
-                                            <p class="mt-4 text-11 font-semibold text-gray">Salva importo + evento Google generate_quote</p>
-                                        </div>
-                                        <button disabled class="rounded-10 border border-gray-mid px-10 py-6 text-11 font-extrabold uppercase tracking-normal text-gray">Presto</button>
-                                    </div>
-                                    <div class="flex items-center justify-between gap-12 rounded-10 bg-gray-light px-12 py-10">
-                                        <div>
-                                            <p class="text-14 font-black">Link pagamento</p>
-                                            <p class="mt-4 text-11 font-semibold text-gray">Salva link e importo sul lead</p>
-                                        </div>
-                                        <button disabled class="rounded-10 border border-gray-mid px-10 py-6 text-11 font-extrabold uppercase tracking-normal text-gray">Presto</button>
-                                    </div>
-                                    <div class="flex items-center justify-between gap-12 rounded-10 bg-gray-light px-12 py-10">
-                                        <div>
-                                            <p class="text-14 font-black">Ordine completato</p>
-                                            <p class="mt-4 text-11 font-semibold text-gray">Pagamento ricevuto + evento Google purchase</p>
-                                        </div>
-                                        <button disabled class="rounded-10 border border-gray-mid px-10 py-6 text-11 font-extrabold uppercase tracking-normal text-gray">Presto</button>
-                                    </div>
                                 </div>
                             </section>
 

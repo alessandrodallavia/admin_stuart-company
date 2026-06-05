@@ -35,15 +35,17 @@ class StripeWebhookController extends Controller
             return response()->json(['message' => 'Invalid payload'], 400);
         }
 
-        if (($event['type'] ?? null) !== 'checkout.session.completed') {
+        $eventType = $event['type'] ?? null;
+
+        if (! in_array($eventType, [
+            'checkout.session.completed',
+            'checkout.session.async_payment_succeeded',
+            'checkout.session.async_payment_failed',
+        ], true)) {
             return response()->json(['message' => 'Event ignored']);
         }
 
         $session = data_get($event, 'data.object', []);
-
-        if (data_get($session, 'payment_status') && data_get($session, 'payment_status') !== 'paid') {
-            return response()->json(['message' => 'Payment not completed']);
-        }
 
         $leadId = data_get($session, 'client_reference_id') ?: data_get($session, 'metadata.lead_id');
 
@@ -69,16 +71,41 @@ class StripeWebhookController extends Controller
         $amountTotal = data_get($session, 'amount_total');
         $paymentUrl = data_get($session, 'url');
         $customerDetails = data_get($session, 'customer_details', []);
-        $wasAlreadyCompleted = $lead->status === 'order_completed';
+        $paymentStatus = data_get($session, 'payment_status');
 
         $lead->fill([
-            'status' => 'order_completed',
             'payment_amount' => $amountTotal ? round(((int) $amountTotal) / 100, 2) : $lead->payment_amount,
             'payment_link' => $paymentUrl ?: $lead->payment_link,
+            'stripe_customer_id' => data_get($session, 'customer') ?: $lead->stripe_customer_id,
             'billing_name' => data_get($customerDetails, 'name') ?: $lead->billing_name,
             'billing_email' => data_get($customerDetails, 'email') ?: $lead->billing_email,
             'billing_phone' => data_get($customerDetails, 'phone') ?: $lead->billing_phone,
-        ])->save();
+        ]);
+
+        if ($eventType === 'checkout.session.async_payment_failed') {
+            $lead->status = 'link_sent';
+            $lead->save();
+
+            Log::warning('Pagamento Stripe asincrono fallito', [
+                'lead_id' => $lead->id,
+                'session_id' => data_get($session, 'id'),
+                'payment_status' => $paymentStatus,
+            ]);
+
+            return response()->json(['message' => 'Async payment failed']);
+        }
+
+        if ($eventType === 'checkout.session.completed' && $paymentStatus !== 'paid') {
+            $lead->status = 'payment_pending';
+            $lead->save();
+
+            return response()->json(['message' => 'Payment pending']);
+        }
+
+        $wasAlreadyCompleted = $lead->status === 'order_completed';
+
+        $lead->status = 'order_completed';
+        $lead->save();
 
         if (! $wasAlreadyCompleted || $lead->wasChanged('payment_amount')) {
             app(AdminNotificationService::class)->notifyPaymentCompleted($lead->fresh());

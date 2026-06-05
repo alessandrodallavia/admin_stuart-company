@@ -17,15 +17,15 @@ class AdminNotificationService
     {
         $name = $this->leadName($lead);
 
-        $this->notifyPermission(
-            'leads.view',
+        $this->notifyRole(
+            'operator',
             new AdminActionNotification(
                 kind: 'new-lead',
                 title: "Nuovo lead: {$name}",
                 body: $this->leadSummary($lead),
                 url: route('admin.leads.index', ['lead' => $lead]),
                 actionLabel: 'Apri lead',
-                sendEmail: false,
+                sendEmail: true,
                 meta: ['lead_id' => $lead->id],
             ),
         );
@@ -36,15 +36,34 @@ class AdminNotificationService
         $name = $this->leadName($lead);
         $amount = $lead->payment_amount ? number_format((float) $lead->payment_amount, 2, ',', '.').' EUR' : 'importo non indicato';
 
-        $this->notifyPermission(
-            'leads.view',
+        $this->notifyRole(
+            'owner',
             new AdminActionNotification(
                 kind: 'payment-completed',
                 title: "Pagamento completato: {$name}",
                 body: "Pagamento ricevuto per {$name}. Importo: {$amount}.",
                 url: route('admin.leads.index', ['lead' => $lead]),
                 actionLabel: 'Apri lead',
-                sendEmail: false,
+                sendEmail: true,
+                meta: ['lead_id' => $lead->id, 'amount' => $lead->payment_amount],
+            ),
+        );
+    }
+
+    public function notifyBankTransferProformaRequested(Lead $lead): void
+    {
+        $name = $this->leadName($lead);
+        $amount = $lead->payment_amount ? number_format((float) $lead->payment_amount, 2, ',', '.').' EUR' : 'importo non indicato';
+
+        $this->notifyRole(
+            'owner',
+            new AdminActionNotification(
+                kind: 'bank-transfer-proforma-requested',
+                title: "Proforma bonifico richiesta: {$name}",
+                body: "Il cliente ha scelto bonifico bancario. Prepara e invia la proforma con i dati bancari. Importo: {$amount}.",
+                url: route('admin.leads.index', ['lead' => $lead]),
+                actionLabel: 'Apri lead',
+                sendEmail: true,
                 meta: ['lead_id' => $lead->id, 'amount' => $lead->payment_amount],
             ),
         );
@@ -57,15 +76,15 @@ class AdminNotificationService
             ? Str::limit($message->body, 180)
             : 'Ha inviato un nuovo contenuto WhatsApp.';
 
-        $this->notifyPermission(
-            'whatsapp.view',
+        $this->notifyRole(
+            'operator',
             new AdminActionNotification(
                 kind: 'whatsapp-message',
                 title: "Nuovo messaggio WhatsApp da {$label}",
                 body: $body,
                 url: route('admin.conversations.show', ['conversation' => $conversation]),
                 actionLabel: 'Apri conversazione',
-                sendEmail: false,
+                sendEmail: true,
                 meta: [
                     'conversation_id' => $conversation->id,
                     'message_id' => $message->id,
@@ -77,6 +96,21 @@ class AdminNotificationService
     private function notifyPermission(string $permission, AdminActionNotification $notification): void
     {
         $recipients = $this->recipients($permission);
+
+        if ($recipients->isEmpty()) {
+            return;
+        }
+
+        Notification::send($recipients, $notification);
+    }
+
+    private function notifyRole(string $role, AdminActionNotification $notification): void
+    {
+        $recipients = AdminUser::query()
+            ->where('is_active', true)
+            ->where('role', $role)
+            ->whereNotNull('email')
+            ->get();
 
         if ($recipients->isEmpty()) {
             return;

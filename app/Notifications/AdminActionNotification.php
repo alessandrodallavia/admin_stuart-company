@@ -59,10 +59,12 @@ class AdminActionNotification extends Notification implements ShouldQueue
         return [
             'subject' => $this->title,
             'html' => view('emails.admin-notification', [
+                'kind' => $this->kind,
                 'title' => $this->title,
                 'body' => $this->body,
                 'actionUrl' => $this->url,
                 'actionLabel' => $this->actionLabel,
+                'meta' => $this->meta,
             ])->render(),
             'tags' => ['admin-notification', $this->kind],
         ];

@@ -231,18 +231,34 @@ class LeadController extends Controller
         $amount = (float) $data['payment_amount'];
         $amountInCents = (int) round($amount * 100);
         $currency = strtolower((string) config('services.stripe.currency', 'eur'));
+
+        if ($currency !== 'eur') {
+            throw ValidationException::withMessages([
+                'payment_amount' => 'L’addebito SEPA Stripe richiede valuta EUR.',
+            ]);
+        }
+
         $quoteNumber = $this->ensureQuoteNumber($lead);
         $token = $lead->payment_checkout_token ?: Str::random(48);
         $description = $lead->club ?: $lead->name ?: "Lead #{$lead->id}";
+        $stripeCustomerId = $this->ensureStripeCustomer($lead, $secretKey);
         $payload = [
             'mode' => 'payment',
             'success_url' => config('services.stripe.success_url'),
             'cancel_url' => config('services.stripe.cancel_url'),
+            'customer' => $stripeCustomerId,
             'client_reference_id' => (string) $lead->id,
             'metadata' => [
                 'lead_id' => (string) $lead->id,
                 'lead_uuid' => (string) $lead->uuid,
                 'quote_number' => $quoteNumber,
+            ],
+            'payment_intent_data' => [
+                'metadata' => [
+                    'lead_id' => (string) $lead->id,
+                    'lead_uuid' => (string) $lead->uuid,
+                    'quote_number' => $quoteNumber,
+                ],
             ],
             'line_items' => [
                 [
@@ -263,10 +279,6 @@ class LeadController extends Controller
                 ],
             ],
         ];
-
-        if ($lead->email) {
-            $payload['customer_email'] = $lead->email;
-        }
 
         try {
             $response = Http::asForm()
@@ -317,13 +329,13 @@ class LeadController extends Controller
         }
 
         $amount = number_format((float) $lead->payment_amount, 2, ',', '.');
-        $body = "Clicca sul pulsante \"Paga ora\" per procedere al pagamento del preventivo.\n\nImporto: € {$amount}";
+        $body = "Importo preventivo: € {$amount}\n\nScegli come preferisci procedere:\n\n- Paga ora: carta di credito/debito, Amazon Pay, Google Pay, Apple Pay, PayPal, Satispay o addebito SEPA.\n- Bonifico bancario: ti invio la proforma con tutti i dati bancari.";
         $payload = [
             'messaging_product' => 'whatsapp',
             'to' => $conversation->contact_phone,
             'type' => 'interactive',
             'interactive' => [
-                'type' => 'cta_url',
+                'type' => 'button',
                 'body' => [
                     'text' => $body,
                 ],
@@ -331,10 +343,21 @@ class LeadController extends Controller
                     'text' => 'Stuart Company',
                 ],
                 'action' => [
-                    'name' => 'cta_url',
-                    'parameters' => [
-                        'display_text' => 'Paga ora',
-                        'url' => $lead->payment_link,
+                    'buttons' => [
+                        [
+                            'type' => 'reply',
+                            'reply' => [
+                                'id' => 'pay_now_link_request',
+                                'title' => 'Paga ora',
+                            ],
+                        ],
+                        [
+                            'type' => 'reply',
+                            'reply' => [
+                                'id' => 'bank_transfer_proforma_request',
+                                'title' => 'Bonifico bancario',
+                            ],
+                        ],
                     ],
                 ],
             ],
@@ -571,6 +594,45 @@ class LeadController extends Controller
         return $quoteNumber;
     }
 
+    private function ensureStripeCustomer(Lead $lead, string $secretKey): string
+    {
+        if ($lead->stripe_customer_id) {
+            return $lead->stripe_customer_id;
+        }
+
+        try {
+            $customerPayload = array_filter([
+                'email' => $lead->email ?: null,
+                'name' => $lead->name ?: null,
+                'phone' => $lead->phone ?: null,
+                'metadata' => [
+                    'lead_id' => (string) $lead->id,
+                    'lead_uuid' => (string) $lead->uuid,
+                ],
+            ], fn ($value) => $value !== null);
+
+            $response = Http::asForm()
+                ->withToken($secretKey)
+                ->post('https://api.stripe.com/v1/customers', $customerPayload);
+        } catch (ConnectionException $exception) {
+            throw ValidationException::withMessages([
+                'payment_amount' => 'Stripe non raggiungibile durante la creazione del cliente. Controlla la connessione e riprova.',
+            ]);
+        }
+
+        if ($response->failed() || ! $response->json('id')) {
+            throw ValidationException::withMessages([
+                'payment_amount' => 'Creazione cliente Stripe fallita: ' . ($response->json('error.message') ?: 'errore sconosciuto'),
+            ]);
+        }
+
+        $lead->forceFill([
+            'stripe_customer_id' => $response->json('id'),
+        ])->save();
+
+        return $response->json('id');
+    }
+
     private function stats(array $statuses): array
     {
         $counts = Lead::query()
@@ -597,6 +659,8 @@ class LeadController extends Controller
             'completed' => 'Lavorare',
             'quote_sent' => 'Prev. inv.',
             'link_sent' => 'Link inv.',
+            'proforma_pending' => 'Proforma da inv.',
+            'payment_pending' => 'Pag. in attesa',
             'order_completed' => 'Completato',
         ];
     }
@@ -618,8 +682,8 @@ class LeadController extends Controller
             ],
             [
                 'key' => 'link_sent',
-                'label' => 'Link inviato',
-                'statuses' => ['link_sent'],
+                'label' => 'Pagamento',
+                'statuses' => ['link_sent', 'proforma_pending', 'payment_pending'],
                 'accent' => 'text-black-nike',
             ],
             [

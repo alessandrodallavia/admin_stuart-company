@@ -44,6 +44,7 @@ class Lead extends Model
         'pipeline_lead_id',
         'payment_link',
         'payment_checkout_token',
+        'stripe_customer_id',
         'quote_amount',
         'payment_amount',
         'billing_customer_type',

@@ -79,11 +79,11 @@
                         @php($unreadNotificationsCount = $adminUser->unreadNotifications()->count())
                         <a
                             href="{{ route('admin.notifications.index') }}"
-                            class="inline-flex items-center rounded-10 border px-12 py-10 text-12 font-extrabold uppercase tracking-normal transition {{ $activeNav === 'notifications' ? 'border-bullstar bg-bullstar text-white' : 'border-gray-mid bg-white text-black-nike hover:border-black-nike' }}"
+                            class="inline-flex items-center gap-6 rounded-10 border px-12 py-10 text-12 font-extrabold uppercase tracking-normal transition {{ $activeNav === 'notifications' ? 'border-bullstar bg-bullstar text-white' : 'border-gray-mid bg-white text-black-nike hover:border-black-nike' }}"
                         >
                             Notifiche
                             @if ($unreadNotificationsCount > 0)
-                                <span class="ml-6 inline-flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-bullstar p-0 text-11 leading-none text-white {{ $activeNav === 'notifications' ? 'bg-white text-bullstar' : '' }}">
+                                <span class="inline-flex h-20 min-w-20 shrink-0 items-center justify-center rounded-full px-6 text-11 font-black leading-none {{ $activeNav === 'notifications' ? 'bg-black-nike text-white' : 'bg-bullstar text-white' }}">
                                     {{ $unreadNotificationsCount > 99 ? '99+' : $unreadNotificationsCount }}
                                 </span>
                             @endif
