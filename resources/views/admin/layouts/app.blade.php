@@ -11,6 +11,7 @@
             $metaRobots = 'noindex, nofollow';
         }
     @endphp
+    <meta name="robots" content="{{ $metaRobots }}">
     <title>@yield('title', 'Stuart Admin')</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
