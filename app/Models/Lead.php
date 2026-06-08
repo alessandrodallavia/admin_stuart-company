@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Lead extends Model
@@ -82,6 +83,9 @@ class Lead extends Model
         'ga4_purchase_sent_at',
         'ga4_purchase_sent_status',
         'ga4_purchase_sent_error',
+        'email_welcome_sent_at',
+        'email_welcome_status',
+        'email_welcome_error',
         'whatsapp_payment_thank_you_sent_at',
         'whatsapp_payment_thank_you_status',
         'whatsapp_payment_thank_you_error',
@@ -98,6 +102,7 @@ class Lead extends Model
         'ga4_quote_sent_at' => 'datetime',
         'ga4_payment_link_sent_at' => 'datetime',
         'ga4_purchase_sent_at' => 'datetime',
+        'email_welcome_sent_at' => 'datetime',
         'whatsapp_payment_thank_you_sent_at' => 'datetime',
     ];
 
@@ -109,5 +114,10 @@ class Lead extends Model
     public function linkedWhatsappConversation(): HasOne
     {
         return $this->hasOne(WhatsappConversation::class);
+    }
+
+    public function emailConversations(): HasMany
+    {
+        return $this->hasMany(EmailConversation::class);
     }
 }

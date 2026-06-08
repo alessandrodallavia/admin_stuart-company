@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\EmailAccount;
+use App\Models\EmailConversation;
 use App\Models\Lead;
 use App\Models\WhatsappConversation;
 use App\Models\WhatsappMessage;
+use App\Services\EmailMailboxService;
 use App\Services\Ga4MeasurementService;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\RedirectResponse;
@@ -148,7 +151,7 @@ class LeadController extends Controller
             $file = $request->file('quote_pdf');
             $originalName = $file->getClientOriginalName() ?: 'preventivo.pdf';
             $baseName = Str::limit(Str::slug(pathinfo($originalName, PATHINFO_FILENAME)), 90, '');
-            $filename = ($baseName ?: 'preventivo') . '-' . now()->format('YmdHis') . '-' . Str::random(6) . '.pdf';
+            $filename = ($baseName ?: 'preventivo').'-'.now()->format('YmdHis').'-'.Str::random(6).'.pdf';
             $path = $file->storeAs("leads/{$lead->id}/quotes", $filename, self::QUOTE_PDF_DISK);
 
             $attributes = [
@@ -292,7 +295,7 @@ class LeadController extends Controller
 
         if ($response->failed() || ! $response->json('url')) {
             throw ValidationException::withMessages([
-                'payment_amount' => 'Creazione link Stripe fallita: ' . ($response->json('error.message') ?: 'errore sconosciuto'),
+                'payment_amount' => 'Creazione link Stripe fallita: '.($response->json('error.message') ?: 'errore sconosciuto'),
             ]);
         }
 
@@ -520,6 +523,130 @@ class LeadController extends Controller
             ->with('status', 'PDF preventivo inviato su WhatsApp.');
     }
 
+    public function sendQuotePdfEmail(Lead $lead, EmailMailboxService $mailbox, Ga4MeasurementService $ga4): RedirectResponse
+    {
+        if (! $lead->email) {
+            return back()->withErrors(['email' => 'Inserisci prima l’email del cliente.']);
+        }
+
+        if (! $lead->quote_pdf_path || ! Storage::disk($lead->quote_pdf_disk ?? self::QUOTE_PDF_DISK)->exists($lead->quote_pdf_path)) {
+            return back()->withErrors(['quote_pdf' => 'Carica prima un PDF preventivo valido.']);
+        }
+
+        $account = $this->currentEmailAccount();
+        $conversation = $this->findOrCreateEmailConversation($lead, $account, 'Preventivo '.($lead->quote_number ?: $this->ensureQuoteNumber($lead)));
+        $body = "Buongiorno,\n\nin allegato trovi il preventivo.\n\nResto a disposizione per qualsiasi domanda.";
+        $message = $mailbox->send(
+            $account,
+            $conversation,
+            $body,
+            storedAttachments: [[
+                'disk' => $lead->quote_pdf_disk ?? self::QUOTE_PDF_DISK,
+                'path' => $lead->quote_pdf_path,
+                'filename' => $lead->quote_pdf_filename ?: 'preventivo.pdf',
+                'mime_type' => $lead->quote_pdf_mime_type ?: 'application/pdf',
+                'size' => $lead->quote_pdf_size,
+            ]],
+        );
+
+        if ($message->status !== 'sent') {
+            return back()->withErrors(['quote_pdf' => 'Invio email fallito: '.$message->error_message]);
+        }
+
+        $previousStatus = $lead->status;
+
+        if ($this->shouldAdvanceStatus($lead->status, 'quote_sent')) {
+            $lead->forceFill(['status' => 'quote_sent'])->save();
+            $this->sendQuoteSentEvent($lead->fresh(), $previousStatus, $ga4);
+        }
+
+        return redirect()
+            ->route('admin.leads.index', ['lead' => $lead])
+            ->with('status', 'Preventivo inviato via email con PDF allegato.');
+    }
+
+    public function sendStripePaymentLinkEmail(Lead $lead, EmailMailboxService $mailbox, Ga4MeasurementService $ga4): RedirectResponse
+    {
+        if (! $lead->email) {
+            return back()->withErrors(['email' => 'Inserisci prima l’email del cliente.']);
+        }
+
+        if (! $lead->payment_link || ! $lead->payment_amount) {
+            return back()->withErrors(['payment_link' => 'Crea prima un link Stripe con relativo importo.']);
+        }
+
+        $account = $this->currentEmailAccount();
+        $quoteNumber = $lead->quote_number ?: $this->ensureQuoteNumber($lead);
+        $conversation = $this->findOrCreateEmailConversation($lead, $account, "Pagamento preventivo {$quoteNumber}");
+        $amount = number_format((float) $lead->payment_amount, 2, ',', '.');
+        $body = "Importo preventivo: € {$amount}\n\nClicca sul pulsante Paga ora per procedere al pagamento del preventivo.\n\n{$lead->payment_link}";
+        $html = view('emails.lead-payment-link', [
+            'lead' => $lead,
+            'amount' => $amount,
+            'paymentLink' => $lead->payment_link,
+            'quoteNumber' => $quoteNumber,
+        ])->render();
+        $message = $mailbox->send($account, $conversation, $body, htmlBody: $html);
+
+        if ($message->status !== 'sent') {
+            return back()->withErrors(['payment_link' => 'Invio email fallito: '.$message->error_message]);
+        }
+
+        if ($this->shouldAdvanceStatus($lead->status, 'link_sent')) {
+            $lead->forceFill(['status' => 'link_sent'])->save();
+            $this->sendPaymentLinkSentEvent($lead->fresh(), $ga4);
+        }
+
+        return redirect()
+            ->route('admin.leads.index', ['lead' => $lead])
+            ->with('status', 'Link pagamento inviato via email con pulsante Paga ora.');
+    }
+
+    private function currentEmailAccount(): EmailAccount
+    {
+        $account = EmailAccount::query()
+            ->where('admin_user_id', Auth::guard('admin')->id())
+            ->where('is_active', true)
+            ->first();
+
+        if (! $account) {
+            throw ValidationException::withMessages([
+                'email' => 'La tua casella email non è configurata o non è attiva.',
+            ]);
+        }
+
+        return $account;
+    }
+
+    private function findOrCreateEmailConversation(Lead $lead, EmailAccount $account, string $subject): EmailConversation
+    {
+        return EmailConversation::query()
+            ->where('email_account_id', $account->id)
+            ->where('lead_id', $lead->id)
+            ->latest('last_message_at')
+            ->first()
+            ?? EmailConversation::create([
+                'email_account_id' => $account->id,
+                'lead_id' => $lead->id,
+                'assigned_user_id' => Auth::guard('admin')->id(),
+                'subject' => $subject,
+                'contact_email' => $lead->email,
+                'contact_name' => $lead->name,
+                'status' => 'open',
+                'is_seen' => true,
+                'last_message_at' => now(),
+            ]);
+    }
+
+    private function shouldAdvanceStatus(?string $currentStatus, string $targetStatus): bool
+    {
+        $statuses = array_keys($this->statuses());
+        $currentIndex = array_search($currentStatus, $statuses, true);
+        $targetIndex = array_search($targetStatus, $statuses, true);
+
+        return $targetIndex !== false && ($currentIndex === false || $currentIndex < $targetIndex);
+    }
+
     private function findOrCreateWhatsappConversation(Lead $lead): ?WhatsappConversation
     {
         $conversation = $lead->whatsappConversation
@@ -622,7 +749,7 @@ class LeadController extends Controller
 
         if ($response->failed() || ! $response->json('id')) {
             throw ValidationException::withMessages([
-                'payment_amount' => 'Creazione cliente Stripe fallita: ' . ($response->json('error.message') ?: 'errore sconosciuto'),
+                'payment_amount' => 'Creazione cliente Stripe fallita: '.($response->json('error.message') ?: 'errore sconosciuto'),
             ]);
         }
 

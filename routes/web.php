@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AdminUserController as AdminAdminUserController;
 use App\Http\Controllers\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Admin\DocumentController as AdminDocumentController;
+use App\Http\Controllers\Admin\EmailController as AdminEmailController;
 use App\Http\Controllers\Admin\LeadController as AdminLeadController;
 use App\Http\Controllers\Admin\NotificationController as AdminNotificationController;
 use App\Http\Controllers\Admin\ShipmentController as AdminShipmentController;
@@ -48,6 +49,23 @@ Route::name('admin.')->group(function () {
             Route::post('/leads/{lead}/stripe-payment-link/whatsapp', [AdminLeadController::class, 'sendStripePaymentLinkWhatsapp'])->name('leads.stripe-payment-link.whatsapp');
         });
 
+        Route::middleware(['admin.permission:leads.manage', 'admin.permission:email.manage'])->group(function () {
+            Route::post('/leads/{lead}/quote-pdf/email', [AdminLeadController::class, 'sendQuotePdfEmail'])->name('leads.quote-pdf.email');
+            Route::post('/leads/{lead}/stripe-payment-link/email', [AdminLeadController::class, 'sendStripePaymentLinkEmail'])->name('leads.stripe-payment-link.email');
+        });
+
+        Route::middleware('admin.permission:email.view')->group(function () {
+            Route::get('/email', [AdminEmailController::class, 'index'])->name('email.index');
+            Route::get('/email/conversations/{conversation}', [AdminEmailController::class, 'index'])->name('email.conversations.show');
+            Route::get('/email/attachments/{attachment}', [AdminEmailController::class, 'downloadAttachment'])->name('email.attachments.download');
+        });
+
+        Route::middleware('admin.permission:email.manage')->group(function () {
+            Route::post('/email/sync', [AdminEmailController::class, 'sync'])->name('email.sync');
+            Route::post('/email/conversations', [AdminEmailController::class, 'storeConversation'])->name('email.conversations.store');
+            Route::post('/email/conversations/{conversation}/messages', [AdminEmailController::class, 'sendMessage'])->name('email.messages.store');
+        });
+
         Route::middleware('admin.permission:documents.view')->group(function () {
             Route::get('/documents/payments', [AdminDocumentController::class, 'payments'])->name('documents.payments');
             Route::get('/documents/import-xml', [AdminDocumentController::class, 'importXml'])->name('documents.import-xml');
@@ -89,6 +107,7 @@ Route::name('admin.')->group(function () {
             Route::get('/settings/users', [AdminAdminUserController::class, 'index'])->name('users.index');
             Route::post('/settings/users', [AdminAdminUserController::class, 'store'])->name('users.store');
             Route::patch('/settings/users/{adminUser}', [AdminAdminUserController::class, 'update'])->name('users.update');
+            Route::put('/settings/users/{adminUser}/email-account', [AdminAdminUserController::class, 'updateEmailAccount'])->name('users.email-account.update');
         });
 
         Route::post('/logout', [AdminAuthController::class, 'logout'])->name('logout');

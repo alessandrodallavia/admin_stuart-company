@@ -24,6 +24,14 @@ return [
             'label' => 'Modificare lead, preventivi e link Stripe',
             'group' => 'Leads',
         ],
+        'email.view' => [
+            'label' => 'Vedere email',
+            'group' => 'Email',
+        ],
+        'email.manage' => [
+            'label' => 'Inviare email e configurare la casella',
+            'group' => 'Email',
+        ],
         'documents.view' => [
             'label' => 'Vedere documenti, fatture, ordini e pagamenti',
             'group' => 'Documenti',
@@ -53,6 +61,8 @@ return [
             'whatsapp.manage',
             'leads.view',
             'leads.manage',
+            'email.view',
+            'email.manage',
         ],
         'custom' => [],
     ],

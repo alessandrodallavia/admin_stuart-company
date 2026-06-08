@@ -144,6 +144,7 @@
                                 <th class="px-12 py-12">Ruolo</th>
                                 <th class="px-12 py-12">Stato</th>
                                 <th class="px-12 py-12">Permessi</th>
+                                <th class="px-12 py-12">Casella email</th>
                                 <th class="px-12 py-12">Ultimo accesso</th>
                                 <th class="px-12 py-12"></th>
                             </tr>
@@ -181,6 +182,16 @@
                                                 {{ count($rolePermissions) }} da ruolo / {{ count($savedPermissions) }} extra
                                             </p>
                                         @endunless
+                                    </td>
+                                    <td class="px-12 py-12">
+                                        @if ($adminUser->emailAccount)
+                                            <p class="max-w-[220px] truncate text-12 font-bold text-black-nike">{{ $adminUser->emailAccount->email }}</p>
+                                            <p class="mt-4 text-11 font-semibold {{ $adminUser->emailAccount->is_active ? 'text-whatsapp' : 'text-gray' }}">
+                                                {{ $adminUser->emailAccount->is_active ? 'Attiva' : 'Disattivata' }}
+                                            </p>
+                                        @else
+                                            <span class="text-12 font-semibold text-gray">Non configurata</span>
+                                        @endif
                                     </td>
                                     <td class="px-12 py-12">
                                         <p class="text-12 font-bold text-black-nike">{{ $adminUser->last_login_at?->format('d/m/Y H:i') ?: '-' }}</p>
@@ -303,6 +314,86 @@
                                     Solo amministratore
                                 </span>
                             @endif
+                        </div>
+                    </form>
+                </section>
+
+                @php($emailAccount = $selectedAdminUser->emailAccount)
+                <section class="mt-16 overflow-hidden rounded-10 border border-gray-mid bg-white">
+                    <div class="border-b border-gray-mid px-16 py-12">
+                        <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Casella email</p>
+                        <p class="mt-4 text-14 font-bold text-black-nike">
+                            Configurazione IMAP e SMTP personale di {{ $selectedAdminUser->name }}.
+                        </p>
+                    </div>
+
+                    <form method="POST" action="{{ route('admin.users.email-account.update', $selectedAdminUser) }}" class="grid gap-12 p-16 md:grid-cols-2 xl:grid-cols-4">
+                        @csrf
+                        @method('PUT')
+
+                        <label class="block">
+                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Indirizzo email</span>
+                            <input name="email_account[email]" type="email" required value="{{ old('email_account.email', $emailAccount?->email ?? $selectedAdminUser->email) }}" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                        </label>
+                        <label class="block">
+                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Nome mittente</span>
+                            <input name="email_account[from_name]" type="text" value="{{ old('email_account.from_name', $emailAccount?->from_name ?? $selectedAdminUser->name) }}" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                        </label>
+                        <label class="block">
+                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Username</span>
+                            <input name="email_account[username]" type="text" required value="{{ old('email_account.username', $emailAccount?->username ?? $selectedAdminUser->email) }}" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                        </label>
+                        <label class="block">
+                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Password casella</span>
+                            <input name="email_account[password]" type="password" autocomplete="new-password" placeholder="{{ $emailAccount ? 'Lascia vuoto per non cambiare' : '' }}" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                        </label>
+
+                        <label class="block">
+                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Host SMTP</span>
+                            <input name="email_account[smtp_host]" type="text" required value="{{ old('email_account.smtp_host', $emailAccount?->smtp_host ?? 'stuart-company.com') }}" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                        </label>
+                        <label class="block">
+                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Porta SMTP</span>
+                            <input name="email_account[smtp_port]" type="number" required value="{{ old('email_account.smtp_port', $emailAccount?->smtp_port ?? 465) }}" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                        </label>
+                        <label class="block">
+                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Cifratura SMTP</span>
+                            <select name="email_account[smtp_encryption]" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                @foreach (['ssl' => 'SSL', 'tls' => 'TLS', 'none' => 'Nessuna'] as $value => $label)
+                                    <option value="{{ $value }}" @selected(old('email_account.smtp_encryption', $emailAccount?->smtp_encryption ?? 'ssl') === $value)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+
+                        <label class="block">
+                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Host IMAP</span>
+                            <input name="email_account[imap_host]" type="text" required value="{{ old('email_account.imap_host', $emailAccount?->imap_host ?? 'stuart-company.com') }}" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                        </label>
+                        <label class="block">
+                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Porta IMAP</span>
+                            <input name="email_account[imap_port]" type="number" required value="{{ old('email_account.imap_port', $emailAccount?->imap_port ?? 993) }}" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                        </label>
+                        <label class="block">
+                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Cifratura IMAP</span>
+                            <select name="email_account[imap_encryption]" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                @foreach (['ssl' => 'SSL', 'tls' => 'TLS', 'none' => 'Nessuna'] as $value => $label)
+                                    <option value="{{ $value }}" @selected(old('email_account.imap_encryption', $emailAccount?->imap_encryption ?? 'ssl') === $value)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                        <label class="block">
+                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Cartella sincronizzata</span>
+                            <input name="email_account[sync_folder]" type="text" required value="{{ old('email_account.sync_folder', $emailAccount?->sync_folder ?? 'INBOX') }}" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                        </label>
+                        <label class="flex items-end gap-8 pb-2 text-12 font-extrabold uppercase tracking-normal text-gray">
+                            <input name="email_account[is_active]" value="1" type="checkbox" @checked(old('email_account.is_active', $emailAccount?->is_active ?? true)) class="rounded border-gray-mid text-bullstar focus:ring-bullstar">
+                            Casella attiva
+                        </label>
+
+                        <div class="md:col-span-2 xl:col-span-4">
+                            <button type="submit" class="rounded-10 bg-bullstar px-16 py-10 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">
+                                Salva casella email
+                            </button>
                         </div>
                     </form>
                 </section>

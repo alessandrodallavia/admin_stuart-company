@@ -52,6 +52,14 @@
                             Leads
                         </a>
                     @endif
+                    @if ($adminUser?->hasAdminPermission('email.view'))
+                        <a
+                            href="{{ route('admin.email.index') }}"
+                            class="rounded-10 border px-12 py-10 text-12 font-extrabold uppercase tracking-normal transition {{ $activeNav === 'email' ? 'border-bullstar bg-bullstar text-white' : 'border-gray-mid bg-white text-black-nike hover:border-black-nike' }}"
+                        >
+                            Email
+                        </a>
+                    @endif
                     @if ($adminUser?->hasAdminPermission('documents.view'))
                         <a
                             href="{{ route('admin.documents.index') }}"
@@ -107,6 +115,12 @@
             @if (session('status'))
                 <div class="mb-16 rounded-10 border border-whatsapp/20 bg-whatsapp/10 px-16 py-12 text-14 font-bold text-whatsapp">
                     {{ session('status') }}
+                </div>
+            @endif
+
+            @if (session('error'))
+                <div class="mb-16 rounded-10 border border-red-200 bg-red-50 px-16 py-12 text-14 font-bold text-red-700">
+                    {{ session('error') }}
                 </div>
             @endif
 

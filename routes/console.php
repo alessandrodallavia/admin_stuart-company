@@ -9,3 +9,5 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('whatsapp:sync-follow-ups')->everyFiveMinutes();
+Schedule::command('email:sync')->everyMinute()->withoutOverlapping();
+Schedule::command('email:send-lead-welcomes')->everyMinute()->withoutOverlapping();

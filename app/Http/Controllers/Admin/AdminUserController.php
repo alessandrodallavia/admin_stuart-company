@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AdminUser;
+use App\Models\EmailAccount;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,8 +18,8 @@ class AdminUserController extends Controller
         $selectedUser = request()->integer('edit');
 
         return view('admin.users.index', [
-            'adminUsers' => AdminUser::query()->orderBy('name')->get(),
-            'selectedAdminUser' => $selectedUser ? AdminUser::find($selectedUser) : null,
+            'adminUsers' => AdminUser::query()->with('emailAccount')->orderBy('name')->get(),
+            'selectedAdminUser' => $selectedUser ? AdminUser::with('emailAccount')->find($selectedUser) : null,
             'roles' => config('admin_permissions.roles'),
             'permissions' => config('admin_permissions.permissions'),
             'permissionsByGroup' => collect(config('admin_permissions.permissions'))
@@ -89,6 +90,43 @@ class AdminUserController extends Controller
         return redirect()
             ->route($this->homeRouteFor($currentUser))
             ->with('status', 'Utente admin aggiornato.');
+    }
+
+    public function updateEmailAccount(Request $request, AdminUser $adminUser): RedirectResponse
+    {
+        $validated = $request->validate([
+            'email_account.email' => ['required', 'email:rfc', 'max:255'],
+            'email_account.from_name' => ['nullable', 'string', 'max:255'],
+            'email_account.username' => ['required', 'string', 'max:255'],
+            'email_account.password' => ['nullable', 'string', 'max:255'],
+            'email_account.imap_host' => ['required', 'string', 'max:255'],
+            'email_account.imap_port' => ['required', 'integer', 'min:1', 'max:65535'],
+            'email_account.imap_encryption' => ['required', Rule::in(['ssl', 'tls', 'none'])],
+            'email_account.smtp_host' => ['required', 'string', 'max:255'],
+            'email_account.smtp_port' => ['required', 'integer', 'min:1', 'max:65535'],
+            'email_account.smtp_encryption' => ['required', Rule::in(['ssl', 'tls', 'none'])],
+            'email_account.sync_folder' => ['required', 'string', 'max:255'],
+            'email_account.is_active' => ['nullable', 'boolean'],
+        ]);
+        $data = $validated['email_account'];
+
+        $account = EmailAccount::firstOrNew(['admin_user_id' => $adminUser->id]);
+
+        if (! $account->exists && empty($data['password'])) {
+            return back()->withErrors(['password' => 'Inserisci la password della casella email.'])->withInput();
+        }
+
+        $account->fill([
+            ...collect($data)->except('password')->all(),
+            'admin_user_id' => $adminUser->id,
+            'is_active' => $request->boolean('email_account.is_active'),
+        ]);
+        $account->setPassword($data['password'] ?? null);
+        $account->save();
+
+        return redirect()
+            ->route('admin.users.index', ['edit' => $adminUser])
+            ->with('status', "Casella email di {$adminUser->name} salvata.");
     }
 
     private function validateUser(Request $request, ?AdminUser $adminUser = null): array

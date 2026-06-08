@@ -267,6 +267,12 @@
                                                 Invia PDF su WhatsApp
                                             </button>
                                         </form>
+                                        <form method="POST" action="{{ route('admin.leads.quote-pdf.email', $selectedLead) }}" class="mt-8">
+                                            @csrf
+                                            <button type="submit" @disabled(! $selectedLead->email) class="w-full rounded-10 border border-bullstar bg-bullstar px-10 py-8 text-11 font-extrabold uppercase leading-none tracking-normal text-white transition hover:bg-bullstar-hover disabled:cursor-not-allowed disabled:border-gray-mid disabled:bg-gray">
+                                                Invia PDF via email
+                                            </button>
+                                        </form>
                                         @if ($selectedLead->quote_pdf_uploaded_at)
                                             <p class="mt-4 text-11 font-semibold text-gray">Caricato il {{ $selectedLead->quote_pdf_uploaded_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</p>
                                         @endif
@@ -283,6 +289,12 @@
                                             @csrf
                                             <button type="submit" class="w-full rounded-10 border border-whatsapp bg-whatsapp px-10 py-8 text-11 font-extrabold uppercase leading-none tracking-normal text-white transition hover:bg-whatsapp/90">
                                                 Invia su WhatsApp
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="{{ route('admin.leads.stripe-payment-link.email', $selectedLead) }}" class="mt-8">
+                                            @csrf
+                                            <button type="submit" @disabled(! $selectedLead->email) class="w-full rounded-10 border border-bullstar bg-bullstar px-10 py-8 text-11 font-extrabold uppercase leading-none tracking-normal text-white transition hover:bg-bullstar-hover disabled:cursor-not-allowed disabled:border-gray-mid disabled:bg-gray">
+                                                Invia via email
                                             </button>
                                         </form>
                                     @endif

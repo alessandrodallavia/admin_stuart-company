@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -63,5 +65,20 @@ class AdminUser extends Authenticatable
         $userPermissions = $this->permissions ?? [];
 
         return array_values(array_unique([...$rolePermissions, ...$userPermissions]));
+    }
+
+    public function emailAccounts(): HasMany
+    {
+        return $this->hasMany(EmailAccount::class);
+    }
+
+    public function emailAccount(): HasOne
+    {
+        return $this->hasOne(EmailAccount::class);
+    }
+
+    public function assignedEmailConversations(): HasMany
+    {
+        return $this->hasMany(EmailConversation::class, 'assigned_user_id');
     }
 }
