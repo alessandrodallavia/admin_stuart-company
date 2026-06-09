@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\Admin\LeadController;
 use App\Models\AdminUser;
 use App\Models\EmailAccount;
 use App\Models\Lead;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use ReflectionMethod;
 use Tests\TestCase;
 
 class AdminEmailWorkflowTest extends TestCase
@@ -130,6 +132,22 @@ class AdminEmailWorkflowTest extends TestCase
         $this->assertStringContainsString('+39 049 73 88 277', $html);
         $this->assertStringContainsString('logo-stuart.png', $html);
         $this->assertStringNotContainsString('Via Santa Lucia', $html);
+    }
+
+    public function test_lead_quote_number_uses_customer_facing_format(): void
+    {
+        $lead = Lead::create([
+            'uuid' => 'QUOTE1',
+            'status' => 'confirmed',
+            'name' => 'Cliente Preventivo',
+            'email' => 'preventivo@example.test',
+        ]);
+
+        $method = new ReflectionMethod(LeadController::class, 'ensureQuoteNumber');
+        $quoteNumber = $method->invoke(new LeadController, $lead);
+
+        $this->assertSame(sprintf('Preventivo nr. %04d', $lead->id), $quoteNumber);
+        $this->assertSame($quoteNumber, $lead->fresh()->quote_number);
     }
 
     private function operator(): AdminUser

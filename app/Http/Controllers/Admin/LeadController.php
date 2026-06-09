@@ -271,7 +271,7 @@ class LeadController extends Controller
                         'unit_amount' => $amountInCents,
                         'tax_behavior' => 'inclusive',
                         'product_data' => [
-                            'name' => "Preventivo {$quoteNumber}",
+                            'name' => $quoteNumber,
                             'description' => Str::limit($description, 250, ''),
                             'metadata' => [
                                 'lead_id' => (string) $lead->id,
@@ -534,7 +534,7 @@ class LeadController extends Controller
         }
 
         $account = $this->currentEmailAccount();
-        $conversation = $this->findOrCreateEmailConversation($lead, $account, 'Preventivo '.($lead->quote_number ?: $this->ensureQuoteNumber($lead)));
+        $conversation = $this->findOrCreateEmailConversation($lead, $account, $lead->quote_number ?: $this->ensureQuoteNumber($lead));
         $body = "Buongiorno,\n\nin allegato trovi il preventivo.\n\nResto a disposizione per qualsiasi domanda.";
         $message = $mailbox->send(
             $account,
@@ -577,7 +577,7 @@ class LeadController extends Controller
 
         $account = $this->currentEmailAccount();
         $quoteNumber = $lead->quote_number ?: $this->ensureQuoteNumber($lead);
-        $conversation = $this->findOrCreateEmailConversation($lead, $account, "Pagamento preventivo {$quoteNumber}");
+        $conversation = $this->findOrCreateEmailConversation($lead, $account, "Pagamento {$quoteNumber}");
         $amount = number_format((float) $lead->payment_amount, 2, ',', '.');
         $body = "Importo preventivo: € {$amount}\n\nClicca sul pulsante Paga ora per procedere al pagamento del preventivo.\n\n{$lead->payment_link}";
         $html = view('emails.lead-payment-link', [
@@ -710,7 +710,7 @@ class LeadController extends Controller
             return $lead->quote_number;
         }
 
-        $quoteNumber = sprintf('PREV-%06d', $lead->id);
+        $quoteNumber = sprintf('Preventivo nr. %04d', $lead->id);
 
         $lead->forceFill([
             'quote_number' => $quoteNumber,
