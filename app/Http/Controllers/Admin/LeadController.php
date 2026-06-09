@@ -243,7 +243,6 @@ class LeadController extends Controller
 
         $quoteNumber = $this->ensureQuoteNumber($lead);
         $token = $lead->payment_checkout_token ?: Str::random(48);
-        $description = $lead->club ?: $lead->name ?: "Lead #{$lead->id}";
         $stripeCustomerId = $this->ensureStripeCustomer($lead, $secretKey);
         $payload = [
             'mode' => 'payment',
@@ -272,7 +271,6 @@ class LeadController extends Controller
                         'tax_behavior' => 'inclusive',
                         'product_data' => [
                             'name' => $quoteNumber,
-                            'description' => Str::limit($description, 250, ''),
                             'metadata' => [
                                 'lead_id' => (string) $lead->id,
                                 'quote_number' => $quoteNumber,
@@ -579,7 +577,7 @@ class LeadController extends Controller
         $quoteNumber = $lead->quote_number ?: $this->ensureQuoteNumber($lead);
         $conversation = $this->findOrCreateEmailConversation($lead, $account, "Pagamento {$quoteNumber}");
         $amount = number_format((float) $lead->payment_amount, 2, ',', '.');
-        $body = "Importo preventivo: € {$amount}\n\nClicca sul pulsante Paga ora per procedere al pagamento del preventivo.\n\n{$lead->payment_link}";
+        $body = "Importo preventivo: € {$amount}\n\nClicca sul link seguente per procedere al pagamento del preventivo:\n{$lead->payment_link}\n\nSe preferisci pagare tramite bonifico bancario, rispondi a questa e-mail e ti invieremo la proforma con tutti i dettagli per il pagamento.";
         $html = view('emails.lead-payment-link', [
             'lead' => $lead,
             'amount' => $amount,

@@ -96,9 +96,27 @@
                                 </a>
                             @endif
                         </div>
-                        <span class="inline-flex w-fit rounded-full bg-gray-light px-10 py-6 text-11 font-extrabold uppercase tracking-normal text-black-nike">
-                            {{ $selectedConversation->messages->count() }} messaggi
-                        </span>
+                        <div class="flex flex-wrap items-center gap-8">
+                            <span class="inline-flex w-fit rounded-full bg-gray-light px-10 py-6 text-11 font-extrabold uppercase tracking-normal text-black-nike">
+                                {{ $selectedConversation->messages->count() }} messaggi
+                            </span>
+                            @if (auth('admin')->user()?->hasAdminPermission('email.manage'))
+                                <form method="POST" action="{{ route('admin.email.conversations.mark-unread', $selectedConversation) }}">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit" class="rounded-10 border border-gray-mid bg-white px-10 py-6 text-11 font-extrabold uppercase tracking-normal text-black-nike transition hover:border-bullstar hover:text-bullstar">
+                                        Da leggere
+                                    </button>
+                                </form>
+                                <form method="POST" action="{{ route('admin.email.conversations.destroy', $selectedConversation) }}" onsubmit="return confirm('Eliminare questa conversazione dal pannello?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="rounded-10 border border-red-200 bg-red-50 px-10 py-6 text-11 font-extrabold uppercase tracking-normal text-red-700 transition hover:border-red-500">
+                                        Elimina
+                                    </button>
+                                </form>
+                            @endif
+                        </div>
                     </div>
                 </div>
 

@@ -7,11 +7,13 @@ use App\Models\EmailAttachment;
 use App\Models\EmailConversation;
 use App\Models\EmailMessage;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Symfony\Component\Mailer\Transport;
 use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
+use Webklex\PHPIMAP\ClientManager;
 
 class EmailMailboxService
 {
@@ -95,16 +97,27 @@ class EmailMailboxService
             }
 
             Transport::fromDsn($this->dsn($account))->send($email);
+            $sentAt = now();
 
             $message->forceFill([
                 'status' => 'sent',
-                'sent_at' => now(),
+                'sent_at' => $sentAt,
             ])->save();
 
             $conversation->forceFill([
                 'is_seen' => true,
                 'last_message_at' => $message->sent_at,
             ])->save();
+
+            try {
+                $this->appendToSentFolder($account, $email->toString(), $sentAt);
+            } catch (\Throwable $e) {
+                Log::warning('Copia email inviata non salvata nella cartella IMAP', [
+                    'email_account_id' => $account->id,
+                    'email_message_id' => $message->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         } catch (\Throwable $e) {
             $message->forceFill([
                 'status' => 'failed',
@@ -171,6 +184,62 @@ class EmailMailboxService
         $port = $account->smtp_port;
 
         return "{$scheme}://{$username}:{$password}@{$host}:{$port}";
+    }
+
+    private function appendToSentFolder(EmailAccount $account, string $rawMessage, mixed $sentAt): void
+    {
+        if (! $account->is_active || ! $account->password()) {
+            return;
+        }
+
+        $manager = new ClientManager([
+            'options' => ['debug' => false],
+            'accounts' => [
+                'mailbox' => [
+                    'host' => $account->imap_host,
+                    'port' => $account->imap_port,
+                    'encryption' => $account->imap_encryption === 'none' ? false : $account->imap_encryption,
+                    'validate_cert' => true,
+                    'username' => $account->username,
+                    'password' => $account->password(),
+                    'protocol' => 'imap',
+                ],
+            ],
+        ]);
+        $client = $manager->account('mailbox');
+
+        try {
+            $client->connect();
+            $folders = $client->getFolders(false, null, true);
+            $preferredNames = collect([
+                'sent',
+                'sent messages',
+                'sent items',
+                'posta inviata',
+                'inbox.sent',
+                'inbox/sent',
+            ]);
+            $sentFolder = $folders->first(function ($folder) use ($preferredNames) {
+                $name = Str::lower((string) $folder->name);
+                $path = Str::lower((string) $folder->path);
+
+                return $preferredNames->contains($name)
+                    || $preferredNames->contains($path)
+                    || str_contains($name, 'sent')
+                    || str_contains($name, 'inviat');
+            });
+
+            if (! $sentFolder) {
+                throw new \RuntimeException('Cartella IMAP della posta inviata non trovata.');
+            }
+
+            $sentFolder->appendMessage($rawMessage, ['\Seen'], $sentAt);
+        } finally {
+            try {
+                $client->disconnect();
+            } catch (\Throwable) {
+            }
+        }
     }
 
     private function addressList(array $addresses): array

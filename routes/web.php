@@ -64,6 +64,8 @@ Route::name('admin.')->group(function () {
             Route::post('/email/sync', [AdminEmailController::class, 'sync'])->name('email.sync');
             Route::post('/email/conversations', [AdminEmailController::class, 'storeConversation'])->name('email.conversations.store');
             Route::post('/email/conversations/{conversation}/messages', [AdminEmailController::class, 'sendMessage'])->name('email.messages.store');
+            Route::patch('/email/conversations/{conversation}/mark-unread', [AdminEmailController::class, 'markAsUnread'])->name('email.conversations.mark-unread');
+            Route::delete('/email/conversations/{conversation}', [AdminEmailController::class, 'destroyConversation'])->name('email.conversations.destroy');
         });
 
         Route::middleware('admin.permission:documents.view')->group(function () {

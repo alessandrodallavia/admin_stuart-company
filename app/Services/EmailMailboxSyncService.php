@@ -111,6 +111,40 @@ class EmailMailboxSyncService
         }
     }
 
+    public function markConversationUnread(EmailConversation $conversation): bool
+    {
+        $account = $conversation->account;
+        $message = $conversation->messages()
+            ->where('direction', 'inbound')
+            ->latest('received_at')
+            ->latest('id')
+            ->first();
+
+        if (! $message) {
+            return false;
+        }
+
+        if ($account?->is_active && $account->password() && $message->provider_uid) {
+            $client = $this->client($account);
+
+            try {
+                $client->connect();
+                $folder = $client->getFolder($message->provider_folder ?: $account->sync_folder ?: 'INBOX');
+                $folder?->messages()->getMessageByUid($message->provider_uid)->unsetFlag('Seen');
+            } finally {
+                try {
+                    $client->disconnect();
+                } catch (\Throwable) {
+                }
+            }
+        }
+
+        $message->forceFill(['seen_at' => null])->save();
+        $conversation->forceFill(['is_seen' => false])->save();
+
+        return true;
+    }
+
     private function import(EmailAccount $account, Message $remoteMessage, string $folderPath): bool
     {
         $messageId = $this->normalizeMessageId($this->attribute($remoteMessage->getMessageId()));
@@ -167,6 +201,7 @@ class EmailMailboxSyncService
 
         $conversation->forceFill([
             'contact_name' => $conversation->contact_name ?: ($from instanceof Address ? $from->personal : null),
+            'status' => 'open',
             'is_seen' => $isSeen,
             'last_message_at' => $receivedAt,
         ])->save();

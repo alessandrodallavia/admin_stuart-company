@@ -28,6 +28,7 @@ class EmailController extends Controller
         $conversations = $account
             ? EmailConversation::query()
                 ->where('email_account_id', $account->id)
+                ->where('status', '!=', 'deleted')
                 ->with(['latestMessage', 'lead'])
                 ->latest('last_message_at')
                 ->latest('id')
@@ -37,7 +38,7 @@ class EmailController extends Controller
 
         $selectedConversation = null;
 
-        if ($account && $conversation?->email_account_id === $account->id) {
+        if ($account && $conversation?->email_account_id === $account->id && $conversation->status !== 'deleted') {
             try {
                 $sync->markConversationSeen($conversation);
             } catch (\Throwable) {
@@ -126,6 +127,39 @@ class EmailController extends Controller
         $message = $mailbox->send($account, $conversation, $data['body'], $request->file('attachments', []));
 
         return back()->with($message->status === 'sent' ? 'status' : 'error', $message->status === 'sent' ? 'Email inviata.' : 'Invio email fallito: '.$message->error_message);
+    }
+
+    public function markAsUnread(Request $request, EmailConversation $conversation, EmailMailboxSyncService $sync): RedirectResponse
+    {
+        $account = $this->accountFor($request);
+        abort_unless($conversation->email_account_id === $account->id && $conversation->status !== 'deleted', 404);
+
+        try {
+            if (! $sync->markConversationUnread($conversation)) {
+                return back()->withErrors(['email' => 'Non ci sono email ricevute da segnare come non lette.']);
+            }
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Impossibile segnare la conversazione da leggere: '.$e->getMessage());
+        }
+
+        return redirect()
+            ->route('admin.email.index')
+            ->with('status', 'Conversazione segnata da leggere.');
+    }
+
+    public function destroyConversation(Request $request, EmailConversation $conversation): RedirectResponse
+    {
+        $account = $this->accountFor($request);
+        abort_unless($conversation->email_account_id === $account->id, 404);
+
+        $conversation->forceFill([
+            'status' => 'deleted',
+            'is_seen' => true,
+        ])->save();
+
+        return redirect()
+            ->route('admin.email.index')
+            ->with('status', 'Conversazione eliminata dal pannello.');
     }
 
     public function downloadAttachment(Request $request, EmailAttachment $attachment)

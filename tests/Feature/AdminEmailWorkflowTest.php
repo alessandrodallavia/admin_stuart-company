@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Http\Controllers\Admin\LeadController;
 use App\Models\AdminUser;
 use App\Models\EmailAccount;
+use App\Models\EmailConversation;
 use App\Models\Lead;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use ReflectionMethod;
@@ -148,6 +149,88 @@ class AdminEmailWorkflowTest extends TestCase
 
         $this->assertSame(sprintf('Preventivo nr. %04d', $lead->id), $quoteNumber);
         $this->assertSame($quoteNumber, $lead->fresh()->quote_number);
+    }
+
+    public function test_payment_link_email_is_plain_and_mentions_bank_transfer_proforma(): void
+    {
+        $html = view('emails.lead-payment-link', [
+            'amount' => '100,00',
+            'paymentLink' => 'https://example.test/payment',
+            'quoteNumber' => 'Preventivo nr. 0010',
+        ])->render();
+
+        $this->assertStringContainsString('Paga ora', $html);
+        $this->assertStringContainsString('bonifico bancario', $html);
+        $this->assertStringContainsString('proforma con tutti i dettagli per il pagamento', $html);
+        $this->assertStringNotContainsString('#f8f8f8', $html);
+        $this->assertStringNotContainsString('border:1px solid', $html);
+    }
+
+    public function test_operator_can_mark_an_email_conversation_as_unread(): void
+    {
+        [$operator, $conversation] = $this->emailConversation();
+        $message = $conversation->messages()->create([
+            'direction' => 'inbound',
+            'status' => 'received',
+            'from_email' => 'cliente@example.test',
+            'subject' => 'Richiesta',
+            'body_text' => 'Messaggio cliente',
+            'seen_at' => now(),
+            'received_at' => now(),
+        ]);
+
+        $this->actingAs($operator, 'admin')
+            ->patch("/email/conversations/{$conversation->id}/mark-unread")
+            ->assertRedirect('/email');
+
+        $this->assertNull($message->fresh()->seen_at);
+        $this->assertFalse($conversation->fresh()->is_seen);
+    }
+
+    public function test_operator_can_remove_an_email_conversation_from_the_panel(): void
+    {
+        [$operator, $conversation] = $this->emailConversation();
+
+        $this->actingAs($operator, 'admin')
+            ->delete("/email/conversations/{$conversation->id}")
+            ->assertRedirect('/email');
+
+        $this->assertSame('deleted', $conversation->fresh()->status);
+
+        $this->actingAs($operator, 'admin')
+            ->get('/email')
+            ->assertDontSee($conversation->subject);
+    }
+
+    private function emailConversation(): array
+    {
+        $operator = $this->operator();
+        $account = EmailAccount::create([
+            'admin_user_id' => $operator->id,
+            'email' => 'andrea@example.test',
+            'from_name' => 'Andrea Test',
+            'username' => 'andrea@example.test',
+            'password_encrypted' => encrypt('secret-password'),
+            'imap_host' => 'stuart-company.com',
+            'imap_port' => 993,
+            'imap_encryption' => 'ssl',
+            'smtp_host' => 'stuart-company.com',
+            'smtp_port' => 465,
+            'smtp_encryption' => 'ssl',
+            'sync_folder' => 'INBOX',
+            'is_active' => true,
+        ]);
+        $conversation = EmailConversation::create([
+            'email_account_id' => $account->id,
+            'assigned_user_id' => $operator->id,
+            'subject' => 'Conversazione da gestire',
+            'contact_email' => 'cliente@example.test',
+            'status' => 'open',
+            'is_seen' => true,
+            'last_message_at' => now(),
+        ]);
+
+        return [$operator, $conversation];
     }
 
     private function operator(): AdminUser
