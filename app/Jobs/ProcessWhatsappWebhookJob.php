@@ -7,6 +7,7 @@ use App\Models\WhatsappConversation;
 use App\Models\WhatsappMessage;
 use App\Services\AdminNotificationService;
 use App\Services\GoogleAdsConversionService;
+use App\Services\MetaConversionsApiService;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -22,7 +23,11 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
 
     public function __construct(public $data) {}
 
-    public function handle(AdminNotificationService $adminNotifications, GoogleAdsConversionService $googleAdsConversions)
+    public function handle(
+        AdminNotificationService $adminNotifications,
+        GoogleAdsConversionService $googleAdsConversions,
+        MetaConversionsApiService $metaConversions
+    )
     {
         $value = $this->data['entry'][0]['changes'][0]['value'] ?? null;
 
@@ -63,10 +68,11 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
             $storedMessage = $this->storeIncomingMessage($conversation, $message, $from);
             $this->deleteAutomaticFollowUpsAfterCustomerReply($conversation);
             $this->uploadWhatsappConversion($lead, $storedMessage, $googleAdsConversions);
+            $this->uploadMetaContact($lead, $storedMessage, $metaConversions);
 
             if ($this->isPaymentChoiceRequest($message)) {
                 if ($storedMessage->wasRecentlyCreated) {
-                    $this->handlePaymentChoiceRequest($message, $from, $lead, $conversation, $adminNotifications);
+                    $this->handlePaymentChoiceRequest($message, $from, $lead, $conversation, $adminNotifications, $metaConversions);
                 }
 
                 continue;
@@ -183,12 +189,19 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
             ], true);
     }
 
-    private function handlePaymentChoiceRequest(array $message, string $from, ?Lead $lead, WhatsappConversation $conversation, AdminNotificationService $adminNotifications): void
+    private function handlePaymentChoiceRequest(
+        array $message,
+        string $from,
+        ?Lead $lead,
+        WhatsappConversation $conversation,
+        AdminNotificationService $adminNotifications,
+        MetaConversionsApiService $metaConversions
+    ): void
     {
         $replyId = $message['interactive']['button_reply']['id'] ?? null;
 
         if ($replyId === 'pay_now_link_request') {
-            $this->handlePayNowLinkRequest($from, $lead, $conversation);
+            $this->handlePayNowLinkRequest($from, $lead, $conversation, $metaConversions);
 
             return;
         }
@@ -198,7 +211,12 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
         }
     }
 
-    private function handlePayNowLinkRequest(string $from, ?Lead $lead, WhatsappConversation $conversation): void
+    private function handlePayNowLinkRequest(
+        string $from,
+        ?Lead $lead,
+        WhatsappConversation $conversation,
+        MetaConversionsApiService $metaConversions
+    ): void
     {
         if (! $lead || ! $lead->payment_link) {
             $this->sendText($from, 'Ti rispondo a breve con il link corretto per procedere al pagamento.', $conversation);
@@ -212,7 +230,9 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
             ? "Clicca sul pulsante \"Paga ora\" per procedere al pagamento.\n\nImporto: € {$amount}"
             : 'Clicca sul pulsante "Paga ora" per procedere al pagamento.';
 
-        $this->sendCtaUrl($from, $body, 'Paga ora', $lead->payment_link, $conversation);
+        if ($this->sendCtaUrl($from, $body, 'Paga ora', $lead->payment_link, $conversation)) {
+            $metaConversions->trackInitiateCheckout($lead->fresh());
+        }
     }
 
     private function handleBankTransferProformaRequest(string $from, ?Lead $lead, WhatsappConversation $conversation, AdminNotificationService $adminNotifications): void
@@ -315,7 +335,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
         $this->storeOutgoingMessage($conversation, 'text', $to, $body, $payload, $response);
     }
 
-    private function sendCtaUrl(string $to, string $body, string $buttonText, string $url, ?WhatsappConversation $conversation = null): void
+    private function sendCtaUrl(string $to, string $body, string $buttonText, string $url, ?WhatsappConversation $conversation = null): bool
     {
         $payload = [
             'messaging_product' => 'whatsapp',
@@ -347,6 +367,8 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
         }
 
         $this->storeOutgoingMessage($conversation, 'interactive', $to, $body, $payload, $response);
+
+        return $response->successful();
     }
 
     private function storeOutgoingMessage(WhatsappConversation $conversation, string $type, string $to, ?string $body, array $payload, $response): void
@@ -523,6 +545,15 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
                 'google_ads_whatsapp_conversion_error' => $exception->getMessage(),
             ])->save();
         }
+    }
+
+    private function uploadMetaContact(?Lead $lead, WhatsappMessage $message, MetaConversionsApiService $metaConversions): void
+    {
+        if (! $lead || ! $message->wasRecentlyCreated) {
+            return;
+        }
+
+        $metaConversions->trackContact($lead, $message->received_at ?? $message->created_at ?? now());
     }
 
     private function deleteAutomaticFollowUpsAfterCustomerReply(WhatsappConversation $conversation): void

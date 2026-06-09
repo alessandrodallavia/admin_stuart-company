@@ -90,6 +90,12 @@ return [
         'debug_mode' => env('GA4_DEBUG_MODE', false),
     ],
 
+    'meta' => [
+        'pixel_id' => env('META_PIXEL_ID', '356478581578783'),
+        'conversions_api_token' => env('META_CONVERSIONS_API_TOKEN'),
+        'graph_api_version' => env('META_GRAPH_API_VERSION', 'v25.0'),
+    ],
+
     'dropbox' => [
         'client_id' => env('DROPBOX_APP_KEY'),
         'client_secret' => env('DROPBOX_APP_SECRET'),

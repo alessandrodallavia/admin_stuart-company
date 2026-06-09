@@ -10,6 +10,7 @@ use App\Models\WhatsappConversation;
 use App\Models\WhatsappMessage;
 use App\Services\EmailMailboxService;
 use App\Services\Ga4MeasurementService;
+use App\Services\MetaConversionsApiService;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -594,6 +595,8 @@ class LeadController extends Controller
             $lead->forceFill(['status' => 'link_sent'])->save();
             $this->sendPaymentLinkSentEvent($lead->fresh(), $ga4);
         }
+
+        app(MetaConversionsApiService::class)->trackInitiateCheckout($lead->fresh());
 
         return redirect()
             ->route('admin.leads.index', ['lead' => $lead])

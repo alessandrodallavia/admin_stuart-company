@@ -31,6 +31,9 @@ class Lead extends Model
 
         'gclid',
         'fbclid',
+        'meta_marketing_consent',
+        'meta_fbp',
+        'meta_fbc',
         'ga_client_id',
         'ga_session_id',
 
@@ -83,6 +86,15 @@ class Lead extends Model
         'ga4_purchase_sent_at',
         'ga4_purchase_sent_status',
         'ga4_purchase_sent_error',
+        'meta_contact_sent_at',
+        'meta_contact_status',
+        'meta_contact_error',
+        'meta_initiate_checkout_sent_at',
+        'meta_initiate_checkout_status',
+        'meta_initiate_checkout_error',
+        'meta_purchase_sent_at',
+        'meta_purchase_status',
+        'meta_purchase_error',
         'email_welcome_sent_at',
         'email_welcome_status',
         'email_welcome_error',
@@ -94,6 +106,7 @@ class Lead extends Model
     protected $casts = [
         'privacy_consent' => 'boolean',
         'marketing_consent' => 'boolean',
+        'meta_marketing_consent' => 'boolean',
         'quote_amount' => 'decimal:2',
         'payment_amount' => 'decimal:2',
         'billing_completed_at' => 'datetime',
@@ -102,6 +115,9 @@ class Lead extends Model
         'ga4_quote_sent_at' => 'datetime',
         'ga4_payment_link_sent_at' => 'datetime',
         'ga4_purchase_sent_at' => 'datetime',
+        'meta_contact_sent_at' => 'datetime',
+        'meta_initiate_checkout_sent_at' => 'datetime',
+        'meta_purchase_sent_at' => 'datetime',
         'email_welcome_sent_at' => 'datetime',
         'whatsapp_payment_thank_you_sent_at' => 'datetime',
     ];

@@ -7,6 +7,7 @@ use App\Models\WhatsappConversation;
 use App\Models\WhatsappMessage;
 use App\Services\AdminNotificationService;
 use App\Services\Ga4MeasurementService;
+use App\Services\MetaConversionsApiService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -112,6 +113,7 @@ class StripeWebhookController extends Controller
         }
 
         $this->sendPurchaseEvent($lead->fresh(), app(Ga4MeasurementService::class));
+        app(MetaConversionsApiService::class)->trackPurchase($lead->fresh());
         $this->sendPaymentThankYouMessage($lead->fresh());
 
         return response()->json(['message' => 'Lead marked as paid']);
