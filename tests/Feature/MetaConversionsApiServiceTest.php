@@ -55,7 +55,7 @@ class MetaConversionsApiServiceTest extends TestCase
             'phone' => '393331234567',
             'privacy_consent' => true,
             'payment_amount' => 120.50,
-            'quote_number' => 'Preventivo nr. 0001',
+            'quote_number' => 'PROPOSTA-0001',
             'landing_page' => 'https://stuart-company.com/',
             'ip' => '203.0.113.10',
             'user_agent' => 'Test Browser',

@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Http\Controllers\Admin\LeadController;
 use App\Models\AdminUser;
 use App\Models\EmailAccount;
 use App\Models\EmailConversation;
@@ -11,7 +10,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
-use ReflectionMethod;
 use Tests\TestCase;
 
 class AdminEmailWorkflowTest extends TestCase
@@ -110,9 +108,10 @@ class AdminEmailWorkflowTest extends TestCase
             'payment_amount' => 100,
         ]);
         $lead->quotePdfs()->create([
+            'proposal_number' => 'PROPOSTA-EMAIL-1',
             'disk' => 'local',
-            'path' => 'quotes/preventivo.pdf',
-            'filename' => 'preventivo.pdf',
+            'path' => 'quotes/proposta.pdf',
+            'filename' => 'proposta.pdf',
             'mime_type' => 'application/pdf',
             'uploaded_at' => now(),
         ]);
@@ -120,12 +119,12 @@ class AdminEmailWorkflowTest extends TestCase
         $this->actingAs($owner, 'admin')
             ->get("/leads/{$lead->id}")
             ->assertOk()
-            ->assertSee('Preventivi PDF')
+            ->assertSee('Proposte')
             ->assertSee('Invia via email')
             ->assertSee('min-[1280px]:grid-cols-[minmax(0,1fr)_420px]', false);
     }
 
-    public function test_operator_can_upload_and_delete_multiple_quote_pdfs(): void
+    public function test_operator_can_upload_and_delete_multiple_proposals(): void
     {
         Storage::fake('local');
         Notification::fake();
@@ -139,10 +138,16 @@ class AdminEmailWorkflowTest extends TestCase
 
         $this->actingAs($operator, 'admin')
             ->post("/leads/{$lead->id}/quote-pdfs", [
-                'quote_pdfs' => [
-                    UploadedFile::fake()->create('preventivo-a.pdf', 100, 'application/pdf'),
-                    UploadedFile::fake()->create('preventivo-b.pdf', 120, 'application/pdf'),
-                ],
+                'proposal_number' => 'ESTATE-24/A',
+                'proposal_pdf' => UploadedFile::fake()->create('proposta-a.pdf', 100, 'application/pdf'),
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        $this->actingAs($operator, 'admin')
+            ->post("/leads/{$lead->id}/quote-pdfs", [
+                'proposal_number' => 'ESTATE-24/B',
+                'proposal_pdf' => UploadedFile::fake()->create('proposta-b.pdf', 120, 'application/pdf'),
             ])
             ->assertSessionHasNoErrors()
             ->assertRedirect();
@@ -150,14 +155,20 @@ class AdminEmailWorkflowTest extends TestCase
         $pdfs = $lead->quotePdfs()->get();
 
         $this->assertCount(2, $pdfs);
+        $this->assertSame(['ESTATE-24/B', 'ESTATE-24/A'], $pdfs->pluck('proposal_number')->all());
+        $this->assertSame('ESTATE-24/B', $lead->fresh()->quote_number);
         Storage::disk('local')->assertExists($pdfs[0]->path);
         Storage::disk('local')->assertExists($pdfs[1]->path);
 
         $response = $this->actingAs($operator, 'admin')->get("/leads/{$lead->id}");
-        $response->assertOk()->assertSee('preventivo-a.pdf')->assertSee('preventivo-b.pdf');
+        $response->assertOk()
+            ->assertSee('ESTATE-24/A')
+            ->assertSee('ESTATE-24/B')
+            ->assertSee('proposta-a.pdf')
+            ->assertSee('proposta-b.pdf');
         $this->assertLessThan(
             strpos($response->getContent(), 'Pagamento'),
-            strpos($response->getContent(), 'Preventivi PDF'),
+            strpos($response->getContent(), 'Proposte'),
         );
 
         $this->actingAs($operator, 'admin')
@@ -188,20 +199,36 @@ class AdminEmailWorkflowTest extends TestCase
         $this->assertStringNotContainsString('Via Santa Lucia', $html);
     }
 
-    public function test_lead_quote_number_uses_customer_facing_format(): void
+    public function test_proposal_number_is_required_and_can_be_free_form(): void
     {
+        Storage::fake('local');
+        Notification::fake();
+        $operator = $this->operator();
         $lead = Lead::create([
             'uuid' => 'QUOTE1',
             'status' => 'confirmed',
-            'name' => 'Cliente Preventivo',
-            'email' => 'preventivo@example.test',
+            'name' => 'Cliente Proposta',
+            'email' => 'proposta@example.test',
         ]);
 
-        $method = new ReflectionMethod(LeadController::class, 'ensureQuoteNumber');
-        $quoteNumber = $method->invoke(new LeadController, $lead);
+        $this->actingAs($operator, 'admin')
+            ->post("/leads/{$lead->id}/quote-pdfs", [
+                'proposal_pdf' => UploadedFile::fake()->create('proposta.pdf', 100, 'application/pdf'),
+            ])
+            ->assertSessionHasErrors('proposal_number');
 
-        $this->assertSame(sprintf('Preventivo nr. %04d', $lead->id), $quoteNumber);
-        $this->assertSame($quoteNumber, $lead->fresh()->quote_number);
+        $this->actingAs($operator, 'admin')
+            ->post("/leads/{$lead->id}/quote-pdfs", [
+                'proposal_number' => 'Collezione Estate / versione A',
+                'proposal_pdf' => UploadedFile::fake()->create('proposta.pdf', 100, 'application/pdf'),
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('lead_quote_pdfs', [
+            'lead_id' => $lead->id,
+            'proposal_number' => 'Collezione Estate / versione A',
+        ]);
+        $this->assertSame('Collezione Estate / versione A', $lead->fresh()->quote_number);
     }
 
     public function test_payment_link_email_is_plain_and_mentions_bank_transfer_proforma(): void
@@ -209,10 +236,11 @@ class AdminEmailWorkflowTest extends TestCase
         $html = view('emails.lead-payment-link', [
             'amount' => '100,00',
             'paymentLink' => 'https://example.test/payment',
-            'quoteNumber' => 'Preventivo nr. 0010',
+            'quoteNumber' => 'PROPOSTA-0010',
         ])->render();
 
         $this->assertStringContainsString('Paga ora', $html);
+        $this->assertStringContainsString('Importo proposta', $html);
         $this->assertStringContainsString('bonifico bancario', $html);
         $this->assertStringContainsString('proforma con tutti i dettagli per il pagamento', $html);
         $this->assertStringNotContainsString('#f8f8f8', $html);

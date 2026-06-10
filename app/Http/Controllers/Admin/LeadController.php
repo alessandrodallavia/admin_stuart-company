@@ -116,7 +116,6 @@ class LeadController extends Controller
             'email' => ['nullable', 'email:rfc', 'max:255'],
             'phone' => ['nullable', 'string', 'max:30'],
             'status' => ['required', Rule::in($statuses)],
-            'quote_number' => ['nullable', 'string', 'max:50', Rule::unique('leads', 'quote_number')->ignore($lead->id)],
             'quote_amount' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
             'payment_link' => ['nullable', 'url', 'max:2048'],
             'payment_amount' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
@@ -124,7 +123,7 @@ class LeadController extends Controller
 
         if ($data['status'] === 'quote_sent' && empty($data['quote_amount'])) {
             return back()
-                ->withErrors(['quote_amount' => 'Inserisci l’importo del preventivo prima di segnare il lead come preventivo inviato.'])
+                ->withErrors(['quote_amount' => 'Inserisci l’importo della proposta prima di segnare il lead come proposta inviata.'])
                 ->withInput();
         }
 
@@ -139,7 +138,6 @@ class LeadController extends Controller
             'email' => $data['email'] ?? null,
             'phone' => $data['phone'] ?? null,
             'status' => $data['status'],
-            'quote_number' => $data['quote_number'] ?: $lead->quote_number,
             'quote_amount' => $data['quote_amount'] ?? $lead->quote_amount,
             'payment_link' => $data['payment_link'] ?? $lead->payment_link,
             'payment_amount' => $data['payment_amount'] ?? $lead->payment_amount,
@@ -190,29 +188,31 @@ class LeadController extends Controller
     public function storeQuotePdfs(Request $request, Lead $lead): RedirectResponse
     {
         $data = $request->validate([
-            'quote_pdfs' => ['required', 'array', 'min:1'],
-            'quote_pdfs.*' => ['required', 'file', 'mimes:pdf', 'mimetypes:application/pdf', 'max:20480'],
+            'proposal_number' => ['required', 'string', 'max:100', Rule::unique('lead_quote_pdfs', 'proposal_number')],
+            'proposal_pdf' => ['required', 'file', 'mimes:pdf', 'mimetypes:application/pdf', 'max:20480'],
         ]);
 
-        foreach ($data['quote_pdfs'] as $file) {
-            $originalName = $file->getClientOriginalName() ?: 'preventivo.pdf';
-            $baseName = Str::limit(Str::slug(pathinfo($originalName, PATHINFO_FILENAME)), 90, '');
-            $filename = ($baseName ?: 'preventivo').'-'.now()->format('YmdHis').'-'.Str::random(6).'.pdf';
-            $path = $file->storeAs("leads/{$lead->id}/quotes", $filename, self::QUOTE_PDF_DISK);
+        $file = $data['proposal_pdf'];
+        $originalName = $file->getClientOriginalName() ?: 'proposta.pdf';
+        $baseName = Str::limit(Str::slug(pathinfo($originalName, PATHINFO_FILENAME)), 90, '');
+        $filename = ($baseName ?: 'proposta').'-'.now()->format('YmdHis').'-'.Str::random(6).'.pdf';
+        $path = $file->storeAs("leads/{$lead->id}/proposals", $filename, self::QUOTE_PDF_DISK);
 
-            $lead->quotePdfs()->create([
-                'disk' => self::QUOTE_PDF_DISK,
-                'path' => $path,
-                'filename' => $originalName,
-                'mime_type' => $file->getMimeType() ?: 'application/pdf',
-                'size' => $file->getSize(),
-                'uploaded_at' => now(),
-            ]);
-        }
+        $lead->quotePdfs()->create([
+            'proposal_number' => $data['proposal_number'],
+            'disk' => self::QUOTE_PDF_DISK,
+            'path' => $path,
+            'filename' => $originalName,
+            'mime_type' => $file->getMimeType() ?: 'application/pdf',
+            'size' => $file->getSize(),
+            'uploaded_at' => now(),
+        ]);
+
+        $lead->forceFill(['quote_number' => $data['proposal_number']])->save();
 
         return redirect()
             ->route('admin.leads.index', ['lead' => $lead])
-            ->with('status', count($data['quote_pdfs']) === 1 ? 'PDF preventivo caricato.' : 'PDF preventivi caricati.');
+            ->with('status', 'Proposta caricata.');
     }
 
     public function showQuotePdf(Lead $lead, LeadQuotePdf $quotePdf)
@@ -240,10 +240,13 @@ class LeadController extends Controller
         }
 
         $quotePdf->delete();
+        $lead->forceFill([
+            'quote_number' => $lead->quotePdfs()->first()?->proposal_number,
+        ])->saveQuietly();
 
         return redirect()
             ->route('admin.leads.index', ['lead' => $lead])
-            ->with('status', 'PDF preventivo eliminato.');
+            ->with('status', 'Proposta eliminata.');
     }
 
     public function createStripePaymentLink(Request $request, Lead $lead): RedirectResponse
@@ -253,8 +256,9 @@ class LeadController extends Controller
         ]);
 
         if ($lead->is_training) {
+            $proposalNumber = $this->latestProposalNumber($lead);
             $lead->forceFill([
-                'quote_number' => $this->ensureQuoteNumber($lead),
+                'quote_number' => $proposalNumber,
                 'payment_amount' => (float) $data['payment_amount'],
                 'payment_link' => 'https://checkout.stripe.test/training-'.$lead->uuid,
                 'status' => 'link_sent',
@@ -283,7 +287,7 @@ class LeadController extends Controller
             ]);
         }
 
-        $quoteNumber = $this->ensureQuoteNumber($lead);
+        $quoteNumber = $this->latestProposalNumber($lead);
         $token = $lead->payment_checkout_token ?: Str::random(48);
         $stripeCustomerId = $this->ensureStripeCustomer($lead, $secretKey);
         $payload = [
@@ -372,7 +376,7 @@ class LeadController extends Controller
         }
 
         $amount = number_format((float) $lead->payment_amount, 2, ',', '.');
-        $body = "Importo preventivo: € {$amount}\n\nScegli come preferisci procedere:\n\n- Paga ora: carta di credito/debito, Amazon Pay, Google Pay, Apple Pay, PayPal, Satispay o addebito SEPA.\n- Bonifico bancario: ti invio la proforma con tutti i dati bancari.";
+        $body = "Importo proposta: € {$amount}\n\nScegli come preferisci procedere:\n\n- Paga ora: carta di credito/debito, Amazon Pay, Google Pay, Apple Pay, PayPal, Satispay o addebito SEPA.\n- Bonifico bancario: ti invio la proforma con tutti i dati bancari.";
 
         if ($lead->is_training) {
             $this->storeTrainingWhatsappMessage($conversation, $body, 'interactive');
@@ -467,7 +471,7 @@ class LeadController extends Controller
 
         if (! Storage::disk($quotePdf->disk)->exists($quotePdf->path)) {
             return back()->withErrors([
-                'quote_pdf' => 'Carica prima un PDF preventivo valido.',
+                'quote_pdf' => 'Carica prima un PDF proposta valido.',
             ]);
         }
 
@@ -494,7 +498,7 @@ class LeadController extends Controller
 
             return redirect()
                 ->route('admin.leads.index', ['lead' => $lead])
-                ->with('status', 'Preventivo simulato inviato su WhatsApp.');
+                ->with('status', 'Proposta simulata inviata su WhatsApp.');
         }
 
         $file = fopen($filePath, 'r');
@@ -513,7 +517,7 @@ class LeadController extends Controller
         }
 
         if ($mediaResponse->failed() || ! $mediaResponse->json('id')) {
-            Log::warning('Upload preventivo WhatsApp fallito', [
+            Log::warning('Upload proposta WhatsApp fallito', [
                 'lead_id' => $lead->id,
                 'response' => $mediaResponse->json(),
             ]);
@@ -571,7 +575,7 @@ class LeadController extends Controller
         ])->save();
 
         if ($response->failed()) {
-            Log::warning('Invio preventivo WhatsApp fallito', [
+            Log::warning('Invio proposta WhatsApp fallito', [
                 'lead_id' => $lead->id,
                 'conversation_id' => $conversation->id,
                 'response' => $response->json(),
@@ -584,7 +588,7 @@ class LeadController extends Controller
 
         return redirect()
             ->route('admin.leads.index', ['lead' => $lead])
-            ->with('status', 'PDF preventivo inviato su WhatsApp.');
+            ->with('status', 'Proposta inviata su WhatsApp.');
     }
 
     public function sendQuotePdfEmail(Lead $lead, LeadQuotePdf $quotePdf, EmailMailboxService $mailbox, Ga4MeasurementService $ga4): RedirectResponse
@@ -596,12 +600,13 @@ class LeadController extends Controller
         }
 
         if (! Storage::disk($quotePdf->disk)->exists($quotePdf->path)) {
-            return back()->withErrors(['quote_pdf' => 'Carica prima un PDF preventivo valido.']);
+            return back()->withErrors(['quote_pdf' => 'Carica prima un PDF proposta valido.']);
         }
 
         $account = $this->currentEmailAccount();
-        $conversation = $this->findOrCreateEmailConversation($lead, $account, $lead->quote_number ?: $this->ensureQuoteNumber($lead));
-        $body = "Buongiorno,\n\nin allegato trovi il preventivo.\n\nResto a disposizione per qualsiasi domanda.";
+        $proposalNumber = $quotePdf->proposal_number;
+        $conversation = $this->findOrCreateEmailConversation($lead, $account, $proposalNumber);
+        $body = "Buongiorno,\n\nin allegato trovi la proposta {$proposalNumber}.\n\nResto a disposizione per qualsiasi domanda.";
 
         if ($lead->is_training) {
             $this->storeTrainingEmailMessage($conversation, $account->email, $body);
@@ -609,7 +614,7 @@ class LeadController extends Controller
 
             return redirect()
                 ->route('admin.leads.index', ['lead' => $lead])
-                ->with('status', 'Preventivo simulato inviato via email.');
+                ->with('status', 'Proposta simulata inviata via email.');
         }
 
         $message = $mailbox->send(
@@ -638,7 +643,7 @@ class LeadController extends Controller
 
         return redirect()
             ->route('admin.leads.index', ['lead' => $lead])
-            ->with('status', 'Preventivo inviato via email con PDF allegato.');
+            ->with('status', 'Proposta inviata via email con PDF allegato.');
     }
 
     public function sendStripePaymentLinkEmail(Lead $lead, EmailMailboxService $mailbox, Ga4MeasurementService $ga4): RedirectResponse
@@ -652,15 +657,15 @@ class LeadController extends Controller
         }
 
         $account = $this->currentEmailAccount();
-        $quoteNumber = $lead->quote_number ?: $this->ensureQuoteNumber($lead);
-        $conversation = $this->findOrCreateEmailConversation($lead, $account, "Pagamento {$quoteNumber}");
+        $proposalNumber = $this->latestProposalNumber($lead);
+        $conversation = $this->findOrCreateEmailConversation($lead, $account, "Pagamento {$proposalNumber}");
         $amount = number_format((float) $lead->payment_amount, 2, ',', '.');
-        $body = "Importo preventivo: € {$amount}\n\nClicca sul link seguente per procedere al pagamento del preventivo:\n{$lead->payment_link}\n\nSe preferisci pagare tramite bonifico bancario, rispondi a questa e-mail e ti invieremo la proforma con tutti i dettagli per il pagamento.";
+        $body = "Importo proposta: € {$amount}\n\nClicca sul link seguente per procedere al pagamento della proposta:\n{$lead->payment_link}\n\nSe preferisci pagare tramite bonifico bancario, rispondi a questa e-mail e ti invieremo la proforma con tutti i dettagli per il pagamento.";
         $html = view('emails.lead-payment-link', [
             'lead' => $lead,
             'amount' => $amount,
             'paymentLink' => $lead->payment_link,
-            'quoteNumber' => $quoteNumber,
+            'quoteNumber' => $proposalNumber,
         ])->render();
 
         if ($lead->is_training) {
@@ -848,21 +853,22 @@ class LeadController extends Controller
         }
     }
 
-    private function ensureQuoteNumber(Lead $lead): string
+    private function latestProposalNumber(Lead $lead): string
     {
-        if ($lead->quote_number) {
-            return $lead->quote_number;
+        $proposalNumber = $lead->quotePdfs()->first()?->proposal_number;
+
+        if (! $proposalNumber) {
+            throw ValidationException::withMessages([
+                'proposal_pdf' => 'Carica prima una proposta indicando il relativo numero.',
+            ]);
         }
 
-        $quoteNumber = sprintf('Preventivo nr. %04d', $lead->id);
+        if ($lead->quote_number !== $proposalNumber) {
+            $lead->forceFill(['quote_number' => $proposalNumber])->saveQuietly();
+            $lead->quote_number = $proposalNumber;
+        }
 
-        $lead->forceFill([
-            'quote_number' => $quoteNumber,
-        ])->saveQuietly();
-
-        $lead->quote_number = $quoteNumber;
-
-        return $quoteNumber;
+        return $proposalNumber;
     }
 
     private function ensureStripeCustomer(Lead $lead, string $secretKey): string
@@ -928,7 +934,7 @@ class LeadController extends Controller
             'pre' => 'Pre lead',
             'confirmed' => 'Confermato',
             'completed' => 'Lavorare',
-            'quote_sent' => 'Prev. inv.',
+            'quote_sent' => 'Proposta inv.',
             'link_sent' => 'Link inv.',
             'proforma_pending' => 'Proforma da inv.',
             'payment_pending' => 'Pag. in attesa',
@@ -947,7 +953,7 @@ class LeadController extends Controller
             ],
             [
                 'key' => 'quote_sent',
-                'label' => 'Preventivo inviato',
+                'label' => 'Proposta inviata',
                 'statuses' => ['quote_sent'],
                 'accent' => 'text-black-nike',
             ],

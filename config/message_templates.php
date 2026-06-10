@@ -11,6 +11,6 @@ return [
     ['title' => 'Follow-up pagamento', 'message' => "Ciao 👋\nVolevo capire se questa soluzione può andare bene👍\nSe vuoi possiamo ancora:\n- modificare qualcosa\n- adattare quantità o prodotto\n- trovare un'alternativa diversa"],
     ['title' => 'Upsell', 'message' => "Perfetto 👍\nSe vuoi possiamo creare anche:\n- felpe coordinate\n- tote bag\n- shopper\n- altri capi con la stessa grafica\nCosì hai tutto coordinato."],
     ['title' => 'Link pagamento', 'message' => "Perfetto 👍\nPuoi confermare direttamente da qui\n\n[link di pagamento]\n\nAppena ricevo la conferma partiamo subito con la produzione👍"],
-    ['title' => 'File definitivo', 'message' => "Perfetto 👍\nPer preparare la produzone inviami il file finale in alta qualità a:\ngrafiche@stuart-company.com\nInserisci come oggetto:\nPreventivo #0000\n\nFormati consigliati: ai, pdf, svg, eps, psd, png ad alta risoluzione\nSe il file è pesante puoi usare Smash o WeTransfer"],
+    ['title' => 'File definitivo', 'message' => "Perfetto 👍\nPer preparare la produzone inviami il file finale in alta qualità a:\ngrafiche@stuart-company.com\nInserisci come oggetto:\nProposta #0000\n\nFormati consigliati: ai, pdf, svg, eps, psd, png ad alta risoluzione\nSe il file è pesante puoi usare Smash o WeTransfer"],
     ['title' => 'Conferma produzione', 'message' => "Perfetto 👍\nHo ricevuto tutto correttamente 👌\nProcediamo con la produzione e ti aggiornerò appena l'ordine sarà pronto 💪"],
 ];

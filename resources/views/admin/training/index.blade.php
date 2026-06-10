@@ -90,7 +90,7 @@
                                 <input type="hidden" name="channel" value="whatsapp">
                                 <select name="reply" class="rounded-10 border-gray-mid px-10 py-8 text-12 font-bold focus:border-bullstar focus:ring-bullstar">
                                     <option value="interested">Cliente interessato</option>
-                                    <option value="quote_change">Modifica preventivo</option>
+                                    <option value="quote_change">Modifica proposta</option>
                                     <option value="bank_transfer">Richiede bonifico</option>
                                     <option value="thanks">Ringraziamento</option>
                                 </select>
@@ -103,7 +103,7 @@
                                 <input type="hidden" name="channel" value="email">
                                 <select name="reply" class="rounded-10 border-gray-mid px-10 py-8 text-12 font-bold focus:border-bullstar focus:ring-bullstar">
                                     <option value="interested">Cliente interessato</option>
-                                    <option value="quote_change">Modifica preventivo</option>
+                                    <option value="quote_change">Modifica proposta</option>
                                     <option value="bank_transfer">Richiede bonifico</option>
                                     <option value="thanks">Ringraziamento</option>
                                 </select>

@@ -9,6 +9,7 @@ class LeadQuotePdf extends Model
 {
     protected $fillable = [
         'lead_id',
+        'proposal_number',
         'disk',
         'path',
         'filename',

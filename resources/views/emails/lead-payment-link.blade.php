@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="it">
 <body style="margin:0;padding:0;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#1f1f21;font-size:15px;line-height:1.6;">
-    <p style="margin:0 0 16px;">Importo preventivo: <strong>€ {{ $amount }}</strong></p>
-    <p style="margin:0 0 20px;">Clicca sul pulsante “Paga ora” per procedere al pagamento del preventivo.</p>
+    <p style="margin:0 0 16px;">Importo proposta: <strong>€ {{ $amount }}</strong></p>
+    <p style="margin:0 0 20px;">Clicca sul pulsante “Paga ora” per procedere al pagamento della proposta.</p>
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 20px;">
         <tr>
             <td style="background:#206ae9;border-radius:6px;">

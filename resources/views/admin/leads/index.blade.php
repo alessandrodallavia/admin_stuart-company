@@ -107,7 +107,7 @@
                                                 {{ match ($lead->status) {
                                                     'pre' => 'Attesa messaggio WhatsApp',
                                                     'confirmed' => 'Risposta automatica',
-                                                    'completed' => 'Invio preventivo',
+                                                    'completed' => 'Invio proposta',
                                                     'quote_sent' => 'Invio link pagamento',
                                                     'link_sent' => 'Pagamento cliente',
                                                     'proforma_pending' => 'Invio proforma bonifico',
@@ -118,7 +118,7 @@
                                             </p>
                                             <p class="mt-4 text-11 font-semibold text-gray">
                                                 @if ($lead->quote_amount || $lead->payment_amount)
-                                                    Preventivo {{ $lead->quote_amount ? '€ ' . number_format((float) $lead->quote_amount, 2, ',', '.') : '-' }} / Link {{ $lead->payment_amount ? '€ ' . number_format((float) $lead->payment_amount, 2, ',', '.') : '-' }}
+                                                    Proposta {{ $lead->quote_amount ? '€ ' . number_format((float) $lead->quote_amount, 2, ',', '.') : '-' }} / Link {{ $lead->payment_amount ? '€ ' . number_format((float) $lead->payment_amount, 2, ',', '.') : '-' }}
                                                 @else
                                                     Automazione pronta da collegare
                                                 @endif
@@ -219,14 +219,9 @@
                                         </select>
                                     </label>
 
-                                    <label class="block">
-                                        <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Numero preventivo</span>
-                                        <input name="quote_number" value="{{ old('quote_number', $selectedLead->quote_number) }}" type="text" maxlength="50" placeholder="Generato alla creazione link Stripe" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
-                                    </label>
-
                                     <div class="grid gap-10 md:grid-cols-2">
                                         <label class="block">
-                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Importo preventivo</span>
+                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Importo proposta</span>
                                             <input name="quote_amount" value="{{ old('quote_amount', $selectedLead->quote_amount) }}" type="number" min="0" step="0.01" placeholder="0,00" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
                                         </label>
                                         <label class="block">
@@ -249,22 +244,25 @@
                             <section class="rounded-10 border border-gray-mid p-12">
                                 <div class="flex flex-wrap items-start justify-between gap-8">
                                     <div>
-                                        <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Preventivi PDF</p>
-                                        <p class="mt-8 text-14 font-black">{{ $selectedLead->quote_number ?: 'Numero non assegnato' }}</p>
+                                        <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Proposte</p>
                                         <p class="mt-4 text-18 font-black">{{ $selectedLead->quote_amount ? '€ ' . number_format((float) $selectedLead->quote_amount, 2, ',', '.') : '-' }}</p>
                                     </div>
-                                    <p class="text-12 font-bold text-gray">{{ $selectedLead->quotePdfs->count() }} {{ $selectedLead->quotePdfs->count() === 1 ? 'PDF caricato' : 'PDF caricati' }}</p>
+                                    <p class="text-12 font-bold text-gray">{{ $selectedLead->quotePdfs->count() }} {{ $selectedLead->quotePdfs->count() === 1 ? 'proposta caricata' : 'proposte caricate' }}</p>
                                 </div>
 
-                                <form method="POST" action="{{ route('admin.leads.quote-pdfs.store', $selectedLead) }}" enctype="multipart/form-data" class="mt-12 grid gap-8 md:grid-cols-[1fr_auto] md:items-end">
+                                <form method="POST" action="{{ route('admin.leads.quote-pdfs.store', $selectedLead) }}" enctype="multipart/form-data" class="mt-12 grid min-w-0 gap-10 rounded-10 border border-gray-mid bg-gray-light p-10">
                                     @csrf
-                                    <label class="block">
-                                        <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Aggiungi PDF</span>
-                                        <input name="quote_pdfs[]" type="file" accept="application/pdf,.pdf" multiple required class="mt-6 w-full rounded-10 border border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike file:mr-12 file:rounded-10 file:border-0 file:bg-black-nike file:px-12 file:py-8 file:text-12 file:font-extrabold file:uppercase file:tracking-normal file:text-white focus:border-bullstar focus:ring-bullstar">
-                                        <span class="mt-6 block text-11 font-semibold text-gray">Puoi selezionare più PDF, massimo 20 MB ciascuno.</span>
+                                    <label class="block min-w-0">
+                                        <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Numero proposta</span>
+                                        <input name="proposal_number" value="{{ old('proposal_number') }}" type="text" maxlength="100" required placeholder="Inserisci numero proposta" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
+                                    </label>
+                                    <label class="block min-w-0">
+                                        <span class="text-12 font-extrabold uppercase tracking-normal text-gray">PDF proposta</span>
+                                        <input name="proposal_pdf" type="file" accept="application/pdf,.pdf" required class="mt-6 block w-full min-w-0 overflow-hidden rounded-10 border border-gray-mid bg-white px-8 py-8 text-12 font-semibold text-black-nike file:mr-8 file:rounded-10 file:border-0 file:bg-black-nike file:px-10 file:py-8 file:text-11 file:font-extrabold file:uppercase file:tracking-normal file:text-white focus:border-bullstar focus:ring-bullstar">
+                                        <span class="mt-6 block text-11 font-semibold text-gray">Un PDF per proposta, massimo 20 MB.</span>
                                     </label>
                                     <button type="submit" class="w-full rounded-10 bg-bullstar px-16 py-12 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">
-                                        Carica PDF
+                                        Carica proposta
                                     </button>
                                 </form>
 
@@ -272,14 +270,15 @@
                                     @forelse ($selectedLead->quotePdfs as $quotePdf)
                                         <div class="rounded-10 border border-gray-mid bg-gray-light p-10">
                                             <div class="flex flex-wrap items-center justify-between gap-6">
-                                                <a href="{{ route('admin.leads.quote-pdfs.show', [$selectedLead, $quotePdf]) }}" target="_blank" class="min-w-0 truncate text-13 font-black text-bullstar underline-offset-4 hover:underline">
-                                                    {{ $quotePdf->filename }}
-                                                </a>
+                                                <div class="min-w-0">
+                                                    <p class="text-13 font-black text-black-nike">{{ $quotePdf->proposal_number }}</p>
+                                                    <a href="{{ route('admin.leads.quote-pdfs.show', [$selectedLead, $quotePdf]) }}" target="_blank" class="mt-2 block truncate text-12 font-bold text-bullstar underline-offset-4 hover:underline">{{ $quotePdf->filename }}</a>
+                                                </div>
                                                 <p class="text-11 font-semibold text-gray">
                                                     {{ $quotePdf->uploaded_at?->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}
                                                 </p>
                                             </div>
-                                            <div class="mt-8 grid gap-6 sm:grid-cols-3">
+                                            <div class="mt-8 grid gap-6 min-[700px]:grid-cols-3 min-[1280px]:grid-cols-1">
                                                 <form method="POST" action="{{ route('admin.leads.quote-pdfs.whatsapp', [$selectedLead, $quotePdf]) }}">
                                                     @csrf
                                                     <button type="submit" class="w-full rounded-10 border border-whatsapp bg-whatsapp px-10 py-8 text-11 font-extrabold uppercase leading-none tracking-normal text-white transition hover:bg-whatsapp/90">
@@ -292,7 +291,7 @@
                                                         Invia via email
                                                     </button>
                                                 </form>
-                                                <form method="POST" action="{{ route('admin.leads.quote-pdfs.destroy', [$selectedLead, $quotePdf]) }}" onsubmit="return confirm('Eliminare questo PDF preventivo?')">
+                                                <form method="POST" action="{{ route('admin.leads.quote-pdfs.destroy', [$selectedLead, $quotePdf]) }}" onsubmit="return confirm('Eliminare questa proposta?')">
                                                     @csrf
                                                     @method('DELETE')
                                                     <button type="submit" class="w-full rounded-10 border border-red-600 bg-white px-10 py-8 text-11 font-extrabold uppercase leading-none tracking-normal text-red-600 transition hover:bg-red-50">
@@ -302,7 +301,7 @@
                                             </div>
                                         </div>
                                     @empty
-                                        <p class="text-12 font-semibold text-gray">Nessun PDF caricato.</p>
+                                        <p class="text-12 font-semibold text-gray">Nessuna proposta caricata.</p>
                                     @endforelse
                                 </div>
                             </section>

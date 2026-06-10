@@ -179,7 +179,7 @@ class TrainingController extends Controller
 
         $body = match ($data['reply']) {
             'interested' => 'Perfetto, mi interessa. Come possiamo procedere?',
-            'quote_change' => 'Grazie per il preventivo. Possiamo modificare quantità e colore?',
+            'quote_change' => 'Grazie per la proposta. Possiamo modificare quantità e colore?',
             'bank_transfer' => 'Preferisco pagare tramite bonifico bancario. Potete inviarmi la proforma?',
             'thanks' => 'Grazie, è tutto chiaro. Attendo i prossimi aggiornamenti.',
         };

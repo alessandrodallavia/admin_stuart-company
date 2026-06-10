@@ -21,7 +21,7 @@ return [
             'group' => 'Leads',
         ],
         'leads.manage' => [
-            'label' => 'Modificare lead, preventivi e link Stripe',
+            'label' => 'Modificare lead, proposte e link Stripe',
             'group' => 'Leads',
         ],
         'email.view' => [

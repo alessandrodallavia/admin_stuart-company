@@ -337,9 +337,10 @@ class TrainingModeTest extends TestCase
             'training_owner_id' => $operator->id,
         ]);
         $quotePdf = $lead->quotePdfs()->create([
+            'proposal_number' => 'PROPOSTA-TRAINING-1',
             'disk' => 'local',
-            'path' => 'quotes/preventivo.pdf',
-            'filename' => 'preventivo.pdf',
+            'path' => 'quotes/proposta.pdf',
+            'filename' => 'proposta.pdf',
             'mime_type' => 'application/pdf',
             'uploaded_at' => now(),
         ]);
@@ -364,6 +365,14 @@ class TrainingModeTest extends TestCase
             'is_training' => true,
             'training_owner_id' => $operator->id,
         ]);
+        $lead->quotePdfs()->create([
+            'proposal_number' => 'TRAINING-ESTATE/A',
+            'disk' => 'local',
+            'path' => 'quotes/proposta-stripe.pdf',
+            'filename' => 'proposta-stripe.pdf',
+            'mime_type' => 'application/pdf',
+            'uploaded_at' => now(),
+        ]);
 
         $this->actingAs($operator, 'admin')
             ->post("/leads/{$lead->id}/stripe-payment-link", ['payment_amount' => 420])
@@ -372,7 +381,26 @@ class TrainingModeTest extends TestCase
         Http::assertNothingSent();
         $lead->refresh();
         $this->assertSame('link_sent', $lead->status);
+        $this->assertSame('TRAINING-ESTATE/A', $lead->quote_number);
         $this->assertStringStartsWith('https://checkout.stripe.test/', $lead->payment_link);
+    }
+
+    public function test_training_stripe_link_requires_a_proposal(): void
+    {
+        Http::fake();
+        $operator = $this->operator();
+        $lead = $this->lead([
+            'uuid' => 'TRAIN7',
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+        ]);
+
+        $this->actingAs($operator, 'admin')
+            ->post("/leads/{$lead->id}/stripe-payment-link", ['payment_amount' => 420])
+            ->assertSessionHasErrors('proposal_pdf');
+
+        Http::assertNothingSent();
+        $this->assertNull($lead->fresh()->payment_link);
     }
 
     private function operator(): AdminUser
