@@ -431,6 +431,19 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
             ->first();
 
         if ($conversation) {
+            if (
+                $isTraining
+                && $lead->status === 'confirmed'
+                && ! $conversation->messages()->where('source', 'automation')->exists()
+            ) {
+                $conversation->forceFill([
+                    'mode' => 'auto',
+                    'needs_human' => false,
+                    'human_requested_at' => null,
+                    'manual_started_at' => null,
+                ])->save();
+            }
+
             if ($lead && ! $conversation->lead_id) {
                 $conversation->forceFill(['lead_id' => $lead->id])->save();
             }
@@ -447,9 +460,9 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
             'assigned_user_id' => $isTraining ? $lead->training_owner_id : null,
             'contact_phone' => $contactPhone,
             'business_phone' => config('services.whatsapp.phone_number_id'),
-            'mode' => $isTraining ? 'manual' : 'auto',
+            'mode' => 'auto',
             'status' => 'open',
-            'needs_human' => $isTraining,
+            'needs_human' => false,
             'is_training' => $isTraining,
             'training_owner_id' => $isTraining ? $lead->training_owner_id : null,
             'training_scenario' => $isTraining ? $lead->training_scenario : null,

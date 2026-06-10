@@ -126,7 +126,11 @@ class TrainingModeTest extends TestCase
 
     public function test_real_whatsapp_message_with_request_id_connects_to_training_lead(): void
     {
-        Http::fake();
+        Http::fake([
+            'https://graph.facebook.com/*' => Http::response([
+                'messages' => [['id' => 'training-auto-response']],
+            ]),
+        ]);
         $operator = $this->operator();
         $lead = $this->lead([
             'uuid' => 'TRAIN7',
@@ -160,14 +164,23 @@ class TrainingModeTest extends TestCase
         $this->assertSame($operator->id, $conversation->training_owner_id);
         $this->assertSame($lead->id, $conversation->lead_id);
         $this->assertSame('manual', $conversation->mode);
+        $this->assertTrue($conversation->needs_human);
         $this->assertSame('393331234567', $lead->fresh()->phone);
+        $this->assertSame('completed', $lead->fresh()->status);
         $this->assertCount(2, WhatsappConversation::withoutGlobalScope('training')->get());
         $this->assertDatabaseHas('whatsapp_messages', [
             'whatsapp_conversation_id' => $conversation->id,
             'body' => 'Ciao, questa è una prova. ID richiesta: TRAIN7 Grazie',
             'source' => 'webhook',
         ]);
-        Http::assertNothingSent();
+        $this->assertDatabaseHas('whatsapp_messages', [
+            'whatsapp_conversation_id' => $conversation->id,
+            'provider_message_id' => 'training-auto-response',
+            'direction' => 'outbound',
+            'source' => 'automation',
+            'status' => 'sent',
+        ]);
+        Http::assertSentCount(1);
     }
 
     public function test_request_id_without_label_does_not_connect_to_training_lead(): void
@@ -191,6 +204,48 @@ class TrainingModeTest extends TestCase
         $this->assertFalse($conversation->is_training);
         $this->assertNull($conversation->lead_id);
         $this->assertNull($lead->fresh()->phone);
+    }
+
+    public function test_existing_training_chat_recovers_when_automatic_reply_never_started(): void
+    {
+        Http::fake([
+            'https://graph.facebook.com/*' => Http::response([
+                'messages' => [['id' => 'training-recovered-response']],
+            ]),
+        ]);
+        $operator = $this->operator();
+        $lead = $this->lead([
+            'uuid' => 'RECOV1',
+            'status' => 'confirmed',
+            'phone' => '393331234570',
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+            'training_scenario' => 'whatsapp',
+        ]);
+        $conversation = WhatsappConversation::withoutGlobalScope('training')->create([
+            'lead_id' => $lead->id,
+            'contact_phone' => $lead->phone,
+            'mode' => 'manual',
+            'status' => 'open',
+            'needs_human' => true,
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+        ]);
+
+        app()->call([new ProcessWhatsappWebhookJob($this->whatsappWebhook(
+            $lead->phone,
+            'Secondo tentativo. ID richiesta: RECOV1',
+        )), 'handle']);
+
+        $this->assertSame('completed', $lead->fresh()->status);
+        $this->assertSame('manual', $conversation->fresh()->mode);
+        $this->assertDatabaseHas('whatsapp_messages', [
+            'whatsapp_conversation_id' => $conversation->id,
+            'provider_message_id' => 'training-recovered-response',
+            'source' => 'automation',
+            'status' => 'sent',
+        ]);
+        Http::assertSentCount(1);
     }
 
     public function test_email_training_scenario_uses_real_email_and_leaves_name_and_phone_unknown(): void

@@ -51,7 +51,7 @@ class TrainingController extends Controller
         return redirect()
             ->route($user->training_mode_active ? 'admin.training.index' : 'admin.dashboard')
             ->with('status', $user->training_mode_active
-                ? 'Modalità formazione attivata. Nessun messaggio verrà inviato realmente.'
+                ? 'Modalità formazione attivata. I dati formativi resteranno separati da quelli reali.'
                 : 'Modalità formazione disattivata. Dati formativi e ID richiesta sono stati eliminati.');
     }
 
