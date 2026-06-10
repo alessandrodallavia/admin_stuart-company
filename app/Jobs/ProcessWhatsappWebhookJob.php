@@ -51,16 +51,12 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
                 continue;
             }
 
-            if ($this->shouldIgnoreTrainingIncoming($from)) {
-                continue;
-            }
-
             // 🚫 evita loop su tuoi messaggi (opzionale)
             if (($message['from'] ?? null) === config('services.whatsapp.phone_number_id')) {
                 continue;
             }
 
-            $referencedLead = $this->findLeadByReference($message);
+            $referencedLead = $this->findLeadByReference($message) ?: $this->findTrainingLeadByPhone($from);
             $conversation = $this->getConversation($from, $referencedLead);
             $lead = $referencedLead ?: $conversation->lead ?: $this->findRealLeadByPhone($from);
 
@@ -423,13 +419,15 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
         return Lead::withoutGlobalScope('training')->where('is_training', false)->where('phone', $from)->latest()->first();
     }
 
-    private function shouldIgnoreTrainingIncoming(string $from): bool
+    private function findTrainingLeadByPhone(string $from): ?Lead
     {
         return WhatsappConversation::withoutGlobalScope('training')
             ->where('is_training', true)
             ->where('contact_phone', $from)
             ->where('status', 'open')
-            ->exists();
+            ->latest()
+            ->first()
+            ?->lead;
     }
 
     private function getConversation(string $contactPhone, ?Lead $lead = null): WhatsappConversation

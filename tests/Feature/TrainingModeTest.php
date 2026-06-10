@@ -206,7 +206,7 @@ class TrainingModeTest extends TestCase
         $this->assertNull($lead->fresh()->phone);
     }
 
-    public function test_incoming_messages_from_active_training_phone_are_ignored(): void
+    public function test_incoming_messages_from_active_training_phone_are_saved(): void
     {
         Http::fake();
         $operator = $this->operator();
@@ -230,12 +230,17 @@ class TrainingModeTest extends TestCase
 
         app()->call([new ProcessWhatsappWebhookJob($this->whatsappWebhook(
             $lead->phone,
-            'Questo messaggio in ingresso non deve essere salvato.',
+            'Questo messaggio in ingresso deve essere salvato.',
         )), 'handle']);
 
         $this->assertSame('completed', $lead->fresh()->status);
         $this->assertSame('manual', $conversation->fresh()->mode);
-        $this->assertDatabaseCount('whatsapp_messages', 0);
+        $this->assertDatabaseHas('whatsapp_messages', [
+            'whatsapp_conversation_id' => $conversation->id,
+            'body' => 'Questo messaggio in ingresso deve essere salvato.',
+            'direction' => 'inbound',
+            'source' => 'webhook',
+        ]);
         Http::assertNothingSent();
     }
 
@@ -452,9 +457,16 @@ class TrainingModeTest extends TestCase
         Http::assertSentCount(1);
     }
 
-    public function test_training_stripe_link_is_simulated(): void
+    public function test_training_stripe_link_uses_sandbox_checkout(): void
     {
-        Http::fake();
+        config()->set('services.stripe.test_secret_key', 'sk_test_training');
+        Http::fake([
+            'https://api.stripe.com/v1/customers' => Http::response(['id' => 'cus_training']),
+            'https://api.stripe.com/v1/checkout/sessions' => Http::response([
+                'id' => 'cs_test_training',
+                'url' => 'https://checkout.stripe.com/c/pay/cs_test_training',
+            ]),
+        ]);
         $operator = $this->operator();
         $lead = $this->lead([
             'uuid' => 'TRAIN5',
@@ -474,11 +486,14 @@ class TrainingModeTest extends TestCase
             ->post("/leads/{$lead->id}/stripe-payment-link", ['payment_amount' => 420])
             ->assertRedirect();
 
-        Http::assertNothingSent();
+        Http::assertSentCount(2);
+        Http::assertSent(fn ($request) => $request->url() === 'https://api.stripe.com/v1/checkout/sessions'
+            && $request->hasHeader('Authorization', 'Bearer sk_test_training')
+            && $request['metadata']['is_training'] === '1');
         $lead->refresh();
         $this->assertSame('link_sent', $lead->status);
         $this->assertSame('TRAINING-ESTATE/A', $lead->quote_number);
-        $this->assertStringStartsWith('https://checkout.stripe.test/', $lead->payment_link);
+        $this->assertSame('https://checkout.stripe.com/c/pay/cs_test_training', $lead->payment_link);
     }
 
     public function test_training_stripe_link_requires_a_proposal(): void
@@ -497,6 +512,71 @@ class TrainingModeTest extends TestCase
 
         Http::assertNothingSent();
         $this->assertNull($lead->fresh()->payment_link);
+    }
+
+    public function test_training_stripe_link_requires_test_key(): void
+    {
+        config()->set('services.stripe.test_secret_key', null);
+        $operator = $this->operator();
+        $lead = $this->lead([
+            'uuid' => 'TRAINKEY',
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+        ]);
+        $lead->quotePdfs()->create([
+            'proposal_number' => 'TRAINING-KEY/A',
+            'disk' => 'local',
+            'path' => 'quotes/proposta-key.pdf',
+            'filename' => 'proposta-key.pdf',
+            'mime_type' => 'application/pdf',
+            'uploaded_at' => now(),
+        ]);
+
+        $this->actingAs($operator, 'admin')
+            ->post("/leads/{$lead->id}/stripe-payment-link", ['payment_amount' => 420])
+            ->assertSessionHasErrors('payment_amount');
+
+        $this->assertNull($lead->fresh()->payment_link);
+    }
+
+    public function test_stripe_test_webhook_completes_only_training_lead(): void
+    {
+        config()->set('services.stripe.test_webhook_secret', 'whsec_training');
+        config()->set('services.stripe.webhook_secret', 'whsec_live');
+        $lead = $this->lead([
+            'uuid' => 'TRAINHOOK',
+            'status' => 'link_sent',
+            'is_training' => true,
+            'training_owner_id' => $this->operator()->id,
+            'payment_amount' => 420,
+        ]);
+        $payload = json_encode([
+            'type' => 'checkout.session.completed',
+            'data' => [
+                'object' => [
+                    'id' => 'cs_test_training',
+                    'client_reference_id' => (string) $lead->id,
+                    'payment_status' => 'paid',
+                    'amount_total' => 42000,
+                    'metadata' => ['is_training' => '1'],
+                ],
+            ],
+        ], JSON_THROW_ON_ERROR);
+        $timestamp = now()->timestamp;
+        $signature = hash_hmac('sha256', "{$timestamp}.{$payload}", 'whsec_training');
+
+        $this->call(
+            'POST',
+            '/api/stripe/webhook',
+            [],
+            [],
+            [],
+            ['HTTP_STRIPE_SIGNATURE' => "t={$timestamp},v1={$signature}"],
+            $payload
+        )->assertOk();
+
+        $this->assertSame('order_completed', $lead->fresh()->status);
+        $this->assertSame(420.0, (float) $lead->fresh()->payment_amount);
     }
 
     private function operator(): AdminUser

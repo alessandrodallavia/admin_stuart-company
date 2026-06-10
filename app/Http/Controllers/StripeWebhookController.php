@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class StripeWebhookController extends Controller
 {
@@ -19,11 +20,15 @@ class StripeWebhookController extends Controller
     {
         $payload = $request->getContent();
         $signature = (string) $request->header('Stripe-Signature');
-        $secret = config('services.stripe.webhook_secret');
+        $liveSecret = config('services.stripe.webhook_secret');
+        $testSecret = config('services.stripe.test_webhook_secret');
+        $isTestWebhook = $testSecret && $this->hasValidSignature($payload, $signature, $testSecret);
+        $isLiveWebhook = $liveSecret && $this->hasValidSignature($payload, $signature, $liveSecret);
 
-        if (! $secret || ! $this->hasValidSignature($payload, $signature, $secret)) {
+        if (! $isTestWebhook && ! $isLiveWebhook) {
             Log::warning('Webhook Stripe con firma non valida', [
-                'has_secret' => (bool) $secret,
+                'has_live_secret' => (bool) $liveSecret,
+                'has_test_secret' => (bool) $testSecret,
                 'has_signature' => $signature !== '',
             ]);
 
@@ -58,7 +63,9 @@ class StripeWebhookController extends Controller
             return response()->json(['message' => 'Lead reference missing']);
         }
 
-        $lead = Lead::where('is_training', false)->find($leadId);
+        $lead = Lead::withoutGlobalScope('training')
+            ->where('is_training', $isTestWebhook)
+            ->find($leadId);
 
         if (! $lead) {
             Log::warning('Webhook Stripe per lead inesistente', [
@@ -108,12 +115,15 @@ class StripeWebhookController extends Controller
         $lead->status = 'order_completed';
         $lead->save();
 
-        if (! $wasAlreadyCompleted || $lead->wasChanged('payment_amount')) {
+        if (! $lead->is_training && (! $wasAlreadyCompleted || $lead->wasChanged('payment_amount'))) {
             app(AdminNotificationService::class)->notifyPaymentCompleted($lead->fresh());
         }
 
-        $this->sendPurchaseEvent($lead->fresh(), app(Ga4MeasurementService::class));
-        app(MetaConversionsApiService::class)->trackPurchase($lead->fresh());
+        if (! $lead->is_training) {
+            $this->sendPurchaseEvent($lead->fresh(), app(Ga4MeasurementService::class));
+            app(MetaConversionsApiService::class)->trackPurchase($lead->fresh());
+        }
+
         $this->sendPaymentThankYouMessage($lead->fresh());
 
         return response()->json(['message' => 'Lead marked as paid']);
@@ -144,7 +154,7 @@ class StripeWebhookController extends Controller
 
         if (! $lead->payment_checkout_token) {
             $lead->forceFill([
-                'payment_checkout_token' => \Illuminate\Support\Str::random(48),
+                'payment_checkout_token' => Str::random(48),
             ])->save();
         }
 

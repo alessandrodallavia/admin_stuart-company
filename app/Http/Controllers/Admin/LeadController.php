@@ -255,25 +255,16 @@ class LeadController extends Controller
             'payment_amount' => ['required', 'numeric', 'min:0.50', 'max:99999999.99'],
         ]);
 
-        if ($lead->is_training) {
-            $proposalNumber = $this->latestProposalNumber($lead);
-            $lead->forceFill([
-                'quote_number' => $proposalNumber,
-                'payment_amount' => (float) $data['payment_amount'],
-                'payment_link' => 'https://checkout.stripe.test/training-'.$lead->uuid,
-                'status' => 'link_sent',
-            ])->save();
-
-            return redirect()
-                ->route('admin.leads.index', ['lead' => $lead])
-                ->with('status', 'Link pagamento simulato creato. Stripe non è stato contattato.');
-        }
-
-        $secretKey = config('services.stripe.secret_key');
+        $quoteNumber = $this->latestProposalNumber($lead);
+        $secretKey = $lead->is_training
+            ? config('services.stripe.test_secret_key')
+            : config('services.stripe.secret_key');
 
         if (! $secretKey) {
             throw ValidationException::withMessages([
-                'payment_amount' => 'Chiave Stripe mancante. Aggiungi STRIPE_SECRET_KEY nel file .env dell’admin.',
+                'payment_amount' => $lead->is_training
+                    ? 'Chiave Stripe test mancante. Aggiungi STRIPE_TEST_SECRET_KEY nel file .env dell’admin.'
+                    : 'Chiave Stripe mancante. Aggiungi STRIPE_SECRET_KEY nel file .env dell’admin.',
             ]);
         }
 
@@ -287,7 +278,6 @@ class LeadController extends Controller
             ]);
         }
 
-        $quoteNumber = $this->latestProposalNumber($lead);
         $token = $lead->payment_checkout_token ?: Str::random(48);
         $stripeCustomerId = $this->ensureStripeCustomer($lead, $secretKey);
         $payload = [
@@ -300,12 +290,14 @@ class LeadController extends Controller
                 'lead_id' => (string) $lead->id,
                 'lead_uuid' => (string) $lead->uuid,
                 'quote_number' => $quoteNumber,
+                'is_training' => $lead->is_training ? '1' : '0',
             ],
             'payment_intent_data' => [
                 'metadata' => [
                     'lead_id' => (string) $lead->id,
                     'lead_uuid' => (string) $lead->uuid,
                     'quote_number' => $quoteNumber,
+                    'is_training' => $lead->is_training ? '1' : '0',
                 ],
             ],
             'line_items' => [
@@ -320,6 +312,7 @@ class LeadController extends Controller
                             'metadata' => [
                                 'lead_id' => (string) $lead->id,
                                 'quote_number' => $quoteNumber,
+                                'is_training' => $lead->is_training ? '1' : '0',
                             ],
                         ],
                     ],
@@ -356,7 +349,9 @@ class LeadController extends Controller
 
         return redirect()
             ->route('admin.leads.index', ['lead' => $lead])
-            ->with('status', 'Link pagamento Stripe creato e salvato sul lead.');
+            ->with('status', $lead->is_training
+                ? 'Link pagamento Stripe sandbox creato e salvato sul lead formativo.'
+                : 'Link pagamento Stripe creato e salvato sul lead.');
     }
 
     public function sendStripePaymentLinkWhatsapp(Lead $lead): RedirectResponse
@@ -782,7 +777,7 @@ class LeadController extends Controller
 
     private function sendPaymentLinkSentEvent(Lead $lead, Ga4MeasurementService $ga4): void
     {
-        if ($lead->status !== 'link_sent' || $lead->ga4_payment_link_sent_at) {
+        if ($lead->is_training || $lead->status !== 'link_sent' || $lead->ga4_payment_link_sent_at) {
             return;
         }
 
