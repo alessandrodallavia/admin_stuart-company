@@ -10,7 +10,7 @@
             <div>
                 <p class="text-12 font-extrabold uppercase tracking-normal text-bullstar">Ambiente isolato</p>
                 <h2 class="mt-4 text-24 font-black leading-tight">Scenari operatore</h2>
-                <p class="mt-6 max-w-[720px] text-14 font-semibold leading-[22px] text-gray">Genera contatti realistici e gestiscili nelle normali sezioni Leads, WhatsApp ed Email. Nessuna comunicazione viene inviata all’esterno.</p>
+                <p class="mt-6 max-w-[720px] text-14 font-semibold leading-[22px] text-gray">Genera contatti realistici e gestiscili nelle normali sezioni Leads, WhatsApp ed Email.</p>
             </div>
             <form method="POST" action="{{ route('admin.training.reset') }}" onsubmit="return confirm('Eliminare tutti i dati formativi?')">
                 @csrf
@@ -19,6 +19,14 @@
             </form>
         </div>
     </section>
+
+    @if ($isTrainingActive)
+        <div class="mt-20 rounded-10 border border-red-300 border-l-4 border-l-red-600 bg-red-50 px-16 py-14">
+            <p class="text-12 font-extrabold uppercase tracking-normal text-red-700">Attenzione: comportamento WhatsApp durante il test</p>
+            <p class="mt-5 text-14 font-bold leading-[22px] text-black-nike">La prima risposta automatica è solo simulata. Tutti i messaggi successivi inviati dal pannello WhatsApp, comprese proposte e link pagamento, vengono inviati realmente.</p>
+            <p class="mt-5 text-14 font-bold leading-[22px] text-red-700">Dopo il primo messaggio con ID richiesta, le risposte inviate dal telefono usato per il test non funzionano: vengono temporaneamente ignorate e non salvate fino a quando esci dalla formazione.</p>
+        </div>
+    @endif
 
     @unless ($isTrainingActive)
         <div class="mt-20 border-l-4 border-bullstar bg-white px-16 py-14">
@@ -64,7 +72,7 @@
 
     @if ($isTrainingActive && $trainingLeads->isNotEmpty())
         <section class="mt-20 border-t border-gray-mid pt-20">
-            <h2 class="text-20 font-black leading-tight">Simula risposta cliente</h2>
+            <h2 class="text-20 font-black leading-tight">Simula risposta cliente email</h2>
             <div class="mt-12 divide-y divide-gray-mid border-y border-gray-mid">
                 @foreach ($trainingLeads as $lead)
                     <div class="grid gap-12 bg-white px-14 py-14 lg:grid-cols-[1fr_auto_auto] lg:items-center">
@@ -84,19 +92,6 @@
                                 <button class="text-11 font-extrabold uppercase tracking-normal text-bullstar hover:underline">Simula pagamento completato</button>
                             </form>
                         </div>
-                        @if ($lead->whatsappConversation)
-                            <form method="POST" action="{{ route('admin.training.leads.reply', $lead) }}" class="flex gap-6">
-                                @csrf
-                                <input type="hidden" name="channel" value="whatsapp">
-                                <select name="reply" class="rounded-10 border-gray-mid px-10 py-8 text-12 font-bold focus:border-bullstar focus:ring-bullstar">
-                                    <option value="interested">Cliente interessato</option>
-                                    <option value="quote_change">Modifica proposta</option>
-                                    <option value="bank_transfer">Richiede bonifico</option>
-                                    <option value="thanks">Ringraziamento</option>
-                                </select>
-                                <button class="rounded-10 border border-whatsapp px-10 py-8 text-12 font-extrabold uppercase tracking-normal text-whatsapp">WhatsApp</button>
-                            </form>
-                        @endif
                         @if ($lead->emailConversations->isNotEmpty())
                             <form method="POST" action="{{ route('admin.training.leads.reply', $lead) }}" class="flex gap-6">
                                 @csrf

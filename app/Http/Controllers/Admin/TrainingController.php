@@ -7,7 +7,6 @@ use App\Models\EmailConversation;
 use App\Models\EmailMessage;
 use App\Models\Lead;
 use App\Models\WhatsappConversation;
-use App\Models\WhatsappMessage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -173,7 +172,7 @@ class TrainingController extends Controller
         abort_unless($lead->is_training && $lead->training_owner_id === $request->user('admin')->id, 404);
 
         $data = $request->validate([
-            'channel' => ['required', 'in:whatsapp,email'],
+            'channel' => ['required', 'in:email'],
             'reply' => ['required', 'in:interested,quote_change,bank_transfer,thanks'],
         ]);
 
@@ -183,32 +182,6 @@ class TrainingController extends Controller
             'bank_transfer' => 'Preferisco pagare tramite bonifico bancario. Potete inviarmi la proforma?',
             'thanks' => 'Grazie, è tutto chiaro. Attendo i prossimi aggiornamenti.',
         };
-
-        if ($data['channel'] === 'whatsapp') {
-            $conversation = $lead->whatsappConversation;
-            abort_unless($conversation, 404);
-
-            WhatsappMessage::create([
-                'whatsapp_conversation_id' => $conversation->id,
-                'provider_message_id' => 'training-'.Str::uuid(),
-                'direction' => 'inbound',
-                'source' => 'training',
-                'type' => 'text',
-                'status' => 'received',
-                'from_phone' => $lead->phone,
-                'to_phone' => config('services.whatsapp.phone_number_id'),
-                'body' => $body,
-                'received_at' => now(),
-            ]);
-
-            $conversation->forceFill([
-                'needs_human' => true,
-                'last_message_at' => now(),
-            ])->save();
-
-            return redirect()->route('admin.conversations.show', $conversation)
-                ->with('status', 'Risposta cliente simulata ricevuta.');
-        }
 
         $conversation = $lead->emailConversations()->latest()->firstOrFail();
 

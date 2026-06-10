@@ -378,14 +378,6 @@ class LeadController extends Controller
         $amount = number_format((float) $lead->payment_amount, 2, ',', '.');
         $body = "Importo proposta: € {$amount}\n\nScegli come preferisci procedere:\n\n- Paga ora: carta di credito/debito, Amazon Pay, Google Pay, Apple Pay, PayPal, Satispay o addebito SEPA.\n- Bonifico bancario: ti invio la proforma con tutti i dati bancari.";
 
-        if ($lead->is_training) {
-            $this->storeTrainingWhatsappMessage($conversation, $body, 'interactive');
-
-            return redirect()
-                ->route('admin.leads.index', ['lead' => $lead])
-                ->with('status', 'Link pagamento simulato inviato su WhatsApp.');
-        }
-
         $payload = [
             'messaging_product' => 'whatsapp',
             'to' => $conversation->contact_phone,
@@ -486,20 +478,6 @@ class LeadController extends Controller
         $body = null;
         $filePath = Storage::disk($quotePdf->disk)->path($quotePdf->path);
         $filename = $quotePdf->filename;
-
-        if ($lead->is_training) {
-            $this->storeTrainingWhatsappMessage($conversation, $body, 'document', [
-                'media_disk' => $quotePdf->disk,
-                'media_path' => $quotePdf->path,
-                'media_mime_type' => $quotePdf->mime_type ?: 'application/pdf',
-                'media_filename' => $filename,
-                'media_size' => $quotePdf->size,
-            ]);
-
-            return redirect()
-                ->route('admin.leads.index', ['lead' => $lead])
-                ->with('status', 'Proposta simulata inviata su WhatsApp.');
-        }
 
         $file = fopen($filePath, 'r');
 
@@ -780,29 +758,6 @@ class LeadController extends Controller
         }
 
         return $conversation;
-    }
-
-    private function storeTrainingWhatsappMessage(WhatsappConversation $conversation, ?string $body, string $type, array $media = []): void
-    {
-        $message = WhatsappMessage::create([
-            'whatsapp_conversation_id' => $conversation->id,
-            'provider_message_id' => 'training-'.Str::uuid(),
-            'direction' => 'outbound',
-            'source' => 'user',
-            'type' => $type,
-            'status' => 'sent',
-            'from_phone' => config('services.whatsapp.phone_number_id'),
-            'to_phone' => $conversation->contact_phone,
-            'body' => $body,
-            ...$media,
-            'payload' => ['training' => true],
-            'sent_at' => now(),
-        ]);
-
-        $conversation->forceFill([
-            'needs_human' => false,
-            'last_message_at' => $message->created_at,
-        ])->save();
     }
 
     private function storeTrainingEmailMessage(EmailConversation $conversation, string $fromEmail, string $body): void

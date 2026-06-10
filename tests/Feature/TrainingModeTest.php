@@ -126,11 +126,7 @@ class TrainingModeTest extends TestCase
 
     public function test_real_whatsapp_message_with_request_id_connects_to_training_lead(): void
     {
-        Http::fake([
-            'https://graph.facebook.com/*' => Http::response([
-                'messages' => [['id' => 'training-auto-response']],
-            ]),
-        ]);
+        Http::fake();
         $operator = $this->operator();
         $lead = $this->lead([
             'uuid' => 'TRAIN7',
@@ -173,14 +169,10 @@ class TrainingModeTest extends TestCase
             'body' => 'Ciao, questa è una prova. ID richiesta: TRAIN7 Grazie',
             'source' => 'webhook',
         ]);
-        $this->assertDatabaseHas('whatsapp_messages', [
-            'whatsapp_conversation_id' => $conversation->id,
-            'provider_message_id' => 'training-auto-response',
-            'direction' => 'outbound',
-            'source' => 'automation',
-            'status' => 'sent',
-        ]);
-        Http::assertSentCount(1);
+        $automaticMessage = $conversation->messages()->where('source', 'automation')->firstOrFail();
+        $this->assertStringStartsWith('training-', $automaticMessage->provider_message_id);
+        $this->assertTrue($automaticMessage->payload['simulated']);
+        Http::assertNothingSent();
     }
 
     public function test_request_id_without_label_does_not_connect_to_training_lead(): void
@@ -206,17 +198,13 @@ class TrainingModeTest extends TestCase
         $this->assertNull($lead->fresh()->phone);
     }
 
-    public function test_existing_training_chat_recovers_when_automatic_reply_never_started(): void
+    public function test_incoming_messages_from_active_training_phone_are_ignored(): void
     {
-        Http::fake([
-            'https://graph.facebook.com/*' => Http::response([
-                'messages' => [['id' => 'training-recovered-response']],
-            ]),
-        ]);
+        Http::fake();
         $operator = $this->operator();
         $lead = $this->lead([
             'uuid' => 'RECOV1',
-            'status' => 'confirmed',
+            'status' => 'completed',
             'phone' => '393331234570',
             'is_training' => true,
             'training_owner_id' => $operator->id,
@@ -234,18 +222,13 @@ class TrainingModeTest extends TestCase
 
         app()->call([new ProcessWhatsappWebhookJob($this->whatsappWebhook(
             $lead->phone,
-            'Secondo tentativo. ID richiesta: RECOV1',
+            'Questo messaggio in ingresso non deve essere salvato.',
         )), 'handle']);
 
         $this->assertSame('completed', $lead->fresh()->status);
         $this->assertSame('manual', $conversation->fresh()->mode);
-        $this->assertDatabaseHas('whatsapp_messages', [
-            'whatsapp_conversation_id' => $conversation->id,
-            'provider_message_id' => 'training-recovered-response',
-            'source' => 'automation',
-            'status' => 'sent',
-        ]);
-        Http::assertSentCount(1);
+        $this->assertDatabaseCount('whatsapp_messages', 0);
+        Http::assertNothingSent();
     }
 
     public function test_email_training_scenario_uses_real_email_and_leaves_name_and_phone_unknown(): void
@@ -289,9 +272,13 @@ class TrainingModeTest extends TestCase
             ->assertSessionHasErrors('scenario');
     }
 
-    public function test_training_whatsapp_reply_never_calls_meta_api(): void
+    public function test_training_manual_whatsapp_message_is_sent_really(): void
     {
-        Http::fake();
+        Http::fake([
+            'https://graph.facebook.com/*' => Http::response([
+                'messages' => [['id' => 'training-real-message']],
+            ]),
+        ]);
         $operator = $this->operator();
         $lead = $this->lead([
             'uuid' => 'TRAIN2',
@@ -311,9 +298,10 @@ class TrainingModeTest extends TestCase
             ->post("/conversations/{$conversation->id}/messages", ['message' => 'Risposta formativa'])
             ->assertRedirect();
 
-        Http::assertNothingSent();
+        Http::assertSentCount(1);
         $this->assertDatabaseHas('whatsapp_messages', [
             'whatsapp_conversation_id' => $conversation->id,
+            'provider_message_id' => 'training-real-message',
             'body' => 'Risposta formativa',
             'status' => 'sent',
         ]);
@@ -385,6 +373,12 @@ class TrainingModeTest extends TestCase
     public function test_training_quote_whatsapp_has_no_automatic_text(): void
     {
         Storage::fake('local');
+        Http::fake([
+            'https://graph.facebook.com/*/media' => Http::response(['id' => 'training-media']),
+            'https://graph.facebook.com/*/messages' => Http::response([
+                'messages' => [['id' => 'training-proposal-message']],
+            ]),
+        ]);
         $operator = $this->operator();
         $lead = $this->lead([
             'uuid' => 'TRAIN6',
@@ -409,6 +403,45 @@ class TrainingModeTest extends TestCase
 
         $this->assertNull($message->body);
         $this->assertSame('document', $message->type);
+        $this->assertSame('training-proposal-message', $message->provider_message_id);
+        Http::assertSentCount(2);
+    }
+
+    public function test_training_payment_link_whatsapp_is_sent_really(): void
+    {
+        Http::fake([
+            'https://graph.facebook.com/*/messages' => Http::response([
+                'messages' => [['id' => 'training-payment-link']],
+            ]),
+        ]);
+        $operator = $this->operator();
+        $lead = $this->lead([
+            'uuid' => 'TRAINPAY',
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+            'payment_amount' => 420,
+            'payment_link' => 'https://checkout.stripe.test/training-payment',
+        ]);
+        $conversation = WhatsappConversation::withoutGlobalScope('training')->create([
+            'lead_id' => $lead->id,
+            'contact_phone' => $lead->phone,
+            'mode' => 'manual',
+            'status' => 'open',
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+        ]);
+
+        $this->actingAs($operator, 'admin')
+            ->post("/leads/{$lead->id}/stripe-payment-link/whatsapp")
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('whatsapp_messages', [
+            'whatsapp_conversation_id' => $conversation->id,
+            'provider_message_id' => 'training-payment-link',
+            'type' => 'interactive',
+            'status' => 'sent',
+        ]);
+        Http::assertSentCount(1);
     }
 
     public function test_training_stripe_link_is_simulated(): void

@@ -51,6 +51,10 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
                 continue;
             }
 
+            if ($this->shouldIgnoreTrainingIncoming($from)) {
+                continue;
+            }
+
             // 🚫 evita loop su tuoi messaggi (opzionale)
             if (($message['from'] ?? null) === config('services.whatsapp.phone_number_id')) {
                 continue;
@@ -318,6 +322,29 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
 
     private function sendText($to, $body, ?WhatsappConversation $conversation = null)
     {
+        if (
+            $conversation?->is_training
+            && ! $conversation->messages()->where('direction', 'outbound')->exists()
+        ) {
+            $message = WhatsappMessage::create([
+                'whatsapp_conversation_id' => $conversation->id,
+                'provider_message_id' => 'training-'.Str::uuid(),
+                'direction' => 'outbound',
+                'source' => 'automation',
+                'type' => 'text',
+                'status' => 'sent',
+                'from_phone' => config('services.whatsapp.phone_number_id'),
+                'to_phone' => $to,
+                'body' => $body,
+                'payload' => ['training' => true, 'simulated' => true],
+                'sent_at' => now(),
+            ]);
+
+            $conversation->forceFill(['last_message_at' => $message->created_at])->save();
+
+            return;
+        }
+
         $payload = [
             'messaging_product' => 'whatsapp',
             'to' => $to,
@@ -419,6 +446,15 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
         return Lead::withoutGlobalScope('training')->where('is_training', false)->where('phone', $from)->latest()->first();
     }
 
+    private function shouldIgnoreTrainingIncoming(string $from): bool
+    {
+        return WhatsappConversation::withoutGlobalScope('training')
+            ->where('is_training', true)
+            ->where('contact_phone', $from)
+            ->where('status', 'open')
+            ->exists();
+    }
+
     private function getConversation(string $contactPhone, ?Lead $lead = null): WhatsappConversation
     {
         $isTraining = (bool) $lead?->is_training;
@@ -431,19 +467,6 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
             ->first();
 
         if ($conversation) {
-            if (
-                $isTraining
-                && $lead->status === 'confirmed'
-                && ! $conversation->messages()->where('source', 'automation')->exists()
-            ) {
-                $conversation->forceFill([
-                    'mode' => 'auto',
-                    'needs_human' => false,
-                    'human_requested_at' => null,
-                    'manual_started_at' => null,
-                ])->save();
-            }
-
             if ($lead && ! $conversation->lead_id) {
                 $conversation->forceFill(['lead_id' => $lead->id])->save();
             }

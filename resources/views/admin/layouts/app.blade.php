@@ -130,12 +130,12 @@
 
         <main class="mx-auto flex w-full max-w-[1440px] flex-1 flex-col px-16 py-20 md:px-32 md:py-28">
             @if (auth('admin')->user()?->training_mode_active)
-                <div class="mb-16 flex flex-col gap-8 border-l-4 border-bullstar bg-white px-16 py-12 md:flex-row md:items-center md:justify-between">
+                <div class="mb-16 flex flex-col gap-8 rounded-10 border border-red-300 border-l-4 border-l-red-600 bg-red-50 px-16 py-12 md:flex-row md:items-center md:justify-between">
                     <div>
-                        <p class="text-12 font-extrabold uppercase tracking-normal text-bullstar">Modalità formazione attiva</p>
-                        <p class="mt-3 text-14 font-bold text-black-nike">Vedi solo dati formativi. Invii in uscita, analytics e pagamenti reali sono disabilitati; i messaggi WhatsApp con ID formativo vengono acquisiti nell’ambiente isolato.</p>
+                        <p class="text-12 font-extrabold uppercase tracking-normal text-red-700">Attenzione: formazione WhatsApp con invii reali</p>
+                        <p class="mt-3 text-14 font-bold text-black-nike">La prima risposta automatica è simulata. Tutti i messaggi WhatsApp successivi inviati dal pannello sono reali. Dopo l’aggancio iniziale, i messaggi in ingresso dal numero usato per il test vengono ignorati e non salvati fino all’uscita dalla formazione.</p>
                     </div>
-                    <a href="{{ route('admin.training.index') }}" class="text-12 font-extrabold uppercase tracking-normal text-bullstar hover:underline">Gestisci scenari</a>
+                    <a href="{{ route('admin.training.index') }}" class="text-12 font-extrabold uppercase tracking-normal text-red-700 hover:underline">Gestisci scenari</a>
                 </div>
             @endif
             @if (session('status'))

@@ -235,47 +235,6 @@ class WhatsappConversationController extends Controller
                 ->withInput();
         }
 
-        if ($conversation->is_training) {
-            $mediaAttributes = [];
-
-            if ($attachment) {
-                $filename = $attachment->getClientOriginalName() ?: 'allegato';
-                $path = $attachment->storeAs("training/whatsapp/{$conversation->id}", Str::uuid().'-'.$filename, self::MEDIA_DISK);
-                $mediaAttributes = [
-                    'media_disk' => self::MEDIA_DISK,
-                    'media_path' => $path,
-                    'media_mime_type' => $attachment->getMimeType(),
-                    'media_filename' => $filename,
-                    'media_size' => $attachment->getSize(),
-                ];
-            }
-
-            $message = WhatsappMessage::create([
-                'whatsapp_conversation_id' => $conversation->id,
-                'provider_message_id' => 'training-'.Str::uuid(),
-                'direction' => 'outbound',
-                'source' => 'user',
-                'type' => $attachment ? $this->whatsappTypeFromMimeType($mediaAttributes['media_mime_type']) : 'text',
-                'status' => 'sent',
-                'from_phone' => config('services.whatsapp.phone_number_id'),
-                'to_phone' => $conversation->contact_phone,
-                'body' => $body !== '' ? $body : null,
-                ...$mediaAttributes,
-                'payload' => ['training' => true],
-                'sent_at' => now(),
-            ]);
-
-            $conversation->forceFill([
-                'assigned_user_id' => Auth::guard('admin')->id(),
-                'needs_human' => false,
-                'last_message_at' => $message->created_at,
-            ])->save();
-
-            return redirect()
-                ->route('admin.conversations.show', $conversation)
-                ->with('status', 'Messaggio simulato inviato. Nessuna comunicazione reale è partita.');
-        }
-
         $mediaAttributes = [];
 
         if ($attachment) {
