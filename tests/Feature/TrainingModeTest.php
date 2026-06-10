@@ -126,7 +126,11 @@ class TrainingModeTest extends TestCase
 
     public function test_real_whatsapp_message_with_request_id_connects_to_training_lead(): void
     {
-        Http::fake();
+        Http::fake([
+            'https://graph.facebook.com/*' => Http::response([
+                'messages' => [['id' => 'training-auto-response']],
+            ]),
+        ]);
         $operator = $this->operator();
         $lead = $this->lead([
             'uuid' => 'TRAIN7',
@@ -169,10 +173,14 @@ class TrainingModeTest extends TestCase
             'body' => 'Ciao, questa è una prova. ID richiesta: TRAIN7 Grazie',
             'source' => 'webhook',
         ]);
-        $automaticMessage = $conversation->messages()->where('source', 'automation')->firstOrFail();
-        $this->assertStringStartsWith('training-', $automaticMessage->provider_message_id);
-        $this->assertTrue($automaticMessage->payload['simulated']);
-        Http::assertNothingSent();
+        $this->assertDatabaseHas('whatsapp_messages', [
+            'whatsapp_conversation_id' => $conversation->id,
+            'provider_message_id' => 'training-auto-response',
+            'direction' => 'outbound',
+            'source' => 'automation',
+            'status' => 'sent',
+        ]);
+        Http::assertSentCount(1);
     }
 
     public function test_request_id_without_label_does_not_connect_to_training_lead(): void

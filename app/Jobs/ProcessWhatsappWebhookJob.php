@@ -322,29 +322,6 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
 
     private function sendText($to, $body, ?WhatsappConversation $conversation = null)
     {
-        if (
-            $conversation?->is_training
-            && ! $conversation->messages()->where('direction', 'outbound')->exists()
-        ) {
-            $message = WhatsappMessage::create([
-                'whatsapp_conversation_id' => $conversation->id,
-                'provider_message_id' => 'training-'.Str::uuid(),
-                'direction' => 'outbound',
-                'source' => 'automation',
-                'type' => 'text',
-                'status' => 'sent',
-                'from_phone' => config('services.whatsapp.phone_number_id'),
-                'to_phone' => $to,
-                'body' => $body,
-                'payload' => ['training' => true, 'simulated' => true],
-                'sent_at' => now(),
-            ]);
-
-            $conversation->forceFill(['last_message_at' => $message->created_at])->save();
-
-            return;
-        }
-
         $payload = [
             'messaging_product' => 'whatsapp',
             'to' => $to,

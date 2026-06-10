@@ -133,7 +133,7 @@
                 <div class="mb-16 flex flex-col gap-8 rounded-10 border border-red-300 border-l-4 border-l-red-600 bg-red-50 px-16 py-12 md:flex-row md:items-center md:justify-between">
                     <div>
                         <p class="text-12 font-extrabold uppercase tracking-normal text-red-700">Attenzione: formazione WhatsApp con invii reali</p>
-                        <p class="mt-3 text-14 font-bold text-black-nike">La prima risposta automatica è simulata. Tutti i messaggi WhatsApp successivi inviati dal pannello sono reali. Dopo l’aggancio iniziale, i messaggi in ingresso dal numero usato per il test vengono ignorati e non salvati fino all’uscita dalla formazione.</p>
+                        <p class="mt-3 text-14 font-bold text-black-nike">Tutti i messaggi WhatsApp in uscita, compresa la prima risposta automatica, vengono inviati realmente. Dopo l’aggancio iniziale, i messaggi in ingresso dal numero usato per il test vengono ignorati e non salvati fino all’uscita dalla formazione.</p>
                     </div>
                     <a href="{{ route('admin.training.index') }}" class="text-12 font-extrabold uppercase tracking-normal text-red-700 hover:underline">Gestisci scenari</a>
                 </div>

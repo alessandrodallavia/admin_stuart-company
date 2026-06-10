@@ -23,7 +23,7 @@
     @if ($isTrainingActive)
         <div class="mt-20 rounded-10 border border-red-300 border-l-4 border-l-red-600 bg-red-50 px-16 py-14">
             <p class="text-12 font-extrabold uppercase tracking-normal text-red-700">Attenzione: comportamento WhatsApp durante il test</p>
-            <p class="mt-5 text-14 font-bold leading-[22px] text-black-nike">La prima risposta automatica è solo simulata. Tutti i messaggi successivi inviati dal pannello WhatsApp, comprese proposte e link pagamento, vengono inviati realmente.</p>
+            <p class="mt-5 text-14 font-bold leading-[22px] text-black-nike">Tutti i messaggi in uscita, compresa la prima risposta automatica, le proposte e i link pagamento, vengono inviati realmente.</p>
             <p class="mt-5 text-14 font-bold leading-[22px] text-red-700">Dopo il primo messaggio con ID richiesta, le risposte inviate dal telefono usato per il test non funzionano: vengono temporaneamente ignorate e non salvate fino a quando esci dalla formazione.</p>
         </div>
     @endif
