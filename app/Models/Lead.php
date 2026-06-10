@@ -143,4 +143,9 @@ class Lead extends Model
     {
         return $this->hasMany(EmailConversation::class);
     }
+
+    public function quotePdfs(): HasMany
+    {
+        return $this->hasMany(LeadQuotePdf::class)->latest('uploaded_at')->latest();
+    }
 }

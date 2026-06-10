@@ -27,8 +27,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
         AdminNotificationService $adminNotifications,
         GoogleAdsConversionService $googleAdsConversions,
         MetaConversionsApiService $metaConversions
-    )
-    {
+    ) {
         $value = $this->data['entry'][0]['changes'][0]['value'] ?? null;
 
         if (! $value) {
@@ -57,8 +56,13 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
                 continue;
             }
 
-            $conversation = $this->getConversation($from);
-            $lead = $conversation->lead ?: $this->findLead($message, $from);
+            $referencedLead = $this->findLeadByReference($message);
+            $conversation = $this->getConversation($from, $referencedLead);
+            $lead = $referencedLead ?: $conversation->lead ?: $this->findRealLeadByPhone($from);
+
+            if ($referencedLead && $referencedLead->phone !== $from) {
+                $referencedLead->forceFill(['phone' => $from])->save();
+            }
 
             if ($lead && ! $conversation->lead_id) {
                 $conversation->forceFill(['lead_id' => $lead->id])->save();
@@ -79,7 +83,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
             }
 
             if ($conversation->mode === 'manual') {
-                if ($storedMessage->wasRecentlyCreated) {
+                if ($storedMessage->wasRecentlyCreated && ! $conversation->is_training) {
                     $adminNotifications->notifyWhatsappMessage($conversation->fresh(['lead']), $storedMessage);
                 }
 
@@ -100,7 +104,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
 
             $conversation = $conversation->fresh(['lead']);
 
-            if ($storedMessage->wasRecentlyCreated && $conversation->mode === 'manual') {
+            if ($storedMessage->wasRecentlyCreated && $conversation->mode === 'manual' && ! $conversation->is_training) {
                 $adminNotifications->notifyWhatsappMessage($conversation, $storedMessage);
             }
         }
@@ -196,8 +200,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
         WhatsappConversation $conversation,
         AdminNotificationService $adminNotifications,
         MetaConversionsApiService $metaConversions
-    ): void
-    {
+    ): void {
         $replyId = $message['interactive']['button_reply']['id'] ?? null;
 
         if ($replyId === 'pay_now_link_request') {
@@ -216,8 +219,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
         ?Lead $lead,
         WhatsappConversation $conversation,
         MetaConversionsApiService $metaConversions
-    ): void
-    {
+    ): void {
         if (! $lead || ! $lead->payment_link) {
             $this->sendText($from, 'Ti rispondo a breve con il link corretto per procedere al pagamento.', $conversation);
             $this->requestHumanHandoff($conversation, 'Paga ora richiesto, ma link Stripe mancante o lead non collegato.');
@@ -398,7 +400,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
         ])->save();
     }
 
-    private function findLead(array $message, string $from): ?Lead
+    private function findLeadByReference(array $message): ?Lead
     {
         $text = $message['text']['body'] ?? '';
 
@@ -406,19 +408,23 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
         $uuid = $matches[1] ?? null;
 
         if ($uuid) {
-            $lead = Lead::where('is_training', false)->where('uuid', $uuid)->first();
-
-            if ($lead) {
-                return $lead;
-            }
+            return Lead::withoutGlobalScope('training')->where('uuid', $uuid)->first();
         }
 
-        return Lead::where('is_training', false)->where('phone', $from)->latest()->first();
+        return null;
+    }
+
+    private function findRealLeadByPhone(string $from): ?Lead
+    {
+        return Lead::withoutGlobalScope('training')->where('is_training', false)->where('phone', $from)->latest()->first();
     }
 
     private function getConversation(string $contactPhone, ?Lead $lead = null): WhatsappConversation
     {
-        $conversation = WhatsappConversation::where('is_training', false)
+        $isTraining = (bool) $lead?->is_training;
+        $conversation = WhatsappConversation::withoutGlobalScope('training')
+            ->where('is_training', $isTraining)
+            ->when($isTraining, fn ($query) => $query->where('training_owner_id', $lead->training_owner_id))
             ->where('contact_phone', $contactPhone)
             ->where('status', 'open')
             ->latest()
@@ -438,10 +444,15 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
 
         $conversation = WhatsappConversation::create([
             'lead_id' => $lead?->id,
+            'assigned_user_id' => $isTraining ? $lead->training_owner_id : null,
             'contact_phone' => $contactPhone,
             'business_phone' => config('services.whatsapp.phone_number_id'),
-            'mode' => 'auto',
+            'mode' => $isTraining ? 'manual' : 'auto',
             'status' => 'open',
+            'needs_human' => $isTraining,
+            'is_training' => $isTraining,
+            'training_owner_id' => $isTraining ? $lead->training_owner_id : null,
+            'training_scenario' => $isTraining ? $lead->training_scenario : null,
         ]);
 
         if ($lead && ! $lead->whatsapp_conversation_id) {
@@ -517,7 +528,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
 
     private function uploadWhatsappConversion(?Lead $lead, WhatsappMessage $message, GoogleAdsConversionService $googleAdsConversions): void
     {
-        if (! $lead || ! $message->wasRecentlyCreated || ! $lead->gclid || $lead->google_ads_whatsapp_conversion_sent_at) {
+        if (! $lead || $lead->is_training || ! $message->wasRecentlyCreated || ! $lead->gclid || $lead->google_ads_whatsapp_conversion_sent_at) {
             return;
         }
 
@@ -550,7 +561,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
 
     private function uploadMetaContact(?Lead $lead, WhatsappMessage $message, MetaConversionsApiService $metaConversions): void
     {
-        if (! $lead || ! $message->wasRecentlyCreated) {
+        if (! $lead || $lead->is_training || ! $message->wasRecentlyCreated) {
             return;
         }
 

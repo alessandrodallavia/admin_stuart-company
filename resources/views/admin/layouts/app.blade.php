@@ -133,7 +133,7 @@
                 <div class="mb-16 flex flex-col gap-8 border-l-4 border-bullstar bg-white px-16 py-12 md:flex-row md:items-center md:justify-between">
                     <div>
                         <p class="text-12 font-extrabold uppercase tracking-normal text-bullstar">Modalità formazione attiva</p>
-                        <p class="mt-3 text-14 font-bold text-black-nike">Vedi solo dati simulati. WhatsApp, email, analytics e pagamenti reali sono disabilitati.</p>
+                        <p class="mt-3 text-14 font-bold text-black-nike">Vedi solo dati formativi. Invii in uscita, analytics e pagamenti reali sono disabilitati; i messaggi WhatsApp con ID formativo vengono acquisiti nell’ambiente isolato.</p>
                     </div>
                     <a href="{{ route('admin.training.index') }}" class="text-12 font-extrabold uppercase tracking-normal text-bullstar hover:underline">Gestisci scenari</a>
                 </div>

@@ -2,14 +2,17 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\ProcessWhatsappWebhookJob;
 use App\Models\AdminUser;
 use App\Models\EmailAccount;
 use App\Models\EmailConversation;
 use App\Models\Lead;
 use App\Models\WhatsappConversation;
+use App\Models\WhatsappMessage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class TrainingModeTest extends TestCase
@@ -42,27 +45,193 @@ class TrainingModeTest extends TestCase
         $this->assertSame([$trainingLead->id], Lead::pluck('id')->all());
     }
 
-    public function test_operator_can_create_complete_training_scenario(): void
+    public function test_training_page_requests_real_contacts_for_channel_scenarios(): void
+    {
+        $operator = $this->operator();
+
+        $this->actingAs($operator, 'admin')
+            ->get('/training')
+            ->assertOk()
+            ->assertDontSee('Percorso completo')
+            ->assertSee('Numero a cui scrivere')
+            ->assertSee('+'.ltrim((string) config('services.whatsapp.phone_api'), '+'))
+            ->assertSee('ID richiesta: &lt;ID&gt;', false)
+            ->assertSee('Email reale')
+            ->assertSee('senza nome e telefono');
+    }
+
+    public function test_whatsapp_training_scenario_creates_pending_lead_without_personal_data(): void
+    {
+        $operator = $this->operator();
+
+        $this->actingAs($operator, 'admin')
+            ->post('/training/scenarios', ['scenario' => 'whatsapp'])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect('/training');
+
+        $lead = Lead::withoutGlobalScope('training')->latest()->firstOrFail();
+
+        $this->assertNull($lead->name);
+        $this->assertNull($lead->email);
+        $this->assertNull($lead->phone);
+        $this->assertNotNull($lead->uuid);
+        $this->assertDatabaseMissing('whatsapp_conversations', ['lead_id' => $lead->id]);
+        $this->assertDatabaseMissing('email_conversations', ['lead_id' => $lead->id]);
+    }
+
+    public function test_exiting_training_deletes_training_data_and_request_id(): void
+    {
+        $operator = $this->operator();
+        $lead = $this->lead([
+            'uuid' => 'RESET1',
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+            'training_scenario' => 'whatsapp',
+        ]);
+        $conversation = WhatsappConversation::withoutGlobalScope('training')->create([
+            'lead_id' => $lead->id,
+            'contact_phone' => '393331234569',
+            'mode' => 'manual',
+            'status' => 'open',
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+        ]);
+
+        $this->actingAs($operator, 'admin')
+            ->post('/training/toggle')
+            ->assertRedirect('/');
+
+        $this->assertFalse($operator->fresh()->training_mode_active);
+        $this->assertDatabaseMissing('leads', ['uuid' => 'RESET1']);
+        $this->assertDatabaseMissing('whatsapp_conversations', ['id' => $conversation->id]);
+    }
+
+    public function test_entering_training_does_not_delete_existing_training_data(): void
+    {
+        $operator = $this->operator();
+        $operator->forceFill(['training_mode_active' => false])->save();
+        $lead = $this->lead([
+            'uuid' => 'KEEP01',
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+        ]);
+
+        $this->actingAs($operator, 'admin')
+            ->post('/training/toggle')
+            ->assertRedirect('/training');
+
+        $this->assertTrue($operator->fresh()->training_mode_active);
+        $this->assertDatabaseHas('leads', ['id' => $lead->id, 'uuid' => 'KEEP01']);
+    }
+
+    public function test_real_whatsapp_message_with_request_id_connects_to_training_lead(): void
+    {
+        Http::fake();
+        $operator = $this->operator();
+        $lead = $this->lead([
+            'uuid' => 'TRAIN7',
+            'name' => null,
+            'email' => null,
+            'phone' => null,
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+            'training_scenario' => 'whatsapp',
+        ]);
+        $realLead = $this->lead([
+            'uuid' => 'REAL07',
+            'phone' => '393331234567',
+        ]);
+        WhatsappConversation::withoutGlobalScope('training')->create([
+            'lead_id' => $realLead->id,
+            'contact_phone' => $realLead->phone,
+            'mode' => 'manual',
+            'status' => 'open',
+            'is_training' => false,
+        ]);
+
+        app()->call([new ProcessWhatsappWebhookJob($this->whatsappWebhook(
+            '393331234567',
+            'Ciao, questa è una prova. ID richiesta: TRAIN7 Grazie',
+        )), 'handle']);
+
+        $conversation = WhatsappConversation::withoutGlobalScope('training')->where('is_training', true)->firstOrFail();
+
+        $this->assertTrue($conversation->is_training);
+        $this->assertSame($operator->id, $conversation->training_owner_id);
+        $this->assertSame($lead->id, $conversation->lead_id);
+        $this->assertSame('manual', $conversation->mode);
+        $this->assertSame('393331234567', $lead->fresh()->phone);
+        $this->assertCount(2, WhatsappConversation::withoutGlobalScope('training')->get());
+        $this->assertDatabaseHas('whatsapp_messages', [
+            'whatsapp_conversation_id' => $conversation->id,
+            'body' => 'Ciao, questa è una prova. ID richiesta: TRAIN7 Grazie',
+            'source' => 'webhook',
+        ]);
+        Http::assertNothingSent();
+    }
+
+    public function test_request_id_without_label_does_not_connect_to_training_lead(): void
+    {
+        Http::fake();
+        $operator = $this->operator();
+        $lead = $this->lead([
+            'uuid' => 'TRAIN8',
+            'name' => null,
+            'email' => null,
+            'phone' => null,
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+            'training_scenario' => 'whatsapp',
+        ]);
+
+        app()->call([new ProcessWhatsappWebhookJob($this->whatsappWebhook('393331234568', 'TRAIN8')), 'handle']);
+
+        $conversation = WhatsappConversation::withoutGlobalScope('training')->firstOrFail();
+
+        $this->assertFalse($conversation->is_training);
+        $this->assertNull($conversation->lead_id);
+        $this->assertNull($lead->fresh()->phone);
+    }
+
+    public function test_email_training_scenario_uses_real_email_and_leaves_name_and_phone_unknown(): void
     {
         $operator = $this->operator();
         $this->emailAccount($operator);
 
         $this->actingAs($operator, 'admin')
-            ->post('/training/scenarios', ['scenario' => 'complete'])
+            ->post('/training/scenarios', [
+                'scenario' => 'email',
+                'contact_email' => 'mia-email@example.com',
+            ])
+            ->assertSessionHasNoErrors()
             ->assertRedirect();
 
-        $this->assertDatabaseHas('leads', [
-            'is_training' => true,
-            'training_owner_id' => $operator->id,
-        ]);
-        $this->assertDatabaseHas('whatsapp_conversations', [
-            'is_training' => true,
-            'training_owner_id' => $operator->id,
-        ]);
-        $this->assertDatabaseHas('email_conversations', [
-            'is_training' => true,
-            'training_owner_id' => $operator->id,
-        ]);
+        $lead = Lead::withoutGlobalScope('training')->latest()->firstOrFail();
+        $conversation = EmailConversation::withoutGlobalScope('training')->firstOrFail();
+        $message = $conversation->messages()->firstOrFail();
+
+        $this->assertNull($lead->name);
+        $this->assertNull($lead->phone);
+        $this->assertSame('mia-email@example.com', $lead->email);
+        $this->assertSame($lead->email, $conversation->contact_email);
+        $this->assertNull($conversation->contact_name);
+        $this->assertNull($message->from_name);
+        $this->assertStringNotContainsString('Giulia', $message->body_text);
+        $this->assertDatabaseMissing('whatsapp_conversations', ['lead_id' => $lead->id]);
+    }
+
+    public function test_channel_training_scenarios_require_the_corresponding_real_contact(): void
+    {
+        $operator = $this->operator();
+        $this->emailAccount($operator);
+
+        $this->actingAs($operator, 'admin')
+            ->post('/training/scenarios', ['scenario' => 'email'])
+            ->assertSessionHasErrors('contact_email');
+
+        $this->actingAs($operator, 'admin')
+            ->post('/training/scenarios', ['scenario' => 'complete'])
+            ->assertSessionHasErrors('scenario');
     }
 
     public function test_training_whatsapp_reply_never_calls_meta_api(): void
@@ -158,6 +327,34 @@ class TrainingModeTest extends TestCase
         ]);
     }
 
+    public function test_training_quote_whatsapp_has_no_automatic_text(): void
+    {
+        Storage::fake('local');
+        $operator = $this->operator();
+        $lead = $this->lead([
+            'uuid' => 'TRAIN6',
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+        ]);
+        $quotePdf = $lead->quotePdfs()->create([
+            'disk' => 'local',
+            'path' => 'quotes/preventivo.pdf',
+            'filename' => 'preventivo.pdf',
+            'mime_type' => 'application/pdf',
+            'uploaded_at' => now(),
+        ]);
+        Storage::disk('local')->put($quotePdf->path, 'PDF');
+
+        $this->actingAs($operator, 'admin')
+            ->post("/leads/{$lead->id}/quote-pdfs/{$quotePdf->id}/whatsapp")
+            ->assertRedirect();
+
+        $message = WhatsappMessage::withoutGlobalScopes()->latest()->firstOrFail();
+
+        $this->assertNull($message->body);
+        $this->assertSame('document', $message->type);
+    }
+
     public function test_training_stripe_link_is_simulated(): void
     {
         Http::fake();
@@ -214,5 +411,24 @@ class TrainingModeTest extends TestCase
             'smtp_host' => 'stuart-company.test',
             'is_active' => true,
         ]);
+    }
+
+    private function whatsappWebhook(string $from, string $body): array
+    {
+        return [
+            'entry' => [[
+                'changes' => [[
+                    'value' => [
+                        'messages' => [[
+                            'id' => 'wamid.'.fake()->uuid(),
+                            'from' => $from,
+                            'timestamp' => (string) now()->timestamp,
+                            'type' => 'text',
+                            'text' => ['body' => $body],
+                        ]],
+                    ],
+                ]],
+            ]],
+        ];
     }
 }

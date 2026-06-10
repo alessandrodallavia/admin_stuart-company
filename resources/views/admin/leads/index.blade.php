@@ -59,7 +59,7 @@
                 </form>
             </section>
 
-            <section class="grid min-h-[660px] flex-1 gap-16 xl:grid-cols-[minmax(0,1fr)_420px]">
+            <section class="grid min-h-[660px] flex-1 gap-16 min-[1280px]:grid-cols-[minmax(0,1fr)_420px]">
                 <section class="overflow-hidden rounded-10 border border-gray-mid bg-white">
                     <div class="flex flex-col gap-12 border-b border-gray-mid px-16 py-12 md:flex-row md:items-center md:justify-between">
                         <div>
@@ -240,46 +240,74 @@
                                         <input name="payment_link" value="{{ old('payment_link', $selectedLead->payment_link) }}" type="url" placeholder="https://..." class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
                                     </label>
 
-                                    <label class="block">
-                                        <span class="text-12 font-extrabold uppercase tracking-normal text-gray">PDF preventivo</span>
-                                        <input name="quote_pdf" type="file" accept="application/pdf,.pdf" class="mt-6 w-full rounded-10 border border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike file:mr-12 file:rounded-10 file:border-0 file:bg-black-nike file:px-12 file:py-8 file:text-12 file:font-extrabold file:uppercase file:tracking-normal file:text-white focus:border-bullstar focus:ring-bullstar">
-                                        <span class="mt-6 block text-11 font-semibold text-gray">Carica un PDF fino a 20 MB. Se ne carichi uno nuovo, sostituisce quello precedente.</span>
-                                    </label>
-
-                                    <button type="submit" class="w-full rounded-10 bg-bullstar px-12 py-10 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">
+                                    <button type="submit" class="w-full rounded-10 bg-bullstar px-16 py-12 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">
                                         Aggiorna lead
                                     </button>
                                 </form>
                             </section>
 
-                            <section class="grid gap-10 md:grid-cols-2">
-                                <div class="rounded-10 border border-gray-mid p-12">
-                                    <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Preventivo</p>
-                                    <p class="mt-8 text-14 font-black">{{ $selectedLead->quote_number ?: 'Numero non assegnato' }}</p>
-                                    <p class="mt-8 text-18 font-black">{{ $selectedLead->quote_amount ? '€ ' . number_format((float) $selectedLead->quote_amount, 2, ',', '.') : '-' }}</p>
-                                    @if ($selectedLead->quote_pdf_path)
-                                        <a href="{{ route('admin.leads.quote-pdf', $selectedLead) }}" target="_blank" class="mt-8 block truncate text-12 font-bold text-bullstar underline-offset-4 hover:underline">
-                                            {{ $selectedLead->quote_pdf_filename ?: 'Apri PDF preventivo' }}
-                                        </a>
-                                        <form method="POST" action="{{ route('admin.leads.quote-pdf.whatsapp', $selectedLead) }}" class="mt-8">
-                                            @csrf
-                                            <button type="submit" class="w-full rounded-10 border border-whatsapp bg-whatsapp px-10 py-8 text-11 font-extrabold uppercase leading-none tracking-normal text-white transition hover:bg-whatsapp/90">
-                                                Invia PDF su WhatsApp
-                                            </button>
-                                        </form>
-                                        <form method="POST" action="{{ route('admin.leads.quote-pdf.email', $selectedLead) }}" class="mt-8">
-                                            @csrf
-                                            <button type="submit" @disabled(! $selectedLead->email) class="w-full rounded-10 border border-bullstar bg-bullstar px-10 py-8 text-11 font-extrabold uppercase leading-none tracking-normal text-white transition hover:bg-bullstar-hover disabled:cursor-not-allowed disabled:border-gray-mid disabled:bg-gray">
-                                                Invia PDF via email
-                                            </button>
-                                        </form>
-                                        @if ($selectedLead->quote_pdf_uploaded_at)
-                                            <p class="mt-4 text-11 font-semibold text-gray">Caricato il {{ $selectedLead->quote_pdf_uploaded_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</p>
-                                        @endif
-                                    @else
-                                        <p class="mt-8 text-12 font-semibold text-gray">PDF non caricato</p>
-                                    @endif
+                            <section class="rounded-10 border border-gray-mid p-12">
+                                <div class="flex flex-wrap items-start justify-between gap-8">
+                                    <div>
+                                        <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Preventivi PDF</p>
+                                        <p class="mt-8 text-14 font-black">{{ $selectedLead->quote_number ?: 'Numero non assegnato' }}</p>
+                                        <p class="mt-4 text-18 font-black">{{ $selectedLead->quote_amount ? '€ ' . number_format((float) $selectedLead->quote_amount, 2, ',', '.') : '-' }}</p>
+                                    </div>
+                                    <p class="text-12 font-bold text-gray">{{ $selectedLead->quotePdfs->count() }} {{ $selectedLead->quotePdfs->count() === 1 ? 'PDF caricato' : 'PDF caricati' }}</p>
                                 </div>
+
+                                <form method="POST" action="{{ route('admin.leads.quote-pdfs.store', $selectedLead) }}" enctype="multipart/form-data" class="mt-12 grid gap-8 md:grid-cols-[1fr_auto] md:items-end">
+                                    @csrf
+                                    <label class="block">
+                                        <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Aggiungi PDF</span>
+                                        <input name="quote_pdfs[]" type="file" accept="application/pdf,.pdf" multiple required class="mt-6 w-full rounded-10 border border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike file:mr-12 file:rounded-10 file:border-0 file:bg-black-nike file:px-12 file:py-8 file:text-12 file:font-extrabold file:uppercase file:tracking-normal file:text-white focus:border-bullstar focus:ring-bullstar">
+                                        <span class="mt-6 block text-11 font-semibold text-gray">Puoi selezionare più PDF, massimo 20 MB ciascuno.</span>
+                                    </label>
+                                    <button type="submit" class="w-full rounded-10 bg-bullstar px-16 py-12 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">
+                                        Carica PDF
+                                    </button>
+                                </form>
+
+                                <div class="mt-12 grid gap-8">
+                                    @forelse ($selectedLead->quotePdfs as $quotePdf)
+                                        <div class="rounded-10 border border-gray-mid bg-gray-light p-10">
+                                            <div class="flex flex-wrap items-center justify-between gap-6">
+                                                <a href="{{ route('admin.leads.quote-pdfs.show', [$selectedLead, $quotePdf]) }}" target="_blank" class="min-w-0 truncate text-13 font-black text-bullstar underline-offset-4 hover:underline">
+                                                    {{ $quotePdf->filename }}
+                                                </a>
+                                                <p class="text-11 font-semibold text-gray">
+                                                    {{ $quotePdf->uploaded_at?->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}
+                                                </p>
+                                            </div>
+                                            <div class="mt-8 grid gap-6 sm:grid-cols-3">
+                                                <form method="POST" action="{{ route('admin.leads.quote-pdfs.whatsapp', [$selectedLead, $quotePdf]) }}">
+                                                    @csrf
+                                                    <button type="submit" class="w-full rounded-10 border border-whatsapp bg-whatsapp px-10 py-8 text-11 font-extrabold uppercase leading-none tracking-normal text-white transition hover:bg-whatsapp/90">
+                                                        Invia su WhatsApp
+                                                    </button>
+                                                </form>
+                                                <form method="POST" action="{{ route('admin.leads.quote-pdfs.email', [$selectedLead, $quotePdf]) }}">
+                                                    @csrf
+                                                    <button type="submit" @disabled(! $selectedLead->email) class="w-full rounded-10 border border-bullstar bg-bullstar px-10 py-8 text-11 font-extrabold uppercase leading-none tracking-normal text-white transition hover:bg-bullstar-hover disabled:cursor-not-allowed disabled:border-gray-mid disabled:bg-gray">
+                                                        Invia via email
+                                                    </button>
+                                                </form>
+                                                <form method="POST" action="{{ route('admin.leads.quote-pdfs.destroy', [$selectedLead, $quotePdf]) }}" onsubmit="return confirm('Eliminare questo PDF preventivo?')">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="w-full rounded-10 border border-red-600 bg-white px-10 py-8 text-11 font-extrabold uppercase leading-none tracking-normal text-red-600 transition hover:bg-red-50">
+                                                        Elimina
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    @empty
+                                        <p class="text-12 font-semibold text-gray">Nessun PDF caricato.</p>
+                                    @endforelse
+                                </div>
+                            </section>
+
+                            <section class="grid gap-10">
                                 <div class="rounded-10 border border-gray-mid p-12">
                                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Pagamento</p>
                                     <p class="mt-8 text-18 font-black">{{ $selectedLead->payment_amount ? '€ ' . number_format((float) $selectedLead->payment_amount, 2, ',', '.') : '-' }}</p>
@@ -304,7 +332,7 @@
                                             <span class="text-11 font-extrabold uppercase tracking-normal text-gray">Importo Stripe</span>
                                             <input name="payment_amount" value="{{ old('payment_amount', $selectedLead->payment_amount ?: $selectedLead->quote_amount) }}" type="number" min="0.50" step="0.01" placeholder="0,00" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
                                         </label>
-                                        <button type="submit" class="w-full rounded-10 border border-black-nike bg-black-nike px-10 py-6 text-11 font-extrabold uppercase leading-none tracking-normal text-white transition hover:bg-black">
+                                        <button type="submit" class="w-full rounded-10 bg-bullstar px-16 py-12 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">
                                             Crea link Stripe
                                         </button>
                                     </form>

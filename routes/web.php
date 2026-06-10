@@ -49,18 +49,20 @@ Route::name('admin.')->group(function () {
         Route::middleware('admin.permission:leads.view')->group(function () {
             Route::get('/leads/board', [AdminLeadController::class, 'board'])->name('leads.board');
             Route::get('/leads/{lead?}', [AdminLeadController::class, 'index'])->name('leads.index');
-            Route::get('/leads/{lead}/quote-pdf', [AdminLeadController::class, 'showQuotePdf'])->name('leads.quote-pdf');
+            Route::get('/leads/{lead}/quote-pdfs/{quotePdf}', [AdminLeadController::class, 'showQuotePdf'])->name('leads.quote-pdfs.show');
         });
 
         Route::middleware('admin.permission:leads.manage')->group(function () {
             Route::patch('/leads/{lead}', [AdminLeadController::class, 'update'])->name('leads.update');
-            Route::post('/leads/{lead}/quote-pdf/whatsapp', [AdminLeadController::class, 'sendQuotePdfWhatsapp'])->name('leads.quote-pdf.whatsapp');
+            Route::post('/leads/{lead}/quote-pdfs', [AdminLeadController::class, 'storeQuotePdfs'])->name('leads.quote-pdfs.store');
+            Route::delete('/leads/{lead}/quote-pdfs/{quotePdf}', [AdminLeadController::class, 'destroyQuotePdf'])->name('leads.quote-pdfs.destroy');
+            Route::post('/leads/{lead}/quote-pdfs/{quotePdf}/whatsapp', [AdminLeadController::class, 'sendQuotePdfWhatsapp'])->name('leads.quote-pdfs.whatsapp');
             Route::post('/leads/{lead}/stripe-payment-link', [AdminLeadController::class, 'createStripePaymentLink'])->name('leads.stripe-payment-link');
             Route::post('/leads/{lead}/stripe-payment-link/whatsapp', [AdminLeadController::class, 'sendStripePaymentLinkWhatsapp'])->name('leads.stripe-payment-link.whatsapp');
         });
 
         Route::middleware(['admin.permission:leads.manage', 'admin.permission:email.manage'])->group(function () {
-            Route::post('/leads/{lead}/quote-pdf/email', [AdminLeadController::class, 'sendQuotePdfEmail'])->name('leads.quote-pdf.email');
+            Route::post('/leads/{lead}/quote-pdfs/{quotePdf}/email', [AdminLeadController::class, 'sendQuotePdfEmail'])->name('leads.quote-pdfs.email');
             Route::post('/leads/{lead}/stripe-payment-link/email', [AdminLeadController::class, 'sendStripePaymentLinkEmail'])->name('leads.stripe-payment-link.email');
         });
 

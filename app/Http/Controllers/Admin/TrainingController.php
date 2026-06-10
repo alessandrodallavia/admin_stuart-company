@@ -30,6 +30,7 @@ class TrainingController extends Controller
                 ->latest()
                 ->get(),
             'isTrainingActive' => $request->user('admin')->training_mode_active,
+            'whatsappPhone' => '+'.ltrim((string) config('services.whatsapp.phone_api'), '+'),
         ]);
     }
 
@@ -37,16 +38,21 @@ class TrainingController extends Controller
     {
         $user = $request->user('admin');
         abort_unless($user->training_mode_enabled, 403);
+        $wasActive = $user->training_mode_active;
 
         $user->forceFill([
-            'training_mode_active' => ! $user->training_mode_active,
+            'training_mode_active' => ! $wasActive,
         ])->save();
+
+        if ($wasActive) {
+            $this->deleteTrainingData($user->id);
+        }
 
         return redirect()
             ->route($user->training_mode_active ? 'admin.training.index' : 'admin.dashboard')
             ->with('status', $user->training_mode_active
                 ? 'Modalità formazione attivata. Nessun messaggio verrà inviato realmente.'
-                : 'Modalità formazione disattivata. Sei tornato ai dati reali.');
+                : 'Modalità formazione disattivata. Dati formativi e ID richiesta sono stati eliminati.');
     }
 
     public function createScenario(Request $request): RedirectResponse
@@ -54,22 +60,24 @@ class TrainingController extends Controller
         $user = $request->user('admin');
         abort_unless($user->training_mode_enabled && $user->training_mode_active, 403);
 
-        $scenario = $request->validate([
-            'scenario' => ['required', 'in:complete,whatsapp,email'],
-        ])['scenario'];
+        $data = $request->validate([
+            'scenario' => ['required', 'in:whatsapp,email'],
+            'contact_email' => ['nullable', 'required_if:scenario,email', 'email:rfc', 'max:255'],
+        ]);
+        $scenario = $data['scenario'];
 
-        if (in_array($scenario, ['complete', 'email'], true) && ! $user->emailAccount) {
+        if ($scenario === 'email' && ! $user->emailAccount) {
             return back()->with('error', 'Configura prima la casella email dell’operatore per usare questo scenario.');
         }
 
-        $lead = Lead::withoutGlobalScope('training')->create([
+        $leadData = [
             'uuid' => strtoupper(Str::random(6)),
             'status' => 'confirmed',
-            'name' => 'Giulia Bianchi',
-            'email' => 'giulia.bianchi@example.test',
-            'phone' => '393330000001',
-            'club' => 'Associazione Evento Primavera',
-            'city' => 'Padova',
+            'name' => null,
+            'email' => null,
+            'phone' => null,
+            'club' => null,
+            'city' => null,
             'message' => 'Vorrei realizzare 50 magliette personalizzate per un evento.',
             'privacy_consent' => true,
             'utm_source' => 'formazione',
@@ -78,40 +86,18 @@ class TrainingController extends Controller
             'is_training' => true,
             'training_owner_id' => $user->id,
             'training_scenario' => $scenario,
-        ]);
+        ];
 
-        if (in_array($scenario, ['complete', 'whatsapp'], true)) {
-            $conversation = WhatsappConversation::withoutGlobalScope('training')->create([
-                'lead_id' => $lead->id,
-                'assigned_user_id' => $user->id,
-                'contact_phone' => $lead->phone,
-                'business_phone' => config('services.whatsapp.phone_number_id'),
-                'mode' => 'manual',
-                'status' => 'open',
-                'needs_human' => true,
-                'last_message_at' => now(),
-                'is_training' => true,
-                'training_owner_id' => $user->id,
-                'training_scenario' => $scenario,
-            ]);
-
-            WhatsappMessage::create([
-                'whatsapp_conversation_id' => $conversation->id,
-                'provider_message_id' => 'training-'.Str::uuid(),
-                'direction' => 'inbound',
-                'source' => 'training',
-                'type' => 'text',
-                'status' => 'received',
-                'from_phone' => $lead->phone,
-                'to_phone' => config('services.whatsapp.phone_number_id'),
-                'body' => 'Ciao, vorrei realizzare 50 magliette personalizzate per un evento. Possiamo sentirci?',
-                'received_at' => now(),
-            ]);
-
-            $lead->withoutEvents(fn () => $lead->forceFill(['whatsapp_conversation_id' => $conversation->id])->save());
+        if ($scenario === 'email') {
+            $leadData = [
+                ...$leadData,
+                'email' => $data['contact_email'],
+            ];
         }
 
-        if (in_array($scenario, ['complete', 'email'], true)) {
+        $lead = Lead::withoutGlobalScope('training')->create($leadData);
+
+        if ($scenario === 'email') {
             $account = $user->emailAccount;
 
             if ($account) {
@@ -139,15 +125,17 @@ class TrainingController extends Controller
                     'from_name' => $lead->name,
                     'to' => [$account->email],
                     'subject' => $conversation->subject,
-                    'body_text' => "Buongiorno,\nvorrei ricevere una proposta per 50 magliette personalizzate per il nostro evento di primavera.\n\nGrazie,\nGiulia",
+                    'body_text' => "Buongiorno,\nvorrei ricevere una proposta per 50 magliette personalizzate per il nostro evento di primavera.\n\nGrazie",
                     'received_at' => now(),
                 ]);
             }
         }
 
         return redirect()
-            ->route('admin.leads.index', ['lead' => $lead])
-            ->with('status', 'Scenario formativo creato. Le comunicazioni restano nel pannello.');
+            ->route($scenario === 'whatsapp' ? 'admin.training.index' : 'admin.leads.index', $scenario === 'whatsapp' ? [] : ['lead' => $lead])
+            ->with('status', $scenario === 'whatsapp'
+                ? 'Lead WhatsApp formativo creato. Invia ora un messaggio reale usando il riferimento indicato.'
+                : 'Scenario email formativo creato. Le comunicazioni restano nel pannello.');
     }
 
     public function reset(Request $request): RedirectResponse
@@ -155,24 +143,29 @@ class TrainingController extends Controller
         $user = $request->user('admin');
         abort_unless($user->training_mode_enabled, 403);
 
-        EmailConversation::withoutGlobalScope('training')
-            ->where('is_training', true)
-            ->where('training_owner_id', $user->id)
-            ->delete();
-
-        WhatsappConversation::withoutGlobalScope('training')
-            ->where('is_training', true)
-            ->where('training_owner_id', $user->id)
-            ->delete();
-
-        Lead::withoutGlobalScope('training')
-            ->where('is_training', true)
-            ->where('training_owner_id', $user->id)
-            ->delete();
+        $this->deleteTrainingData($user->id);
 
         return redirect()
             ->route('admin.training.index')
             ->with('status', 'Dati formativi eliminati.');
+    }
+
+    private function deleteTrainingData(int $ownerId): void
+    {
+        EmailConversation::withoutGlobalScope('training')
+            ->where('is_training', true)
+            ->where('training_owner_id', $ownerId)
+            ->delete();
+
+        WhatsappConversation::withoutGlobalScope('training')
+            ->where('is_training', true)
+            ->where('training_owner_id', $ownerId)
+            ->delete();
+
+        Lead::withoutGlobalScope('training')
+            ->where('is_training', true)
+            ->where('training_owner_id', $ownerId)
+            ->delete();
     }
 
     public function customerReply(Request $request, Lead $lead): RedirectResponse

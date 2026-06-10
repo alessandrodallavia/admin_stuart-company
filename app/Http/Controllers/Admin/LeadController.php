@@ -7,6 +7,7 @@ use App\Models\EmailAccount;
 use App\Models\EmailConversation;
 use App\Models\EmailMessage;
 use App\Models\Lead;
+use App\Models\LeadQuotePdf;
 use App\Models\WhatsappConversation;
 use App\Models\WhatsappMessage;
 use App\Services\EmailMailboxService;
@@ -78,8 +79,8 @@ class LeadController extends Controller
         $leads = $leadsQuery->paginate(14)->withQueryString();
 
         $selectedLead = $lead
-            ? $lead->fresh()
-            : $leads->first();
+            ? $lead->fresh()->load('quotePdfs')
+            : $leads->first()?->load('quotePdfs');
 
         $selectedConversation = $selectedLead
             ? WhatsappConversation::query()
@@ -119,7 +120,6 @@ class LeadController extends Controller
             'quote_amount' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
             'payment_link' => ['nullable', 'url', 'max:2048'],
             'payment_amount' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
-            'quote_pdf' => ['nullable', 'file', 'mimes:pdf', 'mimetypes:application/pdf', 'max:20480'],
         ]);
 
         if ($data['status'] === 'quote_sent' && empty($data['quote_amount'])) {
@@ -144,28 +144,6 @@ class LeadController extends Controller
             'payment_link' => $data['payment_link'] ?? $lead->payment_link,
             'payment_amount' => $data['payment_amount'] ?? $lead->payment_amount,
         ];
-
-        if ($request->hasFile('quote_pdf')) {
-            if ($lead->quote_pdf_path && Storage::disk($lead->quote_pdf_disk ?? self::QUOTE_PDF_DISK)->exists($lead->quote_pdf_path)) {
-                Storage::disk($lead->quote_pdf_disk ?? self::QUOTE_PDF_DISK)->delete($lead->quote_pdf_path);
-            }
-
-            $file = $request->file('quote_pdf');
-            $originalName = $file->getClientOriginalName() ?: 'preventivo.pdf';
-            $baseName = Str::limit(Str::slug(pathinfo($originalName, PATHINFO_FILENAME)), 90, '');
-            $filename = ($baseName ?: 'preventivo').'-'.now()->format('YmdHis').'-'.Str::random(6).'.pdf';
-            $path = $file->storeAs("leads/{$lead->id}/quotes", $filename, self::QUOTE_PDF_DISK);
-
-            $attributes = [
-                ...$attributes,
-                'quote_pdf_disk' => self::QUOTE_PDF_DISK,
-                'quote_pdf_path' => $path,
-                'quote_pdf_filename' => $originalName,
-                'quote_pdf_mime_type' => $file->getMimeType() ?: 'application/pdf',
-                'quote_pdf_size' => $file->getSize(),
-                'quote_pdf_uploaded_at' => now(),
-            ];
-        }
 
         $lead->fill($attributes)->save();
         $lead->refresh();
@@ -209,18 +187,63 @@ class LeadController extends Controller
         }
     }
 
-    public function showQuotePdf(Lead $lead)
+    public function storeQuotePdfs(Request $request, Lead $lead): RedirectResponse
     {
-        if (! $lead->quote_pdf_path || ! Storage::disk($lead->quote_pdf_disk ?? self::QUOTE_PDF_DISK)->exists($lead->quote_pdf_path)) {
+        $data = $request->validate([
+            'quote_pdfs' => ['required', 'array', 'min:1'],
+            'quote_pdfs.*' => ['required', 'file', 'mimes:pdf', 'mimetypes:application/pdf', 'max:20480'],
+        ]);
+
+        foreach ($data['quote_pdfs'] as $file) {
+            $originalName = $file->getClientOriginalName() ?: 'preventivo.pdf';
+            $baseName = Str::limit(Str::slug(pathinfo($originalName, PATHINFO_FILENAME)), 90, '');
+            $filename = ($baseName ?: 'preventivo').'-'.now()->format('YmdHis').'-'.Str::random(6).'.pdf';
+            $path = $file->storeAs("leads/{$lead->id}/quotes", $filename, self::QUOTE_PDF_DISK);
+
+            $lead->quotePdfs()->create([
+                'disk' => self::QUOTE_PDF_DISK,
+                'path' => $path,
+                'filename' => $originalName,
+                'mime_type' => $file->getMimeType() ?: 'application/pdf',
+                'size' => $file->getSize(),
+                'uploaded_at' => now(),
+            ]);
+        }
+
+        return redirect()
+            ->route('admin.leads.index', ['lead' => $lead])
+            ->with('status', count($data['quote_pdfs']) === 1 ? 'PDF preventivo caricato.' : 'PDF preventivi caricati.');
+    }
+
+    public function showQuotePdf(Lead $lead, LeadQuotePdf $quotePdf)
+    {
+        $quotePdf = $this->quotePdfForLead($lead, $quotePdf);
+
+        if (! Storage::disk($quotePdf->disk)->exists($quotePdf->path)) {
             abort(404);
         }
 
-        return Storage::disk($lead->quote_pdf_disk ?? self::QUOTE_PDF_DISK)->response(
-            $lead->quote_pdf_path,
-            $lead->quote_pdf_filename ?: 'preventivo.pdf',
-            ['Content-Type' => $lead->quote_pdf_mime_type ?: 'application/pdf'],
+        return Storage::disk($quotePdf->disk)->response(
+            $quotePdf->path,
+            $quotePdf->filename,
+            ['Content-Type' => $quotePdf->mime_type ?: 'application/pdf'],
             'inline'
         );
+    }
+
+    public function destroyQuotePdf(Lead $lead, LeadQuotePdf $quotePdf): RedirectResponse
+    {
+        $quotePdf = $this->quotePdfForLead($lead, $quotePdf);
+
+        if (Storage::disk($quotePdf->disk)->exists($quotePdf->path)) {
+            Storage::disk($quotePdf->disk)->delete($quotePdf->path);
+        }
+
+        $quotePdf->delete();
+
+        return redirect()
+            ->route('admin.leads.index', ['lead' => $lead])
+            ->with('status', 'PDF preventivo eliminato.');
     }
 
     public function createStripePaymentLink(Request $request, Lead $lead): RedirectResponse
@@ -438,9 +461,11 @@ class LeadController extends Controller
             ->with('status', 'Link pagamento inviato su WhatsApp con pulsante.');
     }
 
-    public function sendQuotePdfWhatsapp(Lead $lead): RedirectResponse
+    public function sendQuotePdfWhatsapp(Lead $lead, LeadQuotePdf $quotePdf): RedirectResponse
     {
-        if (! $lead->quote_pdf_path || ! Storage::disk($lead->quote_pdf_disk ?? self::QUOTE_PDF_DISK)->exists($lead->quote_pdf_path)) {
+        $quotePdf = $this->quotePdfForLead($lead, $quotePdf);
+
+        if (! Storage::disk($quotePdf->disk)->exists($quotePdf->path)) {
             return back()->withErrors([
                 'quote_pdf' => 'Carica prima un PDF preventivo valido.',
             ]);
@@ -454,17 +479,17 @@ class LeadController extends Controller
             ]);
         }
 
-        $body = 'In allegato il preventivo';
-        $filePath = Storage::disk($lead->quote_pdf_disk ?? self::QUOTE_PDF_DISK)->path($lead->quote_pdf_path);
-        $filename = $lead->quote_pdf_filename ?: 'preventivo.pdf';
+        $body = null;
+        $filePath = Storage::disk($quotePdf->disk)->path($quotePdf->path);
+        $filename = $quotePdf->filename;
 
         if ($lead->is_training) {
             $this->storeTrainingWhatsappMessage($conversation, $body, 'document', [
-                'media_disk' => $lead->quote_pdf_disk ?? self::QUOTE_PDF_DISK,
-                'media_path' => $lead->quote_pdf_path,
-                'media_mime_type' => $lead->quote_pdf_mime_type ?: 'application/pdf',
+                'media_disk' => $quotePdf->disk,
+                'media_path' => $quotePdf->path,
+                'media_mime_type' => $quotePdf->mime_type ?: 'application/pdf',
                 'media_filename' => $filename,
-                'media_size' => $lead->quote_pdf_size,
+                'media_size' => $quotePdf->size,
             ]);
 
             return redirect()
@@ -479,7 +504,7 @@ class LeadController extends Controller
                 ->attach('file', $file, $filename)
                 ->post('https://graph.facebook.com/v25.0/'.config('services.whatsapp.phone_number_id').'/media', [
                     'messaging_product' => 'whatsapp',
-                    'type' => $lead->quote_pdf_mime_type ?: 'application/pdf',
+                    'type' => $quotePdf->mime_type ?: 'application/pdf',
                 ]);
         } finally {
             if (is_resource($file)) {
@@ -505,7 +530,6 @@ class LeadController extends Controller
             'type' => 'document',
             'document' => [
                 'id' => $mediaId,
-                'caption' => $body,
                 'filename' => $filename,
             ],
         ];
@@ -524,11 +548,11 @@ class LeadController extends Controller
             'to_phone' => $conversation->contact_phone,
             'body' => $body,
             'media_id' => $mediaId,
-            'media_disk' => $lead->quote_pdf_disk ?? self::QUOTE_PDF_DISK,
-            'media_path' => $lead->quote_pdf_path,
-            'media_mime_type' => $lead->quote_pdf_mime_type ?: 'application/pdf',
+            'media_disk' => $quotePdf->disk,
+            'media_path' => $quotePdf->path,
+            'media_mime_type' => $quotePdf->mime_type ?: 'application/pdf',
             'media_filename' => $filename,
-            'media_size' => $lead->quote_pdf_size,
+            'media_size' => $quotePdf->size,
             'payload' => [
                 'media_response' => $mediaResponse->json(),
                 'request' => $payload,
@@ -563,13 +587,15 @@ class LeadController extends Controller
             ->with('status', 'PDF preventivo inviato su WhatsApp.');
     }
 
-    public function sendQuotePdfEmail(Lead $lead, EmailMailboxService $mailbox, Ga4MeasurementService $ga4): RedirectResponse
+    public function sendQuotePdfEmail(Lead $lead, LeadQuotePdf $quotePdf, EmailMailboxService $mailbox, Ga4MeasurementService $ga4): RedirectResponse
     {
+        $quotePdf = $this->quotePdfForLead($lead, $quotePdf);
+
         if (! $lead->email) {
             return back()->withErrors(['email' => 'Inserisci prima l’email del cliente.']);
         }
 
-        if (! $lead->quote_pdf_path || ! Storage::disk($lead->quote_pdf_disk ?? self::QUOTE_PDF_DISK)->exists($lead->quote_pdf_path)) {
+        if (! Storage::disk($quotePdf->disk)->exists($quotePdf->path)) {
             return back()->withErrors(['quote_pdf' => 'Carica prima un PDF preventivo valido.']);
         }
 
@@ -591,11 +617,11 @@ class LeadController extends Controller
             $conversation,
             $body,
             storedAttachments: [[
-                'disk' => $lead->quote_pdf_disk ?? self::QUOTE_PDF_DISK,
-                'path' => $lead->quote_pdf_path,
-                'filename' => $lead->quote_pdf_filename ?: 'preventivo.pdf',
-                'mime_type' => $lead->quote_pdf_mime_type ?: 'application/pdf',
-                'size' => $lead->quote_pdf_size,
+                'disk' => $quotePdf->disk,
+                'path' => $quotePdf->path,
+                'filename' => $quotePdf->filename,
+                'mime_type' => $quotePdf->mime_type ?: 'application/pdf',
+                'size' => $quotePdf->size,
             ]],
         );
 
@@ -680,6 +706,13 @@ class LeadController extends Controller
         return $account;
     }
 
+    private function quotePdfForLead(Lead $lead, LeadQuotePdf $quotePdf): LeadQuotePdf
+    {
+        abort_unless($quotePdf->lead_id === $lead->id, 404);
+
+        return $quotePdf;
+    }
+
     private function findOrCreateEmailConversation(Lead $lead, EmailAccount $account, string $subject): EmailConversation
     {
         return EmailConversation::query()
@@ -744,7 +777,7 @@ class LeadController extends Controller
         return $conversation;
     }
 
-    private function storeTrainingWhatsappMessage(WhatsappConversation $conversation, string $body, string $type, array $media = []): void
+    private function storeTrainingWhatsappMessage(WhatsappConversation $conversation, ?string $body, string $type, array $media = []): void
     {
         $message = WhatsappMessage::create([
             'whatsapp_conversation_id' => $conversation->id,

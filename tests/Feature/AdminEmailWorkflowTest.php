@@ -8,6 +8,9 @@ use App\Models\EmailAccount;
 use App\Models\EmailConversation;
 use App\Models\Lead;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 use ReflectionMethod;
 use Tests\TestCase;
 
@@ -103,17 +106,67 @@ class AdminEmailWorkflowTest extends TestCase
             'status' => 'link_sent',
             'name' => 'Cliente Email',
             'email' => 'cliente@example.test',
-            'quote_pdf_path' => 'quotes/preventivo.pdf',
-            'quote_pdf_filename' => 'preventivo.pdf',
             'payment_link' => 'https://example.test/payment',
             'payment_amount' => 100,
+        ]);
+        $lead->quotePdfs()->create([
+            'disk' => 'local',
+            'path' => 'quotes/preventivo.pdf',
+            'filename' => 'preventivo.pdf',
+            'mime_type' => 'application/pdf',
+            'uploaded_at' => now(),
         ]);
 
         $this->actingAs($owner, 'admin')
             ->get("/leads/{$lead->id}")
             ->assertOk()
-            ->assertSee('Invia PDF via email')
-            ->assertSee('Invia via email');
+            ->assertSee('Preventivi PDF')
+            ->assertSee('Invia via email')
+            ->assertSee('min-[1280px]:grid-cols-[minmax(0,1fr)_420px]', false);
+    }
+
+    public function test_operator_can_upload_and_delete_multiple_quote_pdfs(): void
+    {
+        Storage::fake('local');
+        Notification::fake();
+        $operator = $this->operator();
+        $lead = Lead::create([
+            'uuid' => 'PDFS01',
+            'status' => 'confirmed',
+            'name' => 'Cliente PDF',
+            'email' => 'pdf@example.test',
+        ]);
+
+        $this->actingAs($operator, 'admin')
+            ->post("/leads/{$lead->id}/quote-pdfs", [
+                'quote_pdfs' => [
+                    UploadedFile::fake()->create('preventivo-a.pdf', 100, 'application/pdf'),
+                    UploadedFile::fake()->create('preventivo-b.pdf', 120, 'application/pdf'),
+                ],
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        $pdfs = $lead->quotePdfs()->get();
+
+        $this->assertCount(2, $pdfs);
+        Storage::disk('local')->assertExists($pdfs[0]->path);
+        Storage::disk('local')->assertExists($pdfs[1]->path);
+
+        $response = $this->actingAs($operator, 'admin')->get("/leads/{$lead->id}");
+        $response->assertOk()->assertSee('preventivo-a.pdf')->assertSee('preventivo-b.pdf');
+        $this->assertLessThan(
+            strpos($response->getContent(), 'Pagamento'),
+            strpos($response->getContent(), 'Preventivi PDF'),
+        );
+
+        $this->actingAs($operator, 'admin')
+            ->delete("/leads/{$lead->id}/quote-pdfs/{$pdfs[0]->id}")
+            ->assertRedirect();
+
+        $this->assertDatabaseMissing('lead_quote_pdfs', ['id' => $pdfs[0]->id]);
+        Storage::disk('local')->assertMissing($pdfs[0]->path);
+        $this->assertDatabaseHas('lead_quote_pdfs', ['id' => $pdfs[1]->id]);
     }
 
     public function test_email_signature_contains_user_company_fixed_phone_and_no_address(): void

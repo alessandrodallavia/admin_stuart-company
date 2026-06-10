@@ -30,18 +30,30 @@
         </div>
     @endunless
 
-    <div class="grid gap-12 py-20 md:grid-cols-3 {{ $isTrainingActive ? '' : 'opacity-50' }}">
+    <div class="grid gap-12 py-20 md:grid-cols-2 {{ $isTrainingActive ? '' : 'opacity-50' }}">
         @foreach ([
-            ['complete', 'Percorso completo', 'Crea lead, conversazione WhatsApp ed email ricevuta.'],
-            ['whatsapp', 'Nuovo lead WhatsApp', 'Crea un contatto con primo messaggio WhatsApp da gestire.'],
-            ['email', 'Nuovo lead email', 'Crea un contatto con una richiesta ricevuta via email.'],
-        ] as [$key, $title, $description])
+            ['whatsapp', 'Nuovo lead WhatsApp', 'Crea un lead senza dati personali. Dopo la creazione, invia un vero messaggio WhatsApp usando il riferimento generato.', 'whatsapp'],
+            ['email', 'Nuovo lead email', 'Crea un contatto senza nome e telefono, con una richiesta ricevuta via email.', 'email'],
+        ] as [$key, $title, $description, $contactField])
             <form method="POST" action="{{ route('admin.training.scenarios.store') }}" class="flex min-h-[190px] flex-col justify-between rounded-10 border border-gray-mid bg-white p-16">
                 @csrf
                 <input type="hidden" name="scenario" value="{{ $key }}">
                 <div>
                     <h3 class="text-18 font-black leading-tight">{{ $title }}</h3>
                     <p class="mt-8 text-14 font-semibold leading-[22px] text-gray">{{ $description }}</p>
+                    @if ($contactField === 'whatsapp')
+                        <div class="mt-12 rounded-10 bg-gray-light p-10">
+                            <p class="text-11 font-extrabold uppercase tracking-normal text-gray">Numero a cui scrivere</p>
+                            <p class="mt-5 text-16 font-black">{{ $whatsappPhone }}</p>
+                            <p class="mt-8 text-11 font-semibold leading-[16px] text-gray">Il messaggio dovrà contenere <strong>ID richiesta: &lt;ID&gt;</strong>. Il resto del testo può essere scritto liberamente.</p>
+                        </div>
+                    @elseif ($contactField === 'email')
+                        <label class="mt-12 block">
+                            <span class="text-11 font-extrabold uppercase tracking-normal text-gray">Email reale</span>
+                            <input name="contact_email" value="{{ old('scenario') === $key ? old('contact_email') : '' }}" type="email" maxlength="255" required placeholder="nome@email.it" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                            <span class="mt-5 block text-11 font-semibold leading-[16px] text-gray">Usata solo come mittente nel dato simulato. Nessuna email verrà inviata realmente.</span>
+                        </label>
+                    @endif
                 </div>
                 <button @disabled(! $isTrainingActive) class="mt-16 rounded-10 bg-bullstar px-14 py-10 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover disabled:cursor-not-allowed disabled:bg-gray">Avvia scenario</button>
             </form>
@@ -57,8 +69,16 @@
                 @foreach ($trainingLeads as $lead)
                     <div class="grid gap-12 bg-white px-14 py-14 lg:grid-cols-[1fr_auto_auto] lg:items-center">
                         <div>
-                            <p class="text-14 font-black">{{ $lead->name }}</p>
-                            <p class="mt-3 text-12 font-semibold text-gray">{{ $lead->email }} · {{ $lead->phone }}</p>
+                            <p class="text-14 font-black">{{ $lead->name ?: 'Contatto senza nome' }}</p>
+                            <p class="mt-3 text-12 font-semibold text-gray">{{ collect([$lead->email, $lead->phone])->filter()->join(' · ') ?: 'Contatto non disponibile' }}</p>
+                            @if ($lead->training_scenario === 'whatsapp' && ! $lead->whatsappConversation)
+                                <div class="mt-8 rounded-10 border border-whatsapp/30 bg-whatsapp/10 p-10">
+                                    <p class="text-11 font-extrabold uppercase tracking-normal text-whatsapp">In attesa del messaggio reale</p>
+                                    <p class="mt-6 text-12 font-semibold text-gray">Invia al numero <strong class="text-black-nike">{{ $whatsappPhone }}</strong> un messaggio che contenga:</p>
+                                    <p class="mt-6 rounded-10 bg-white px-10 py-8 text-14 font-black text-black-nike">ID richiesta: {{ $lead->uuid }}</p>
+                                    <p class="mt-6 text-11 font-semibold leading-[16px] text-gray">Non serve copiare un testo completo: questa riga può essere inserita in qualsiasi messaggio.</p>
+                                </div>
+                            @endif
                             <form method="POST" action="{{ route('admin.training.leads.complete-payment', $lead) }}" class="mt-8">
                                 @csrf
                                 <button class="text-11 font-extrabold uppercase tracking-normal text-bullstar hover:underline">Simula pagamento completato</button>
