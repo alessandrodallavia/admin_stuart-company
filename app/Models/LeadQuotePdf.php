@@ -10,6 +10,7 @@ class LeadQuotePdf extends Model
     protected $fillable = [
         'lead_id',
         'proposal_number',
+        'amount',
         'disk',
         'path',
         'filename',
@@ -19,6 +20,7 @@ class LeadQuotePdf extends Model
     ];
 
     protected $casts = [
+        'amount' => 'decimal:2',
         'uploaded_at' => 'datetime',
     ];
 

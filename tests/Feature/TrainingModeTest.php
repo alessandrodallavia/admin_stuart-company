@@ -400,6 +400,7 @@ class TrainingModeTest extends TestCase
         ]);
         $quotePdf = $lead->quotePdfs()->create([
             'proposal_number' => 'PROPOSTA-TRAINING-1',
+            'amount' => 320,
             'disk' => 'local',
             'path' => 'quotes/proposta.pdf',
             'filename' => 'proposta.pdf',
@@ -475,6 +476,7 @@ class TrainingModeTest extends TestCase
         ]);
         $lead->quotePdfs()->create([
             'proposal_number' => 'TRAINING-ESTATE/A',
+            'amount' => 420,
             'disk' => 'local',
             'path' => 'quotes/proposta-stripe.pdf',
             'filename' => 'proposta-stripe.pdf',
@@ -483,7 +485,7 @@ class TrainingModeTest extends TestCase
         ]);
 
         $this->actingAs($operator, 'admin')
-            ->post("/leads/{$lead->id}/stripe-payment-link", ['payment_amount' => 420])
+            ->post("/leads/{$lead->id}/stripe-payment-link")
             ->assertRedirect();
 
         Http::assertSentCount(2);
@@ -493,6 +495,8 @@ class TrainingModeTest extends TestCase
         $lead->refresh();
         $this->assertSame('link_sent', $lead->status);
         $this->assertSame('TRAINING-ESTATE/A', $lead->quote_number);
+        $this->assertSame('420.00', $lead->quote_amount);
+        $this->assertSame('420.00', $lead->payment_amount);
         $this->assertSame('https://checkout.stripe.com/c/pay/cs_test_training', $lead->payment_link);
     }
 
@@ -507,7 +511,7 @@ class TrainingModeTest extends TestCase
         ]);
 
         $this->actingAs($operator, 'admin')
-            ->post("/leads/{$lead->id}/stripe-payment-link", ['payment_amount' => 420])
+            ->post("/leads/{$lead->id}/stripe-payment-link")
             ->assertSessionHasErrors('proposal_pdf');
 
         Http::assertNothingSent();
@@ -525,6 +529,7 @@ class TrainingModeTest extends TestCase
         ]);
         $lead->quotePdfs()->create([
             'proposal_number' => 'TRAINING-KEY/A',
+            'amount' => 420,
             'disk' => 'local',
             'path' => 'quotes/proposta-key.pdf',
             'filename' => 'proposta-key.pdf',
@@ -533,7 +538,7 @@ class TrainingModeTest extends TestCase
         ]);
 
         $this->actingAs($operator, 'admin')
-            ->post("/leads/{$lead->id}/stripe-payment-link", ['payment_amount' => 420])
+            ->post("/leads/{$lead->id}/stripe-payment-link")
             ->assertSessionHasErrors('payment_amount');
 
         $this->assertNull($lead->fresh()->payment_link);

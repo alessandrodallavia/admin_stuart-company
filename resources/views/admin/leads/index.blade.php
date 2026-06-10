@@ -219,16 +219,10 @@
                                         </select>
                                     </label>
 
-                                    <div class="grid gap-10 md:grid-cols-2">
-                                        <label class="block">
-                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Importo proposta</span>
-                                            <input name="quote_amount" value="{{ old('quote_amount', $selectedLead->quote_amount) }}" type="number" min="0" step="0.01" placeholder="0,00" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
-                                        </label>
-                                        <label class="block">
-                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Importo pagamento</span>
-                                            <input name="payment_amount" value="{{ old('payment_amount', $selectedLead->payment_amount) }}" type="number" min="0" step="0.01" placeholder="0,00" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
-                                        </label>
-                                    </div>
+                                    <label class="block">
+                                        <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Importo pagamento</span>
+                                        <input name="payment_amount" value="{{ old('payment_amount', $selectedLead->payment_amount) }}" type="number" min="0" step="0.01" placeholder="0,00" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
+                                    </label>
 
                                     <label class="block">
                                         <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Link pagamento</span>
@@ -243,10 +237,7 @@
 
                             <section class="rounded-10 border border-gray-mid p-12">
                                 <div class="flex flex-wrap items-start justify-between gap-8">
-                                    <div>
-                                        <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Proposte</p>
-                                        <p class="mt-4 text-18 font-black">{{ $selectedLead->quote_amount ? '€ ' . number_format((float) $selectedLead->quote_amount, 2, ',', '.') : '-' }}</p>
-                                    </div>
+                                    <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Proposte</p>
                                     <p class="text-12 font-bold text-gray">{{ $selectedLead->quotePdfs->count() }} {{ $selectedLead->quotePdfs->count() === 1 ? 'proposta caricata' : 'proposte caricate' }}</p>
                                 </div>
 
@@ -255,6 +246,10 @@
                                     <label class="block min-w-0">
                                         <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Numero proposta</span>
                                         <input name="proposal_number" value="{{ old('proposal_number') }}" type="text" maxlength="100" required placeholder="Inserisci numero proposta" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
+                                    </label>
+                                    <label class="block min-w-0">
+                                        <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Importo proposta</span>
+                                        <input name="proposal_amount" value="{{ old('proposal_amount') }}" type="number" min="0.50" step="0.01" required placeholder="0,00" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
                                     </label>
                                     <label class="block min-w-0">
                                         <span class="text-12 font-extrabold uppercase tracking-normal text-gray">PDF proposta</span>
@@ -271,7 +266,7 @@
                                         <div class="rounded-10 border border-gray-mid bg-gray-light p-10">
                                             <div class="flex flex-wrap items-center justify-between gap-6">
                                                 <div class="min-w-0">
-                                                    <p class="text-13 font-black text-black-nike">{{ $quotePdf->proposal_number }}</p>
+                                                    <p class="text-13 font-black text-black-nike">{{ $quotePdf->proposal_number }} · € {{ number_format((float) $quotePdf->amount, 2, ',', '.') }}</p>
                                                     <a href="{{ route('admin.leads.quote-pdfs.show', [$selectedLead, $quotePdf]) }}" target="_blank" class="mt-2 block truncate text-12 font-bold text-bullstar underline-offset-4 hover:underline">{{ $quotePdf->filename }}</a>
                                                 </div>
                                                 <p class="text-11 font-semibold text-gray">
@@ -325,14 +320,10 @@
                                             </button>
                                         </form>
                                     @endif
-                                    <form method="POST" action="{{ route('admin.leads.stripe-payment-link', $selectedLead) }}" class="mt-10 space-y-8">
+                                    <form method="POST" action="{{ route('admin.leads.stripe-payment-link', $selectedLead) }}" class="mt-10">
                                         @csrf
-                                        <label class="block">
-                                            <span class="text-11 font-extrabold uppercase tracking-normal text-gray">Importo Stripe</span>
-                                            <input name="payment_amount" value="{{ old('payment_amount', $selectedLead->payment_amount ?: $selectedLead->quote_amount) }}" type="number" min="0.50" step="0.01" placeholder="0,00" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
-                                        </label>
                                         <button type="submit" class="w-full rounded-10 bg-bullstar px-16 py-12 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">
-                                            Crea link Stripe
+                                            Crea link Stripe per ultima proposta
                                         </button>
                                     </form>
                                 </div>

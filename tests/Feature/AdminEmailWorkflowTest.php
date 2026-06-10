@@ -109,6 +109,7 @@ class AdminEmailWorkflowTest extends TestCase
         ]);
         $lead->quotePdfs()->create([
             'proposal_number' => 'PROPOSTA-EMAIL-1',
+            'amount' => 100,
             'disk' => 'local',
             'path' => 'quotes/proposta.pdf',
             'filename' => 'proposta.pdf',
@@ -139,6 +140,7 @@ class AdminEmailWorkflowTest extends TestCase
         $this->actingAs($operator, 'admin')
             ->post("/leads/{$lead->id}/quote-pdfs", [
                 'proposal_number' => 'ESTATE-24/A',
+                'proposal_amount' => 150,
                 'proposal_pdf' => UploadedFile::fake()->create('proposta-a.pdf', 100, 'application/pdf'),
             ])
             ->assertSessionHasNoErrors()
@@ -147,6 +149,7 @@ class AdminEmailWorkflowTest extends TestCase
         $this->actingAs($operator, 'admin')
             ->post("/leads/{$lead->id}/quote-pdfs", [
                 'proposal_number' => 'ESTATE-24/B',
+                'proposal_amount' => 220.50,
                 'proposal_pdf' => UploadedFile::fake()->create('proposta-b.pdf', 120, 'application/pdf'),
             ])
             ->assertSessionHasNoErrors()
@@ -156,7 +159,9 @@ class AdminEmailWorkflowTest extends TestCase
 
         $this->assertCount(2, $pdfs);
         $this->assertSame(['ESTATE-24/B', 'ESTATE-24/A'], $pdfs->pluck('proposal_number')->all());
+        $this->assertSame(['220.50', '150.00'], $pdfs->pluck('amount')->all());
         $this->assertSame('ESTATE-24/B', $lead->fresh()->quote_number);
+        $this->assertSame('220.50', $lead->fresh()->quote_amount);
         Storage::disk('local')->assertExists($pdfs[0]->path);
         Storage::disk('local')->assertExists($pdfs[1]->path);
 
@@ -178,6 +183,8 @@ class AdminEmailWorkflowTest extends TestCase
         $this->assertDatabaseMissing('lead_quote_pdfs', ['id' => $pdfs[0]->id]);
         Storage::disk('local')->assertMissing($pdfs[0]->path);
         $this->assertDatabaseHas('lead_quote_pdfs', ['id' => $pdfs[1]->id]);
+        $this->assertSame('ESTATE-24/A', $lead->fresh()->quote_number);
+        $this->assertSame('150.00', $lead->fresh()->quote_amount);
     }
 
     public function test_email_signature_contains_user_company_fixed_phone_and_no_address(): void
@@ -213,13 +220,22 @@ class AdminEmailWorkflowTest extends TestCase
 
         $this->actingAs($operator, 'admin')
             ->post("/leads/{$lead->id}/quote-pdfs", [
+                'proposal_amount' => 100,
                 'proposal_pdf' => UploadedFile::fake()->create('proposta.pdf', 100, 'application/pdf'),
             ])
             ->assertSessionHasErrors('proposal_number');
 
         $this->actingAs($operator, 'admin')
             ->post("/leads/{$lead->id}/quote-pdfs", [
+                'proposal_number' => 'Senza importo',
+                'proposal_pdf' => UploadedFile::fake()->create('proposta.pdf', 100, 'application/pdf'),
+            ])
+            ->assertSessionHasErrors('proposal_amount');
+
+        $this->actingAs($operator, 'admin')
+            ->post("/leads/{$lead->id}/quote-pdfs", [
                 'proposal_number' => 'Collezione Estate / versione A',
+                'proposal_amount' => 375.25,
                 'proposal_pdf' => UploadedFile::fake()->create('proposta.pdf', 100, 'application/pdf'),
             ])
             ->assertSessionHasNoErrors();
@@ -227,8 +243,10 @@ class AdminEmailWorkflowTest extends TestCase
         $this->assertDatabaseHas('lead_quote_pdfs', [
             'lead_id' => $lead->id,
             'proposal_number' => 'Collezione Estate / versione A',
+            'amount' => 375.25,
         ]);
         $this->assertSame('Collezione Estate / versione A', $lead->fresh()->quote_number);
+        $this->assertSame('375.25', $lead->fresh()->quote_amount);
     }
 
     public function test_payment_link_email_is_plain_and_mentions_bank_transfer_proforma(): void

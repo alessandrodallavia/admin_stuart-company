@@ -116,14 +116,13 @@ class LeadController extends Controller
             'email' => ['nullable', 'email:rfc', 'max:255'],
             'phone' => ['nullable', 'string', 'max:30'],
             'status' => ['required', Rule::in($statuses)],
-            'quote_amount' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
             'payment_link' => ['nullable', 'url', 'max:2048'],
             'payment_amount' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
         ]);
 
-        if ($data['status'] === 'quote_sent' && empty($data['quote_amount'])) {
+        if ($data['status'] === 'quote_sent' && ! $lead->quotePdfs()->exists()) {
             return back()
-                ->withErrors(['quote_amount' => 'Inserisci l’importo della proposta prima di segnare il lead come proposta inviata.'])
+                ->withErrors(['proposal_pdf' => 'Carica una proposta prima di segnare il lead come proposta inviata.'])
                 ->withInput();
         }
 
@@ -138,7 +137,6 @@ class LeadController extends Controller
             'email' => $data['email'] ?? null,
             'phone' => $data['phone'] ?? null,
             'status' => $data['status'],
-            'quote_amount' => $data['quote_amount'] ?? $lead->quote_amount,
             'payment_link' => $data['payment_link'] ?? $lead->payment_link,
             'payment_amount' => $data['payment_amount'] ?? $lead->payment_amount,
         ];
@@ -189,6 +187,7 @@ class LeadController extends Controller
     {
         $data = $request->validate([
             'proposal_number' => ['required', 'string', 'max:100', Rule::unique('lead_quote_pdfs', 'proposal_number')],
+            'proposal_amount' => ['required', 'numeric', 'min:0.50', 'max:99999999.99'],
             'proposal_pdf' => ['required', 'file', 'mimes:pdf', 'mimetypes:application/pdf', 'max:20480'],
         ]);
 
@@ -200,6 +199,7 @@ class LeadController extends Controller
 
         $lead->quotePdfs()->create([
             'proposal_number' => $data['proposal_number'],
+            'amount' => $data['proposal_amount'],
             'disk' => self::QUOTE_PDF_DISK,
             'path' => $path,
             'filename' => $originalName,
@@ -208,7 +208,10 @@ class LeadController extends Controller
             'uploaded_at' => now(),
         ]);
 
-        $lead->forceFill(['quote_number' => $data['proposal_number']])->save();
+        $lead->forceFill([
+            'quote_number' => $data['proposal_number'],
+            'quote_amount' => $data['proposal_amount'],
+        ])->save();
 
         return redirect()
             ->route('admin.leads.index', ['lead' => $lead])
@@ -240,8 +243,10 @@ class LeadController extends Controller
         }
 
         $quotePdf->delete();
+        $latestProposal = $lead->quotePdfs()->first();
         $lead->forceFill([
-            'quote_number' => $lead->quotePdfs()->first()?->proposal_number,
+            'quote_number' => $latestProposal?->proposal_number,
+            'quote_amount' => $latestProposal?->amount,
         ])->saveQuietly();
 
         return redirect()
@@ -251,11 +256,8 @@ class LeadController extends Controller
 
     public function createStripePaymentLink(Request $request, Lead $lead): RedirectResponse
     {
-        $data = $request->validate([
-            'payment_amount' => ['required', 'numeric', 'min:0.50', 'max:99999999.99'],
-        ]);
-
-        $quoteNumber = $this->latestProposalNumber($lead);
+        $proposal = $this->latestProposal($lead);
+        $quoteNumber = $proposal->proposal_number;
         $secretKey = $lead->is_training
             ? config('services.stripe.test_secret_key')
             : config('services.stripe.secret_key');
@@ -268,7 +270,7 @@ class LeadController extends Controller
             ]);
         }
 
-        $amount = (float) $data['payment_amount'];
+        $amount = (float) $proposal->amount;
         $amountInCents = (int) round($amount * 100);
         $currency = strtolower((string) config('services.stripe.currency', 'eur'));
 
@@ -630,7 +632,7 @@ class LeadController extends Controller
         }
 
         $account = $this->currentEmailAccount();
-        $proposalNumber = $this->latestProposalNumber($lead);
+        $proposalNumber = $this->latestProposal($lead)->proposal_number;
         $conversation = $this->findOrCreateEmailConversation($lead, $account, "Pagamento {$proposalNumber}");
         $amount = number_format((float) $lead->payment_amount, 2, ',', '.');
         $body = "Importo proposta: € {$amount}\n\nClicca sul link seguente per procedere al pagamento della proposta:\n{$lead->payment_link}\n\nSe preferisci pagare tramite bonifico bancario, rispondi a questa e-mail e ti invieremo la proforma con tutti i dettagli per il pagamento.";
@@ -803,22 +805,24 @@ class LeadController extends Controller
         }
     }
 
-    private function latestProposalNumber(Lead $lead): string
+    private function latestProposal(Lead $lead): LeadQuotePdf
     {
-        $proposalNumber = $lead->quotePdfs()->first()?->proposal_number;
+        $proposal = $lead->quotePdfs()->first();
 
-        if (! $proposalNumber) {
+        if (! $proposal?->proposal_number || ! $proposal->amount) {
             throw ValidationException::withMessages([
-                'proposal_pdf' => 'Carica prima una proposta indicando il relativo numero.',
+                'proposal_pdf' => 'Carica prima una proposta indicando numero e importo.',
             ]);
         }
 
-        if ($lead->quote_number !== $proposalNumber) {
-            $lead->forceFill(['quote_number' => $proposalNumber])->saveQuietly();
-            $lead->quote_number = $proposalNumber;
+        if ($lead->quote_number !== $proposal->proposal_number || $lead->quote_amount !== $proposal->amount) {
+            $lead->forceFill([
+                'quote_number' => $proposal->proposal_number,
+                'quote_amount' => $proposal->amount,
+            ])->saveQuietly();
         }
 
-        return $proposalNumber;
+        return $proposal;
     }
 
     private function ensureStripeCustomer(Lead $lead, string $secretKey): string
