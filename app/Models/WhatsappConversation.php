@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\TrainingScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -9,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class WhatsappConversation extends Model
 {
+    use TrainingScoped;
+
     protected $fillable = [
         'lead_id',
         'assigned_user_id',
@@ -24,6 +27,9 @@ class WhatsappConversation extends Model
         'follow_up_excluded_permanently',
         'follow_up_exclusion_reason',
         'metadata',
+        'is_training',
+        'training_owner_id',
+        'training_scenario',
     ];
 
     protected function casts(): array
@@ -36,6 +42,7 @@ class WhatsappConversation extends Model
             'follow_up_excluded_until' => 'datetime',
             'follow_up_excluded_permanently' => 'boolean',
             'metadata' => 'array',
+            'is_training' => 'boolean',
         ];
     }
 

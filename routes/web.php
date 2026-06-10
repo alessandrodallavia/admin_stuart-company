@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\EmailController as AdminEmailController;
 use App\Http\Controllers\Admin\LeadController as AdminLeadController;
 use App\Http\Controllers\Admin\NotificationController as AdminNotificationController;
 use App\Http\Controllers\Admin\ShipmentController as AdminShipmentController;
+use App\Http\Controllers\Admin\TrainingController as AdminTrainingController;
 use App\Http\Controllers\Admin\WhatsappConversationController as AdminWhatsappConversationController;
 use Illuminate\Support\Facades\Route;
 
@@ -15,9 +16,18 @@ Route::name('admin.')->group(function () {
     Route::post('/login', [AdminAuthController::class, 'login'])->name('login.store');
 
     Route::middleware('admin.auth')->group(function () {
-        Route::get('/notifications', [AdminNotificationController::class, 'index'])->name('notifications.index');
-        Route::patch('/notifications/read-all', [AdminNotificationController::class, 'markAllRead'])->name('notifications.read-all');
-        Route::get('/notifications/{notification}', [AdminNotificationController::class, 'open'])->name('notifications.open');
+        Route::get('/training', [AdminTrainingController::class, 'index'])->name('training.index');
+        Route::post('/training/toggle', [AdminTrainingController::class, 'toggle'])->name('training.toggle');
+        Route::post('/training/scenarios', [AdminTrainingController::class, 'createScenario'])->name('training.scenarios.store');
+        Route::post('/training/leads/{lead}/reply', [AdminTrainingController::class, 'customerReply'])->name('training.leads.reply');
+        Route::post('/training/leads/{lead}/complete-payment', [AdminTrainingController::class, 'completePayment'])->name('training.leads.complete-payment');
+        Route::delete('/training/reset', [AdminTrainingController::class, 'reset'])->name('training.reset');
+
+        Route::middleware('admin.training.blocked')->group(function () {
+            Route::get('/notifications', [AdminNotificationController::class, 'index'])->name('notifications.index');
+            Route::patch('/notifications/read-all', [AdminNotificationController::class, 'markAllRead'])->name('notifications.read-all');
+            Route::get('/notifications/{notification}', [AdminNotificationController::class, 'open'])->name('notifications.open');
+        });
 
         Route::middleware('admin.permission:whatsapp.view')->group(function () {
             Route::get('/', [AdminWhatsappConversationController::class, 'index'])->name('dashboard');
@@ -68,7 +78,7 @@ Route::name('admin.')->group(function () {
             Route::delete('/email/conversations/{conversation}', [AdminEmailController::class, 'destroyConversation'])->name('email.conversations.destroy');
         });
 
-        Route::middleware('admin.permission:documents.view')->group(function () {
+        Route::middleware(['admin.permission:documents.view', 'admin.training.blocked'])->group(function () {
             Route::get('/documents/payments', [AdminDocumentController::class, 'payments'])->name('documents.payments');
             Route::get('/documents/import-xml', [AdminDocumentController::class, 'importXml'])->name('documents.import-xml');
             Route::get('/documents/export-sdi', [AdminDocumentController::class, 'exportSdi'])->name('documents.export-sdi');
@@ -80,7 +90,7 @@ Route::name('admin.')->group(function () {
             Route::get('/documents/{document}/edit', [AdminDocumentController::class, 'edit'])->name('documents.edit');
         });
 
-        Route::middleware('admin.permission:documents.manage')->group(function () {
+        Route::middleware(['admin.permission:documents.manage', 'admin.training.blocked'])->group(function () {
             Route::post('/documents', [AdminDocumentController::class, 'store'])->name('documents.store');
             Route::patch('/documents/{document}', [AdminDocumentController::class, 'update'])->name('documents.update');
             Route::delete('/documents/{document}', [AdminDocumentController::class, 'destroy'])->name('documents.destroy');
@@ -91,7 +101,7 @@ Route::name('admin.')->group(function () {
             Route::patch('/documents/{document}/payments', [AdminDocumentController::class, 'updatePayment'])->name('documents.payments.update');
         });
 
-        Route::middleware('admin.permission:shipments.manage')->group(function () {
+        Route::middleware(['admin.permission:shipments.manage', 'admin.training.blocked'])->group(function () {
             Route::get('/shipments/documents/search', [AdminShipmentController::class, 'documentSearch'])->name('shipments.documents.search');
             Route::get('/shipments/create', [AdminShipmentController::class, 'create'])->name('shipments.create');
             Route::post('/shipments', [AdminShipmentController::class, 'store'])->name('shipments.store');
@@ -100,12 +110,12 @@ Route::name('admin.')->group(function () {
             Route::post('/shipments/{shipment}/parcels/{parcel}/label', [AdminShipmentController::class, 'label'])->name('shipments.parcels.label');
         });
 
-        Route::middleware('admin.permission:shipments.view')->group(function () {
+        Route::middleware(['admin.permission:shipments.view', 'admin.training.blocked'])->group(function () {
             Route::get('/shipments', [AdminShipmentController::class, 'index'])->name('shipments.index');
             Route::get('/shipments/{shipment}', [AdminShipmentController::class, 'show'])->name('shipments.show');
         });
 
-        Route::middleware('admin.permission:admin_users.manage')->group(function () {
+        Route::middleware(['admin.permission:admin_users.manage', 'admin.training.blocked'])->group(function () {
             Route::get('/settings/users', [AdminAdminUserController::class, 'index'])->name('users.index');
             Route::post('/settings/users', [AdminAdminUserController::class, 'store'])->name('users.store');
             Route::patch('/settings/users/{adminUser}', [AdminAdminUserController::class, 'update'])->name('users.update');

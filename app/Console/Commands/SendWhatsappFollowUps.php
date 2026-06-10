@@ -21,6 +21,7 @@ class SendWhatsappFollowUps extends Command
             ->with(['conversation', 'triggerMessage'])
             ->where('status', 'pending')
             ->whereHas('conversation', fn ($query) => $query
+                ->where('is_training', false)
                 ->where('status', 'open')
                 ->where('follow_up_excluded_permanently', false)
                 ->where(fn ($query) => $query

@@ -406,19 +406,20 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
         $uuid = $matches[1] ?? null;
 
         if ($uuid) {
-            $lead = Lead::where('uuid', $uuid)->first();
+            $lead = Lead::where('is_training', false)->where('uuid', $uuid)->first();
 
             if ($lead) {
                 return $lead;
             }
         }
 
-        return Lead::where('phone', $from)->latest()->first();
+        return Lead::where('is_training', false)->where('phone', $from)->latest()->first();
     }
 
     private function getConversation(string $contactPhone, ?Lead $lead = null): WhatsappConversation
     {
-        $conversation = WhatsappConversation::where('contact_phone', $contactPhone)
+        $conversation = WhatsappConversation::where('is_training', false)
+            ->where('contact_phone', $contactPhone)
             ->where('status', 'open')
             ->latest()
             ->first();

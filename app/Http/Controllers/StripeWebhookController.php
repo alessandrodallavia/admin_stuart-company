@@ -58,7 +58,7 @@ class StripeWebhookController extends Controller
             return response()->json(['message' => 'Lead reference missing']);
         }
 
-        $lead = Lead::find($leadId);
+        $lead = Lead::where('is_training', false)->find($leadId);
 
         if (! $lead) {
             Log::warning('Webhook Stripe per lead inesistente', [

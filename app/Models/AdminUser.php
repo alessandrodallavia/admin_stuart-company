@@ -18,6 +18,8 @@ class AdminUser extends Authenticatable
         'role',
         'permissions',
         'is_active',
+        'training_mode_enabled',
+        'training_mode_active',
         'last_login_at',
     ];
 
@@ -30,6 +32,8 @@ class AdminUser extends Authenticatable
     {
         return [
             'is_active' => 'boolean',
+            'training_mode_enabled' => 'boolean',
+            'training_mode_active' => 'boolean',
             'last_login_at' => 'datetime',
             'password' => 'hashed',
             'permissions' => 'array',

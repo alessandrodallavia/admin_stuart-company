@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\EmailAccount;
 use App\Models\EmailConversation;
+use App\Models\EmailMessage;
 use App\Models\Lead;
 use App\Models\WhatsappConversation;
 use App\Models\WhatsappMessage;
@@ -178,6 +179,10 @@ class LeadController extends Controller
 
     private function sendQuoteSentEvent(Lead $lead, ?string $previousStatus, Ga4MeasurementService $ga4): void
     {
+        if ($lead->is_training) {
+            return;
+        }
+
         if ($lead->status !== 'quote_sent' || $previousStatus === 'quote_sent' || $lead->ga4_quote_sent_at) {
             return;
         }
@@ -223,6 +228,19 @@ class LeadController extends Controller
         $data = $request->validate([
             'payment_amount' => ['required', 'numeric', 'min:0.50', 'max:99999999.99'],
         ]);
+
+        if ($lead->is_training) {
+            $lead->forceFill([
+                'quote_number' => $this->ensureQuoteNumber($lead),
+                'payment_amount' => (float) $data['payment_amount'],
+                'payment_link' => 'https://checkout.stripe.test/training-'.$lead->uuid,
+                'status' => 'link_sent',
+            ])->save();
+
+            return redirect()
+                ->route('admin.leads.index', ['lead' => $lead])
+                ->with('status', 'Link pagamento simulato creato. Stripe non è stato contattato.');
+        }
 
         $secretKey = config('services.stripe.secret_key');
 
@@ -332,6 +350,15 @@ class LeadController extends Controller
 
         $amount = number_format((float) $lead->payment_amount, 2, ',', '.');
         $body = "Importo preventivo: € {$amount}\n\nScegli come preferisci procedere:\n\n- Paga ora: carta di credito/debito, Amazon Pay, Google Pay, Apple Pay, PayPal, Satispay o addebito SEPA.\n- Bonifico bancario: ti invio la proforma con tutti i dati bancari.";
+
+        if ($lead->is_training) {
+            $this->storeTrainingWhatsappMessage($conversation, $body, 'interactive');
+
+            return redirect()
+                ->route('admin.leads.index', ['lead' => $lead])
+                ->with('status', 'Link pagamento simulato inviato su WhatsApp.');
+        }
+
         $payload = [
             'messaging_product' => 'whatsapp',
             'to' => $conversation->contact_phone,
@@ -430,6 +457,20 @@ class LeadController extends Controller
         $body = 'In allegato il preventivo';
         $filePath = Storage::disk($lead->quote_pdf_disk ?? self::QUOTE_PDF_DISK)->path($lead->quote_pdf_path);
         $filename = $lead->quote_pdf_filename ?: 'preventivo.pdf';
+
+        if ($lead->is_training) {
+            $this->storeTrainingWhatsappMessage($conversation, $body, 'document', [
+                'media_disk' => $lead->quote_pdf_disk ?? self::QUOTE_PDF_DISK,
+                'media_path' => $lead->quote_pdf_path,
+                'media_mime_type' => $lead->quote_pdf_mime_type ?: 'application/pdf',
+                'media_filename' => $filename,
+                'media_size' => $lead->quote_pdf_size,
+            ]);
+
+            return redirect()
+                ->route('admin.leads.index', ['lead' => $lead])
+                ->with('status', 'Preventivo simulato inviato su WhatsApp.');
+        }
 
         $file = fopen($filePath, 'r');
 
@@ -535,6 +576,16 @@ class LeadController extends Controller
         $account = $this->currentEmailAccount();
         $conversation = $this->findOrCreateEmailConversation($lead, $account, $lead->quote_number ?: $this->ensureQuoteNumber($lead));
         $body = "Buongiorno,\n\nin allegato trovi il preventivo.\n\nResto a disposizione per qualsiasi domanda.";
+
+        if ($lead->is_training) {
+            $this->storeTrainingEmailMessage($conversation, $account->email, $body);
+            $lead->forceFill(['status' => 'quote_sent'])->save();
+
+            return redirect()
+                ->route('admin.leads.index', ['lead' => $lead])
+                ->with('status', 'Preventivo simulato inviato via email.');
+        }
+
         $message = $mailbox->send(
             $account,
             $conversation,
@@ -585,6 +636,16 @@ class LeadController extends Controller
             'paymentLink' => $lead->payment_link,
             'quoteNumber' => $quoteNumber,
         ])->render();
+
+        if ($lead->is_training) {
+            $this->storeTrainingEmailMessage($conversation, $account->email, $body);
+            $lead->forceFill(['status' => 'link_sent'])->save();
+
+            return redirect()
+                ->route('admin.leads.index', ['lead' => $lead])
+                ->with('status', 'Link pagamento simulato inviato via email.');
+        }
+
         $message = $mailbox->send($account, $conversation, $body, htmlBody: $html);
 
         if ($message->status !== 'sent') {
@@ -636,6 +697,9 @@ class LeadController extends Controller
                 'status' => 'open',
                 'is_seen' => true,
                 'last_message_at' => now(),
+                'is_training' => $lead->is_training,
+                'training_owner_id' => $lead->training_owner_id,
+                'training_scenario' => $lead->training_scenario,
             ]);
     }
 
@@ -667,6 +731,9 @@ class LeadController extends Controller
                 'status' => 'open',
                 'needs_human' => false,
                 'last_message_at' => now(),
+                'is_training' => $lead->is_training,
+                'training_owner_id' => $lead->training_owner_id,
+                'training_scenario' => $lead->training_scenario,
             ]);
 
             $lead->forceFill([
@@ -675,6 +742,49 @@ class LeadController extends Controller
         }
 
         return $conversation;
+    }
+
+    private function storeTrainingWhatsappMessage(WhatsappConversation $conversation, string $body, string $type, array $media = []): void
+    {
+        $message = WhatsappMessage::create([
+            'whatsapp_conversation_id' => $conversation->id,
+            'provider_message_id' => 'training-'.Str::uuid(),
+            'direction' => 'outbound',
+            'source' => 'user',
+            'type' => $type,
+            'status' => 'sent',
+            'from_phone' => config('services.whatsapp.phone_number_id'),
+            'to_phone' => $conversation->contact_phone,
+            'body' => $body,
+            ...$media,
+            'payload' => ['training' => true],
+            'sent_at' => now(),
+        ]);
+
+        $conversation->forceFill([
+            'needs_human' => false,
+            'last_message_at' => $message->created_at,
+        ])->save();
+    }
+
+    private function storeTrainingEmailMessage(EmailConversation $conversation, string $fromEmail, string $body): void
+    {
+        EmailMessage::create([
+            'email_conversation_id' => $conversation->id,
+            'message_id' => 'training-'.Str::uuid(),
+            'direction' => 'outbound',
+            'status' => 'sent',
+            'from_email' => $fromEmail,
+            'to' => [$conversation->contact_email],
+            'subject' => $conversation->subject,
+            'body_text' => $body,
+            'sent_at' => now(),
+        ]);
+
+        $conversation->forceFill([
+            'is_seen' => true,
+            'last_message_at' => now(),
+        ])->save();
     }
 
     private function sendPaymentLinkSentEvent(Lead $lead, Ga4MeasurementService $ga4): void

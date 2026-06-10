@@ -66,6 +66,16 @@ class EmailMailboxSyncService
 
     public function markConversationSeen(EmailConversation $conversation): void
     {
+        if ($conversation->is_training) {
+            $conversation->messages()
+                ->where('direction', 'inbound')
+                ->whereNull('seen_at')
+                ->update(['seen_at' => now()]);
+            $conversation->forceFill(['is_seen' => true])->save();
+
+            return;
+        }
+
         $account = $conversation->account;
 
         if (! $account?->is_active || ! $account->password()) {
@@ -122,6 +132,13 @@ class EmailMailboxSyncService
 
         if (! $message) {
             return false;
+        }
+
+        if ($conversation->is_training) {
+            $message->forceFill(['seen_at' => null])->save();
+            $conversation->forceFill(['is_seen' => false])->save();
+
+            return true;
         }
 
         if ($account?->is_active && $account->password() && $message->provider_uid) {
@@ -230,6 +247,7 @@ class EmailMailboxSyncService
 
         if ($references->isNotEmpty()) {
             $conversation = EmailConversation::query()
+                ->where('is_training', false)
                 ->where('email_account_id', $account->id)
                 ->whereHas('messages', fn ($query) => $query->whereIn('message_id', $references->all()))
                 ->first();
@@ -241,6 +259,7 @@ class EmailMailboxSyncService
 
         $normalizedSubject = preg_replace('/^(re|r|fw|fwd)\s*:\s*/i', '', $subject);
         $conversation = EmailConversation::query()
+            ->where('is_training', false)
             ->where('email_account_id', $account->id)
             ->where('contact_email', $fromEmail)
             ->where('subject', 'like', '%'.$normalizedSubject)
@@ -251,7 +270,11 @@ class EmailMailboxSyncService
             return $conversation;
         }
 
-        $lead = Lead::query()->where('email', $fromEmail)->latest('id')->first();
+        $lead = Lead::query()
+            ->where('is_training', false)
+            ->where('email', $fromEmail)
+            ->latest('id')
+            ->first();
 
         return EmailConversation::create([
             'email_account_id' => $account->id,

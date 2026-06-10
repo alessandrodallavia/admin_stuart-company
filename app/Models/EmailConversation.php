@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\TrainingScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -9,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class EmailConversation extends Model
 {
+    use TrainingScoped;
+
     protected $fillable = [
         'email_account_id',
         'lead_id',
@@ -20,11 +23,15 @@ class EmailConversation extends Model
         'status',
         'is_seen',
         'last_message_at',
+        'is_training',
+        'training_owner_id',
+        'training_scenario',
     ];
 
     protected $casts = [
         'is_seen' => 'boolean',
         'last_message_at' => 'datetime',
+        'is_training' => 'boolean',
     ];
 
     public function account(): BelongsTo

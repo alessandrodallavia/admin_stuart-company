@@ -60,7 +60,7 @@
                             Email
                         </a>
                     @endif
-                    @if ($adminUser?->hasAdminPermission('documents.view'))
+                    @if ($adminUser?->hasAdminPermission('documents.view') && ! $adminUser->training_mode_active)
                         <a
                             href="{{ route('admin.documents.index') }}"
                             class="rounded-10 border px-12 py-10 text-12 font-extrabold uppercase tracking-normal transition {{ $activeNav === 'documents' ? 'border-bullstar bg-bullstar text-white' : 'border-gray-mid bg-white text-black-nike hover:border-black-nike' }}"
@@ -68,7 +68,7 @@
                             Documenti
                         </a>
                     @endif
-                    @if ($adminUser?->hasAdminPermission('shipments.view'))
+                    @if ($adminUser?->hasAdminPermission('shipments.view') && ! $adminUser->training_mode_active)
                         <a
                             href="{{ route('admin.shipments.index') }}"
                             class="rounded-10 border px-12 py-10 text-12 font-extrabold uppercase tracking-normal transition {{ $activeNav === 'shipments' ? 'border-bullstar bg-bullstar text-white' : 'border-gray-mid bg-white text-black-nike hover:border-black-nike' }}"
@@ -76,7 +76,7 @@
                             Spedizioni
                         </a>
                     @endif
-                    @if ($adminUser?->canManageAdminUsers())
+                    @if ($adminUser?->canManageAdminUsers() && ! $adminUser->training_mode_active)
                         <a
                             href="{{ route('admin.users.index') }}"
                             class="rounded-10 border px-12 py-10 text-12 font-extrabold uppercase tracking-normal transition {{ $activeNav === 'settings' ? 'border-bullstar bg-bullstar text-white' : 'border-gray-mid bg-white text-black-nike hover:border-black-nike' }}"
@@ -84,7 +84,24 @@
                             Utenti
                         </a>
                     @endif
-                    @if ($adminUser)
+                    @if ($adminUser?->training_mode_enabled)
+                        <a
+                            href="{{ route('admin.training.index') }}"
+                            class="rounded-10 border px-12 py-10 text-12 font-extrabold uppercase tracking-normal transition {{ $activeNav === 'training' ? 'border-bullstar bg-bullstar text-white' : 'border-gray-mid bg-white text-black-nike hover:border-bullstar hover:text-bullstar' }}"
+                        >
+                            Formazione
+                        </a>
+                        <form method="POST" action="{{ route('admin.training.toggle') }}">
+                            @csrf
+                            <button
+                                type="submit"
+                                class="rounded-10 border px-12 py-10 text-12 font-extrabold uppercase tracking-normal transition {{ $adminUser->training_mode_active ? 'border-bullstar bg-bullstar text-white hover:bg-bullstar-hover' : 'border-bullstar bg-white text-bullstar hover:bg-bullstar hover:text-white' }}"
+                            >
+                                {{ $adminUser->training_mode_active ? 'Esci formazione' : 'Avvia formazione' }}
+                            </button>
+                        </form>
+                    @endif
+                    @if ($adminUser && ! $adminUser->training_mode_active)
                         @php($unreadNotificationsCount = $adminUser->unreadNotifications()->count())
                         <a
                             href="{{ route('admin.notifications.index') }}"
@@ -112,6 +129,15 @@
         </header>
 
         <main class="mx-auto flex w-full max-w-[1440px] flex-1 flex-col px-16 py-20 md:px-32 md:py-28">
+            @if (auth('admin')->user()?->training_mode_active)
+                <div class="mb-16 flex flex-col gap-8 border-l-4 border-bullstar bg-white px-16 py-12 md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <p class="text-12 font-extrabold uppercase tracking-normal text-bullstar">Modalità formazione attiva</p>
+                        <p class="mt-3 text-14 font-bold text-black-nike">Vedi solo dati simulati. WhatsApp, email, analytics e pagamenti reali sono disabilitati.</p>
+                    </div>
+                    <a href="{{ route('admin.training.index') }}" class="text-12 font-extrabold uppercase tracking-normal text-bullstar hover:underline">Gestisci scenari</a>
+                </div>
+            @endif
             @if (session('status'))
                 <div class="mb-16 rounded-10 border border-whatsapp/20 bg-whatsapp/10 px-16 py-12 text-14 font-bold text-whatsapp">
                     {{ session('status') }}

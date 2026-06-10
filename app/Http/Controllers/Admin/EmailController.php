@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\EmailAccount;
 use App\Models\EmailAttachment;
 use App\Models\EmailConversation;
+use App\Models\EmailMessage;
 use App\Models\Lead;
 use App\Services\EmailMailboxService;
 use App\Services\EmailMailboxSyncService;
@@ -63,6 +64,10 @@ class EmailController extends Controller
 
     public function sync(Request $request, EmailMailboxSyncService $sync): RedirectResponse
     {
+        if ($request->user('admin')->training_mode_active) {
+            return back()->with('status', 'In formazione la sincronizzazione reale è disabilitata.');
+        }
+
         $account = $this->accountFor($request);
 
         try {
@@ -88,6 +93,10 @@ class EmailController extends Controller
             'attachments.*' => ['file', 'max:10240'],
         ]);
 
+        if (! empty($data['lead_id'])) {
+            Lead::findOrFail($data['lead_id']);
+        }
+
         $conversation = EmailConversation::create([
             'email_account_id' => $account->id,
             'lead_id' => $data['lead_id'] ?? null,
@@ -98,7 +107,18 @@ class EmailController extends Controller
             'status' => 'open',
             'is_seen' => true,
             'last_message_at' => now(),
+            'is_training' => $request->user('admin')->training_mode_active,
+            'training_owner_id' => $request->user('admin')->training_mode_active ? $request->user('admin')->id : null,
+            'training_scenario' => $request->user('admin')->training_mode_active ? 'manual' : null,
         ]);
+
+        if ($conversation->is_training) {
+            $this->storeTrainingMessage($conversation, $account->email, $data['body']);
+
+            return redirect()
+                ->route('admin.email.conversations.show', ['conversation' => $conversation])
+                ->with('status', 'Email simulata inviata. Nessuna comunicazione reale è partita.');
+        }
 
         $message = $mailbox->send(
             $account,
@@ -123,6 +143,12 @@ class EmailController extends Controller
             'body' => ['required', 'string', 'max:10000'],
             'attachments.*' => ['file', 'max:10240'],
         ]);
+
+        if ($conversation->is_training) {
+            $this->storeTrainingMessage($conversation, $account->email, $data['body']);
+
+            return back()->with('status', 'Email simulata inviata. Nessuna comunicazione reale è partita.');
+        }
 
         $message = $mailbox->send($account, $conversation, $data['body'], $request->file('attachments', []));
 
@@ -167,7 +193,14 @@ class EmailController extends Controller
         $account = $this->accountFor($request);
         $attachment->load('message.conversation');
 
-        abort_unless($attachment->message?->conversation?->email_account_id === $account->id, 404);
+        $conversation = $attachment->message?->conversation;
+
+        abort_unless(
+            $conversation?->email_account_id === $account->id
+            && $conversation->is_training === (bool) $request->user('admin')->training_mode_active
+            && (! $conversation->is_training || $conversation->training_owner_id === $request->user('admin')->id),
+            404
+        );
         abort_unless(Storage::disk($attachment->disk)->exists($attachment->path), 404);
 
         return Storage::disk($attachment->disk)->download($attachment->path, $attachment->filename);
@@ -180,5 +213,25 @@ class EmailController extends Controller
             ->where('is_active', true)
             ->latest('id')
             ->firstOrFail();
+    }
+
+    private function storeTrainingMessage(EmailConversation $conversation, string $fromEmail, string $body): void
+    {
+        EmailMessage::create([
+            'email_conversation_id' => $conversation->id,
+            'message_id' => 'training-'.\Illuminate\Support\Str::uuid(),
+            'direction' => 'outbound',
+            'status' => 'sent',
+            'from_email' => $fromEmail,
+            'to' => [$conversation->contact_email],
+            'subject' => $conversation->subject,
+            'body_text' => $body,
+            'sent_at' => now(),
+        ]);
+
+        $conversation->forceFill([
+            'is_seen' => true,
+            'last_message_at' => now(),
+        ])->save();
     }
 }

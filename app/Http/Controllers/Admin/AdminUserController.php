@@ -44,6 +44,7 @@ class AdminUserController extends Controller
             'role' => $data['role'],
             'permissions' => $this->permissionsForRole($data['role'], $data['permissions'] ?? []),
             'is_active' => $request->boolean('is_active'),
+            'training_mode_enabled' => $request->boolean('training_mode_enabled'),
         ]);
 
         $currentUser?->refresh();
@@ -78,6 +79,10 @@ class AdminUserController extends Controller
             'role' => $data['role'],
             'permissions' => $this->permissionsForRole($data['role'], $data['permissions'] ?? []),
             'is_active' => $request->boolean('is_active'),
+            'training_mode_enabled' => $request->boolean('training_mode_enabled'),
+            'training_mode_active' => $request->boolean('training_mode_enabled')
+                ? $adminUser->training_mode_active
+                : false,
         ];
 
         if (! empty($data['password'])) {
@@ -145,6 +150,7 @@ class AdminUserController extends Controller
             'permissions' => ['array'],
             'permissions.*' => [Rule::in($permissions)],
             'is_active' => ['nullable', 'boolean'],
+            'training_mode_enabled' => ['nullable', 'boolean'],
         ]);
     }
 

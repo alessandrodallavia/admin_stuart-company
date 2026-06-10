@@ -102,6 +102,10 @@
                         <input name="is_active" value="1" type="checkbox" checked class="rounded border-gray-mid text-bullstar focus:ring-bullstar">
                         Attivo
                     </label>
+                    <label class="flex items-end gap-8 pb-2 text-12 font-extrabold uppercase tracking-normal text-gray">
+                        <input name="training_mode_enabled" value="1" type="checkbox" class="rounded border-gray-mid text-bullstar focus:ring-bullstar">
+                        Formazione
+                    </label>
 
                     <div class="xl:col-span-3">
                         <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Permessi aggiuntivi</p>
@@ -172,6 +176,9 @@
                                         <span class="rounded-full px-10 py-6 text-11 font-extrabold uppercase tracking-normal {{ $adminUser->is_active ? 'bg-whatsapp/10 text-whatsapp' : 'bg-gray-mid text-black-nike' }}">
                                             {{ $adminUser->is_active ? 'Attivo' : 'Disattivato' }}
                                         </span>
+                                        @if ($adminUser->training_mode_enabled)
+                                            <p class="mt-6 text-11 font-extrabold uppercase tracking-normal text-bullstar">Formazione abilitata</p>
+                                        @endif
                                     </td>
                                     <td class="px-12 py-12">
                                         <p class="text-12 font-bold text-black-nike">
@@ -263,14 +270,21 @@
                             </label>
                         </div>
 
-                        <label class="block">
-                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Nuova password</span>
-                            <input name="password" type="password" autocomplete="new-password" @disabled(! $canEditOwner) class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar disabled:bg-gray-light disabled:text-gray">
-                        </label>
-                        <label class="block">
-                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Conferma nuova password</span>
-                            <input name="password_confirmation" type="password" autocomplete="new-password" @disabled(! $canEditOwner) class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar disabled:bg-gray-light disabled:text-gray">
-                        </label>
+                        <div class="grid gap-12 xl:col-span-4 xl:grid-cols-[140px_minmax(260px,0.85fr)_minmax(340px,1.15fr)]">
+                            <label class="flex items-end gap-8 pb-3 text-12 font-extrabold uppercase tracking-normal text-gray">
+                                <input name="training_mode_enabled" value="1" type="checkbox" @checked(old('training_mode_enabled', $selectedAdminUser->training_mode_enabled)) @disabled(! $canEditOwner) class="rounded border-gray-mid text-bullstar focus:ring-bullstar">
+                                Formazione
+                            </label>
+
+                            <label class="block">
+                                <span class="whitespace-nowrap text-12 font-extrabold uppercase tracking-normal text-gray">Nuova password</span>
+                                <input name="password" type="password" autocomplete="new-password" @disabled(! $canEditOwner) class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar disabled:bg-gray-light disabled:text-gray">
+                            </label>
+                            <label class="block">
+                                <span class="whitespace-nowrap text-12 font-extrabold uppercase tracking-normal text-gray">Conferma nuova password</span>
+                                <input name="password_confirmation" type="password" autocomplete="new-password" @disabled(! $canEditOwner) class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar disabled:bg-gray-light disabled:text-gray">
+                            </label>
+                        </div>
 
                         <div class="xl:col-span-4">
                             <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Permessi</p>

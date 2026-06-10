@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\TrainingScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -9,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Lead extends Model
 {
+    use TrainingScoped;
+
     protected $fillable = [
 
         'uuid',
@@ -44,6 +47,9 @@ class Lead extends Model
         'ip',
         'user_agent',
         'device',
+        'is_training',
+        'training_owner_id',
+        'training_scenario',
 
         'pipeline_lead_id',
         'payment_link',
@@ -106,6 +112,7 @@ class Lead extends Model
     protected $casts = [
         'privacy_consent' => 'boolean',
         'marketing_consent' => 'boolean',
+        'is_training' => 'boolean',
         'meta_marketing_consent' => 'boolean',
         'quote_amount' => 'decimal:2',
         'payment_amount' => 'decimal:2',

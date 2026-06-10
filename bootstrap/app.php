@@ -3,6 +3,7 @@
 use App\Console\Commands\SendWhatsappFollowUps;
 use App\Http\Middleware\AuthenticateAdmin;
 use App\Http\Middleware\CheckAdminPermission;
+use App\Http\Middleware\BlockRealAreasDuringTraining;
 use App\Http\Middleware\NoIndexAdmin;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -24,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin.auth' => AuthenticateAdmin::class,
             'admin.permission' => CheckAdminPermission::class,
+            'admin.training.blocked' => BlockRealAreasDuringTraining::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

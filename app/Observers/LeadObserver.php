@@ -9,6 +9,10 @@ class LeadObserver
 {
     public function created(Lead $lead): void
     {
+        if ($lead->is_training) {
+            return;
+        }
+
         app(AdminNotificationService::class)->notifyNewLead($lead);
     }
 }
