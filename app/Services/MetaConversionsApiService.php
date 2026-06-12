@@ -11,6 +11,16 @@ use RuntimeException;
 
 class MetaConversionsApiService
 {
+    public function trackLead(Lead $lead): bool
+    {
+        return $this->track($lead, 'Lead', 'lead', now(), [
+            'currency' => 'EUR',
+            'value' => (float) ($lead->quote_amount ?: 0),
+            'content_name' => 'Preventivo inviato',
+            'content_category' => 'Preventivo',
+        ]);
+    }
+
     public function trackContact(Lead $lead, ?CarbonInterface $eventTime = null): bool
     {
         return $this->track($lead, 'Contact', 'contact', $eventTime, [

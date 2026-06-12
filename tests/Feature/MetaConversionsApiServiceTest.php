@@ -25,12 +25,13 @@ class MetaConversionsApiServiceTest extends TestCase
         $lead = $this->lead(['meta_marketing_consent' => true]);
         $service = app(MetaConversionsApiService::class);
 
+        $this->assertTrue($service->trackLead($lead));
         $this->assertTrue($service->trackContact($lead));
         $this->assertFalse($service->trackContact($lead->fresh()));
         $this->assertTrue($service->trackInitiateCheckout($lead->fresh()));
         $this->assertTrue($service->trackPurchase($lead->fresh()));
 
-        Http::assertSentCount(3);
+        Http::assertSentCount(4);
         Http::assertSent(fn ($request) => $request->data()['data'][0]['event_name'] === 'Purchase'
             && $request->data()['data'][0]['custom_data']['currency'] === 'EUR'
             && $request->data()['data'][0]['custom_data']['value'] === 120.5);

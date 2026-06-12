@@ -84,6 +84,9 @@ return [
         'login_customer_id' => env('GOOGLE_ADS_LOGIN_CUSTOMER_ID'),
         'whatsapp_conversion_action_id' => env('GOOGLE_ADS_WHATSAPP_CONVERSION_ACTION_ID'),
         'whatsapp_conversion_value' => (float) env('GOOGLE_ADS_WHATSAPP_CONVERSION_VALUE', 1),
+        'quote_sent_conversion_action_id' => env('GOOGLE_ADS_QUOTE_SENT_CONVERSION_ACTION_ID'),
+        'payment_link_sent_conversion_action_id' => env('GOOGLE_ADS_PAYMENT_LINK_SENT_CONVERSION_ACTION_ID'),
+        'purchase_conversion_action_id' => env('GOOGLE_ADS_PURCHASE_CONVERSION_ACTION_ID'),
         'currency' => env('GOOGLE_ADS_CURRENCY', 'EUR'),
     ],
 

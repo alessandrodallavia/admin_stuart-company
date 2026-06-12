@@ -11,8 +11,7 @@ use App\Models\LeadQuotePdf;
 use App\Models\WhatsappConversation;
 use App\Models\WhatsappMessage;
 use App\Services\EmailMailboxService;
-use App\Services\Ga4MeasurementService;
-use App\Services\MetaConversionsApiService;
+use App\Services\LeadConversionTrackingService;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -106,7 +105,7 @@ class LeadController extends Controller
         ]);
     }
 
-    public function update(Request $request, Lead $lead, Ga4MeasurementService $ga4): RedirectResponse
+    public function update(Request $request, Lead $lead, LeadConversionTrackingService $tracking): RedirectResponse
     {
         $statuses = array_keys($this->statuses());
         $previousStatus = $lead->status;
@@ -144,43 +143,13 @@ class LeadController extends Controller
         $lead->fill($attributes)->save();
         $lead->refresh();
 
-        $this->sendQuoteSentEvent($lead, $previousStatus, $ga4);
+        if ($lead->status !== $previousStatus) {
+            $tracking->trackForCurrentStatus($lead);
+        }
 
         return redirect()
             ->route('admin.leads.index', ['lead' => $lead])
             ->with('status', 'Lead aggiornato.');
-    }
-
-    private function sendQuoteSentEvent(Lead $lead, ?string $previousStatus, Ga4MeasurementService $ga4): void
-    {
-        if ($lead->is_training) {
-            return;
-        }
-
-        if ($lead->status !== 'quote_sent' || $previousStatus === 'quote_sent' || $lead->ga4_quote_sent_at) {
-            return;
-        }
-
-        try {
-            $ga4->sendQuoteSent($lead);
-
-            $lead->forceFill([
-                'ga4_quote_sent_at' => now(),
-                'ga4_quote_sent_status' => 'sent',
-                'ga4_quote_sent_error' => null,
-            ])->save();
-        } catch (\Throwable $exception) {
-            Log::warning('Invio quote_sent a GA4 fallito', [
-                'lead_id' => $lead->id,
-                'lead_uuid' => $lead->uuid,
-                'error' => $exception->getMessage(),
-            ]);
-
-            $lead->forceFill([
-                'ga4_quote_sent_status' => 'failed',
-                'ga4_quote_sent_error' => $exception->getMessage(),
-            ])->save();
-        }
     }
 
     public function storeQuotePdfs(Request $request, Lead $lead): RedirectResponse
@@ -347,7 +316,7 @@ class LeadController extends Controller
         ])->save();
         $lead->refresh();
 
-        $this->sendPaymentLinkSentEvent($lead, $ga4 = app(Ga4MeasurementService::class));
+        app(LeadConversionTrackingService::class)->trackPaymentLinkSent($lead);
 
         return redirect()
             ->route('admin.leads.index', ['lead' => $lead])
@@ -448,6 +417,11 @@ class LeadController extends Controller
                 'payment_link' => 'Invio WhatsApp fallito: '.($message->error_message ?? 'errore sconosciuto'),
             ]);
         }
+
+        if ($this->shouldAdvanceStatus($lead->status, 'link_sent')) {
+            $lead->forceFill(['status' => 'link_sent'])->save();
+        }
+        app(LeadConversionTrackingService::class)->trackPaymentLinkSent($lead->fresh());
 
         return redirect()
             ->route('admin.leads.index', ['lead' => $lead])
@@ -561,12 +535,17 @@ class LeadController extends Controller
             ]);
         }
 
+        if ($this->shouldAdvanceStatus($lead->status, 'quote_sent')) {
+            $lead->forceFill(['status' => 'quote_sent'])->save();
+        }
+        app(LeadConversionTrackingService::class)->trackQuoteSent($lead->fresh());
+
         return redirect()
             ->route('admin.leads.index', ['lead' => $lead])
             ->with('status', 'Proposta inviata su WhatsApp.');
     }
 
-    public function sendQuotePdfEmail(Lead $lead, LeadQuotePdf $quotePdf, EmailMailboxService $mailbox, Ga4MeasurementService $ga4): RedirectResponse
+    public function sendQuotePdfEmail(Lead $lead, LeadQuotePdf $quotePdf, EmailMailboxService $mailbox, LeadConversionTrackingService $tracking): RedirectResponse
     {
         $quotePdf = $this->quotePdfForLead($lead, $quotePdf);
 
@@ -609,19 +588,17 @@ class LeadController extends Controller
             return back()->withErrors(['quote_pdf' => 'Invio email fallito: '.$message->error_message]);
         }
 
-        $previousStatus = $lead->status;
-
         if ($this->shouldAdvanceStatus($lead->status, 'quote_sent')) {
             $lead->forceFill(['status' => 'quote_sent'])->save();
-            $this->sendQuoteSentEvent($lead->fresh(), $previousStatus, $ga4);
         }
+        $tracking->trackQuoteSent($lead->fresh());
 
         return redirect()
             ->route('admin.leads.index', ['lead' => $lead])
             ->with('status', 'Proposta inviata via email con PDF allegato.');
     }
 
-    public function sendStripePaymentLinkEmail(Lead $lead, EmailMailboxService $mailbox, Ga4MeasurementService $ga4): RedirectResponse
+    public function sendStripePaymentLinkEmail(Lead $lead, EmailMailboxService $mailbox, LeadConversionTrackingService $tracking): RedirectResponse
     {
         if (! $lead->email) {
             return back()->withErrors(['email' => 'Inserisci prima l’email del cliente.']);
@@ -660,10 +637,8 @@ class LeadController extends Controller
 
         if ($this->shouldAdvanceStatus($lead->status, 'link_sent')) {
             $lead->forceFill(['status' => 'link_sent'])->save();
-            $this->sendPaymentLinkSentEvent($lead->fresh(), $ga4);
         }
-
-        app(MetaConversionsApiService::class)->trackInitiateCheckout($lead->fresh());
+        $tracking->trackPaymentLinkSent($lead->fresh());
 
         return redirect()
             ->route('admin.leads.index', ['lead' => $lead])
@@ -775,34 +750,6 @@ class LeadController extends Controller
             'is_seen' => true,
             'last_message_at' => now(),
         ])->save();
-    }
-
-    private function sendPaymentLinkSentEvent(Lead $lead, Ga4MeasurementService $ga4): void
-    {
-        if ($lead->is_training || $lead->status !== 'link_sent' || $lead->ga4_payment_link_sent_at) {
-            return;
-        }
-
-        try {
-            $ga4->sendPaymentLinkSent($lead);
-
-            $lead->forceFill([
-                'ga4_payment_link_sent_at' => now(),
-                'ga4_payment_link_sent_status' => 'sent',
-                'ga4_payment_link_sent_error' => null,
-            ])->save();
-        } catch (\Throwable $exception) {
-            Log::warning('Invio payment_link_sent a GA4 fallito', [
-                'lead_id' => $lead->id,
-                'lead_uuid' => $lead->uuid,
-                'error' => $exception->getMessage(),
-            ]);
-
-            $lead->forceFill([
-                'ga4_payment_link_sent_status' => 'failed',
-                'ga4_payment_link_sent_error' => $exception->getMessage(),
-            ])->save();
-        }
     }
 
     private function latestProposal(Lead $lead): LeadQuotePdf

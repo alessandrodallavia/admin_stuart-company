@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Lead;
 use Carbon\CarbonInterface;
 use Google\Ads\GoogleAds\Lib\OAuth2TokenBuilder;
 use Google\Ads\GoogleAds\Lib\V24\GoogleAdsClientBuilder;
@@ -21,17 +22,57 @@ class GoogleAdsConversionService
         ?CarbonInterface $conversionTime = null,
         ?float $value = null
     ): array {
-        $this->ensureConfigured();
+        return $this->uploadClickConversion(
+            gclid: $gclid,
+            conversionActionId: (int) config('services.google_ads.whatsapp_conversion_action_id'),
+            orderId: $orderId,
+            conversionTime: $conversionTime,
+            value: $value ?? (float) config('services.google_ads.whatsapp_conversion_value', 1),
+        );
+    }
 
+    public function uploadQuoteSent(Lead $lead, ?CarbonInterface $conversionTime = null): array
+    {
+        return $this->uploadLeadConversion($lead, 'quote_sent', $conversionTime, (float) ($lead->quote_amount ?: 0));
+    }
+
+    public function uploadPaymentLinkSent(Lead $lead, ?CarbonInterface $conversionTime = null): array
+    {
+        return $this->uploadLeadConversion($lead, 'payment_link_sent', $conversionTime, (float) ($lead->payment_amount ?: $lead->quote_amount ?: 0));
+    }
+
+    public function uploadPurchase(Lead $lead, ?CarbonInterface $conversionTime = null): array
+    {
+        return $this->uploadLeadConversion($lead, 'purchase', $conversionTime, (float) ($lead->payment_amount ?: $lead->quote_amount ?: 0));
+    }
+
+    private function uploadLeadConversion(Lead $lead, string $event, ?CarbonInterface $conversionTime, float $value): array
+    {
+        return $this->uploadClickConversion(
+            gclid: (string) $lead->gclid,
+            conversionActionId: (int) config("services.google_ads.{$event}_conversion_action_id"),
+            orderId: "{$event}-".($lead->uuid ?: $lead->id),
+            conversionTime: $conversionTime,
+            value: $value,
+        );
+    }
+
+    private function uploadClickConversion(
+        string $gclid,
+        int $conversionActionId,
+        string $orderId,
+        ?CarbonInterface $conversionTime = null,
+        ?float $value = null
+    ): array {
+        $this->ensureConfigured($conversionActionId);
         $customerId = $this->normalizedCustomerId(config('services.google_ads.customer_id'));
-        $conversionActionId = (int) config('services.google_ads.whatsapp_conversion_action_id');
         $conversionTime ??= now();
 
         $conversion = new ClickConversion([
             'gclid' => $gclid,
             'conversion_action' => ResourceNames::forConversionAction($customerId, $conversionActionId),
             'conversion_date_time' => $conversionTime->format('Y-m-d H:i:sP'),
-            'conversion_value' => $value ?? (float) config('services.google_ads.whatsapp_conversion_value', 1),
+            'conversion_value' => $value ?? 0,
             'currency_code' => config('services.google_ads.currency', 'EUR'),
             'order_id' => $orderId,
             'consent' => new Consent([
@@ -83,7 +124,7 @@ class GoogleAdsConversionService
         return $builder->build();
     }
 
-    private function ensureConfigured(): void
+    private function ensureConfigured(int $conversionActionId): void
     {
         foreach ([
             'developer_token',
@@ -91,11 +132,14 @@ class GoogleAdsConversionService
             'client_secret',
             'refresh_token',
             'customer_id',
-            'whatsapp_conversion_action_id',
         ] as $key) {
             if (! config("services.google_ads.{$key}")) {
                 throw new RuntimeException("Config Google Ads mancante: services.google_ads.{$key}");
             }
+        }
+
+        if (! $conversionActionId) {
+            throw new RuntimeException('Conversion action Google Ads mancante.');
         }
     }
 

@@ -6,8 +6,7 @@ use App\Models\Lead;
 use App\Models\WhatsappConversation;
 use App\Models\WhatsappMessage;
 use App\Services\AdminNotificationService;
-use App\Services\Ga4MeasurementService;
-use App\Services\MetaConversionsApiService;
+use App\Services\LeadConversionTrackingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -120,8 +119,7 @@ class StripeWebhookController extends Controller
         }
 
         if (! $lead->is_training) {
-            $this->sendPurchaseEvent($lead->fresh(), app(Ga4MeasurementService::class));
-            app(MetaConversionsApiService::class)->trackPurchase($lead->fresh());
+            app(LeadConversionTrackingService::class)->trackPurchase($lead->fresh());
         }
 
         $this->sendPaymentThankYouMessage($lead->fresh());
@@ -221,34 +219,6 @@ class StripeWebhookController extends Controller
             'whatsapp_payment_thank_you_status' => $response->successful() ? 'sent' : 'failed',
             'whatsapp_payment_thank_you_error' => $response->failed() ? ($response->json('error.message') ?: 'errore sconosciuto') : null,
         ])->save();
-    }
-
-    private function sendPurchaseEvent(Lead $lead, Ga4MeasurementService $ga4): void
-    {
-        if ($lead->status !== 'order_completed' || $lead->ga4_purchase_sent_at) {
-            return;
-        }
-
-        try {
-            $ga4->sendPurchase($lead);
-
-            $lead->forceFill([
-                'ga4_purchase_sent_at' => now(),
-                'ga4_purchase_sent_status' => 'sent',
-                'ga4_purchase_sent_error' => null,
-            ])->save();
-        } catch (\Throwable $exception) {
-            Log::warning('Invio purchase a GA4 fallito', [
-                'lead_id' => $lead->id,
-                'lead_uuid' => $lead->uuid,
-                'error' => $exception->getMessage(),
-            ]);
-
-            $lead->forceFill([
-                'ga4_purchase_sent_status' => 'failed',
-                'ga4_purchase_sent_error' => $exception->getMessage(),
-            ])->save();
-        }
     }
 
     private function hasValidSignature(string $payload, string $signature, string $secret): bool
