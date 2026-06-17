@@ -37,11 +37,23 @@
                     @endphp
 
                     @if ($adminUser?->hasAdminPermission('whatsapp.view'))
+                        @php
+                            $unreadWhatsappCount = \App\Models\WhatsappMessage::query()
+                                ->whereHas('conversation')
+                                ->where('direction', 'inbound')
+                                ->whereNull('admin_read_at')
+                                ->count();
+                        @endphp
                         <a
                             href="{{ route('admin.dashboard') }}"
-                            class="rounded-10 border px-12 py-10 text-12 font-extrabold uppercase tracking-normal transition {{ $activeNav === 'whatsapp' ? 'border-bullstar bg-bullstar text-white' : 'border-gray-mid bg-white text-black-nike hover:border-black-nike' }}"
+                            class="inline-flex items-center gap-6 rounded-10 border px-12 py-10 text-12 font-extrabold uppercase tracking-normal transition {{ $activeNav === 'whatsapp' ? 'border-bullstar bg-bullstar text-white' : 'border-gray-mid bg-white text-black-nike hover:border-black-nike' }}"
                         >
                             WhatsApp
+                            @if ($unreadWhatsappCount > 0)
+                                <span class="inline-flex h-20 min-w-20 shrink-0 items-center justify-center rounded-full px-6 text-11 font-black leading-none {{ $activeNav === 'whatsapp' ? 'bg-black-nike text-white' : 'bg-whatsapp text-white' }}">
+                                    {{ $unreadWhatsappCount > 99 ? '99+' : $unreadWhatsappCount }}
+                                </span>
+                            @endif
                         </a>
                     @endif
                     @if ($adminUser?->hasAdminPermission('leads.view'))
