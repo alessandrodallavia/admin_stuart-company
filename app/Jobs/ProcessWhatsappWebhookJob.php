@@ -305,7 +305,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
 
             case 'confirmed':
 
-                $this->sendText($from, "Ciao 👋 Sono Andrea di Stuart.\nHo visto la tua richiesta per delle t-shirt personalizzate 👕\n\nPer iniziare mandami pure:\n– logo o grafica\n– colore delle t-shirt\n\n👉 Se hai già il logo in buona qualità puoi inviarmelo direttamente qui 👍", $conversation);
+                $this->sendText($from, "Ciao 👋 Sono Andrea di Stuart.\nPer iniziare mandami pure:\n– logo o grafica\n- quantità indicativa\n– colore delle t-shirt\n- utilizzo (evento, azienda, staff, associazione, brand, ecc...)\n\n👉 Se hai già il logo in alta qualità puoi inviarmelo direttamente qui su Whatsapp.", $conversation);
 
                 $lead->status = 'completed';
                 $lead->save();
