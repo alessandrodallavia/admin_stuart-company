@@ -126,6 +126,9 @@
                             @php
                                 $isOutbound = $message->direction === 'outbound';
                                 $hasHtmlBody = filled($message->body_html);
+                                $htmlBody = $hasHtmlBody
+                                    ? '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base target="_blank"><style>html,body{margin:0;padding:0;background:#fff;color:#111;font-family:Arial,Helvetica,sans-serif;}body{overflow-wrap:anywhere;}img{max-width:100%;height:auto;}table{max-width:100%;}</style></head><body>'.$message->body_html.'</body></html>'
+                                    : null;
                                 $statusLabel = match ($message->status) {
                                     'sent' => 'Accettata dal server',
                                     'failed' => 'Invio fallito',
@@ -147,7 +150,7 @@
                                     @if ($hasHtmlBody)
                                         <iframe
                                             title="Contenuto email: {{ $message->subject }}"
-                                            srcdoc="{{ $message->body_html }}"
+                                            srcdoc="{{ $htmlBody }}"
                                             sandbox="allow-same-origin"
                                             referrerpolicy="no-referrer"
                                             loading="lazy"
