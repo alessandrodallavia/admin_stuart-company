@@ -820,7 +820,7 @@ class LeadController extends Controller
 
         return [
             'total' => Lead::count(),
-            'open' => Lead::whereNotIn('status', ['order_completed'])->count(),
+            'open' => Lead::whereNotIn('status', ['order_completed', 'lost'])->count(),
             'ready' => (int) ($counts['completed'] ?? 0),
             'paid' => (int) ($counts['order_completed'] ?? 0),
             'by_status' => collect($statuses)
@@ -840,6 +840,7 @@ class LeadController extends Controller
             'proforma_pending' => 'Proforma da inv.',
             'payment_pending' => 'Pag. in attesa',
             'order_completed' => 'Completato',
+            'lost' => 'Perso',
         ];
     }
 
@@ -869,6 +870,12 @@ class LeadController extends Controller
                 'label' => 'Completato',
                 'statuses' => ['order_completed'],
                 'accent' => 'text-whatsapp',
+            ],
+            [
+                'key' => 'lost',
+                'label' => 'Perso',
+                'statuses' => ['lost'],
+                'accent' => 'text-gray',
             ],
         ];
     }

@@ -16,7 +16,7 @@
 
             <section class="min-h-[720px] overflow-hidden rounded-10 border border-gray-mid bg-gray-light">
                 <div class="overflow-x-auto">
-                    <div class="grid min-w-[1080px] grid-cols-4">
+                    <div class="grid min-w-[1280px] grid-cols-5">
                         @foreach ($columns as $column)
                             <section class="min-h-[720px] border-r border-gray-mid last:border-r-0">
                                 <header class="border-b border-gray-mid bg-white px-20 py-20">
@@ -58,10 +58,10 @@
                                                     </div>
                                                 </div>
 
-                                                @if ($column['key'] === 'completed')
+                                                @if (in_array($column['key'], ['completed', 'lost'], true))
                                                     <div class="border-t border-gray-mid px-12 py-10">
                                                         <p class="text-14 font-semibold leading-none text-black-nike">
-                                                            Data di chiusura: {{ optional($lead->updated_at)->format('d/m/Y') ?: '-' }}
+                                                            {{ $column['key'] === 'lost' ? 'Data perdita' : 'Data di chiusura' }}: {{ optional($lead->updated_at)->format('d/m/Y') ?: '-' }}
                                                         </p>
                                                     </div>
                                                 @else

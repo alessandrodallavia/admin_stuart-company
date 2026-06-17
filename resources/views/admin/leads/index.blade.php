@@ -92,6 +92,18 @@
                                     @php
                                         $isSelected = ($selectedLead?->id ?? null) === $lead->id;
                                         $statusLabel = $statuses[$lead->status] ?? ucfirst((string) $lead->status ?: 'Senza stato');
+                                        $statusBadgeClass = match ($lead->status) {
+                                            'pre' => 'bg-gray-light text-gray',
+                                            'confirmed' => 'bg-blue-50 text-blue-700',
+                                            'completed' => 'bg-amber-50 text-amber-700',
+                                            'quote_sent' => 'bg-bullstar/10 text-bullstar',
+                                            'link_sent' => 'bg-indigo-50 text-indigo-700',
+                                            'proforma_pending' => 'bg-orange-50 text-orange-700',
+                                            'payment_pending' => 'bg-yellow-50 text-yellow-700',
+                                            'order_completed' => 'bg-whatsapp/10 text-whatsapp',
+                                            'lost' => 'bg-red-50 text-red-700',
+                                            default => 'bg-black-nike text-white',
+                                        };
                                     @endphp
                                     <tr class="{{ $isSelected ? 'bg-bullstar/5' : 'bg-white' }}">
                                         <td class="px-12 py-12">
@@ -100,7 +112,7 @@
                                             <p class="mt-4 max-w-[240px] truncate text-11 font-bold text-gray">{{ $lead->email ?: $lead->phone ?: 'Contatto incompleto' }}</p>
                                         </td>
                                         <td class="px-12 py-12">
-                                            <span class="inline-flex rounded-full bg-black-nike px-10 py-6 text-11 font-extrabold uppercase tracking-normal text-white">{{ $statusLabel }}</span>
+                                            <span class="inline-flex rounded-full px-10 py-6 text-11 font-extrabold uppercase tracking-normal {{ $statusBadgeClass }}">{{ $statusLabel }}</span>
                                         </td>
                                         <td class="px-12 py-12">
                                             <p class="text-12 font-bold text-black-nike">
@@ -113,6 +125,7 @@
                                                     'proforma_pending' => 'Invio proforma bonifico',
                                                     'payment_pending' => 'In attesa conferma fondi',
                                                     'order_completed' => 'Concluso',
+                                                    'lost' => 'Non concluso',
                                                     default => 'Verifica lead',
                                                 } }}
                                             </p>
@@ -172,6 +185,18 @@
                     @if ($selectedLead)
                         @php
                             $statusLabel = $statuses[$selectedLead->status] ?? ucfirst((string) $selectedLead->status ?: 'Senza stato');
+                            $statusBadgeClass = match ($selectedLead->status) {
+                                'pre' => 'bg-gray-light text-gray',
+                                'confirmed' => 'bg-blue-50 text-blue-700',
+                                'completed' => 'bg-amber-50 text-amber-700',
+                                'quote_sent' => 'bg-bullstar/10 text-bullstar',
+                                'link_sent' => 'bg-indigo-50 text-indigo-700',
+                                'proforma_pending' => 'bg-orange-50 text-orange-700',
+                                'payment_pending' => 'bg-yellow-50 text-yellow-700',
+                                'order_completed' => 'bg-whatsapp/10 text-whatsapp',
+                                'lost' => 'bg-red-50 text-red-700',
+                                default => 'bg-black-nike text-white',
+                            };
                         @endphp
                         <div class="border-b border-gray-mid px-16 py-16">
                             <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Scheda lead</p>
@@ -186,8 +211,8 @@
                                         <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Stato attuale</p>
                                         <p class="mt-6 text-18 font-black leading-tight">{{ $statusLabel }}</p>
                                     </div>
-                                    <span class="rounded-full bg-black-nike/10 px-10 py-6 text-11 font-extrabold uppercase tracking-normal text-black-nike">
-                                        Locale
+                                    <span class="rounded-full px-10 py-6 text-11 font-extrabold uppercase tracking-normal {{ $statusBadgeClass }}">
+                                        {{ $statusLabel }}
                                     </span>
                                 </div>
                                 <form method="POST" action="{{ route('admin.leads.update', $selectedLead) }}" enctype="multipart/form-data" class="mt-12 space-y-10">
@@ -342,25 +367,82 @@
                             </section>
 
                             <section class="rounded-10 border border-gray-mid p-12">
-                                <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Tracking</p>
-                                <dl class="mt-10 grid grid-cols-2 gap-10 text-12">
+                                @php
+                                    $landingUrl = $selectedLead->landing_page ?: $selectedLead->entry_page;
+                                    $isLandingUrl = $landingUrl && \Illuminate\Support\Str::startsWith($landingUrl, ['http://', 'https://']);
+                                    $isReferrerUrl = $selectedLead->referrer && \Illuminate\Support\Str::startsWith($selectedLead->referrer, ['http://', 'https://']);
+                                @endphp
+                                <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Origine lead</p>
+                                <dl class="mt-10 grid gap-10 text-12">
+                                    <div>
+                                        <dt class="font-extrabold uppercase tracking-normal text-gray">Pagina di arrivo</dt>
+                                        <dd class="mt-4 break-words font-bold">
+                                            @if ($landingUrl && $isLandingUrl)
+                                                <a href="{{ $landingUrl }}" target="_blank" rel="noopener" class="text-bullstar underline-offset-4 hover:underline">{{ $landingUrl }}</a>
+                                            @else
+                                                {{ $landingUrl ?: '-' }}
+                                            @endif
+                                        </dd>
+                                    </div>
+                                    <div>
+                                        <dt class="font-extrabold uppercase tracking-normal text-gray">Referrer</dt>
+                                        <dd class="mt-4 break-words font-bold">
+                                            @if ($selectedLead->referrer && $isReferrerUrl)
+                                                <a href="{{ $selectedLead->referrer }}" target="_blank" rel="noopener" class="text-bullstar underline-offset-4 hover:underline">{{ $selectedLead->referrer }}</a>
+                                            @else
+                                                {{ $selectedLead->referrer ?: '-' }}
+                                            @endif
+                                        </dd>
+                                    </div>
+                                </dl>
+
+                                <dl class="mt-12 grid grid-cols-2 gap-10 text-12">
+                                    <div>
+                                        <dt class="font-extrabold uppercase tracking-normal text-gray">Ingresso</dt>
+                                        <dd class="mt-4 font-bold">{{ optional($selectedLead->created_at)?->timezone(config('app.display_timezone'))->format('d/m/Y H:i') ?: '-' }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="font-extrabold uppercase tracking-normal text-gray">IP</dt>
+                                        <dd class="mt-4 break-all font-bold">{{ $selectedLead->ip ?: '-' }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="font-extrabold uppercase tracking-normal text-gray">Device</dt>
+                                        <dd class="mt-4 break-words font-bold">{{ $selectedLead->device ?: '-' }}</dd>
+                                    </div>
                                     <div>
                                         <dt class="font-extrabold uppercase tracking-normal text-gray">UTM source</dt>
-                                        <dd class="mt-4 truncate font-bold">{{ $selectedLead->utm_source ?: '-' }}</dd>
+                                        <dd class="mt-4 break-words font-bold">{{ $selectedLead->utm_source ?: '-' }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="font-extrabold uppercase tracking-normal text-gray">UTM medium</dt>
+                                        <dd class="mt-4 break-words font-bold">{{ $selectedLead->utm_medium ?: '-' }}</dd>
                                     </div>
                                     <div>
                                         <dt class="font-extrabold uppercase tracking-normal text-gray">Campaign</dt>
-                                        <dd class="mt-4 truncate font-bold">{{ $selectedLead->utm_campaign ?: '-' }}</dd>
+                                        <dd class="mt-4 break-words font-bold">{{ $selectedLead->utm_campaign ?: '-' }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="font-extrabold uppercase tracking-normal text-gray">Term</dt>
+                                        <dd class="mt-4 break-words font-bold">{{ $selectedLead->utm_term ?: '-' }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="font-extrabold uppercase tracking-normal text-gray">Content</dt>
+                                        <dd class="mt-4 break-words font-bold">{{ $selectedLead->utm_content ?: '-' }}</dd>
                                     </div>
                                     <div>
                                         <dt class="font-extrabold uppercase tracking-normal text-gray">GCLID</dt>
-                                        <dd class="mt-4 truncate font-bold">{{ $selectedLead->gclid ?: '-' }}</dd>
+                                        <dd class="mt-4 break-all font-bold">{{ $selectedLead->gclid ?: '-' }}</dd>
                                     </div>
                                     <div>
                                         <dt class="font-extrabold uppercase tracking-normal text-gray">FBCLID</dt>
-                                        <dd class="mt-4 truncate font-bold">{{ $selectedLead->fbclid ?: '-' }}</dd>
+                                        <dd class="mt-4 break-all font-bold">{{ $selectedLead->fbclid ?: '-' }}</dd>
                                     </div>
                                 </dl>
+
+                                <div class="mt-12">
+                                    <p class="text-12 font-extrabold uppercase tracking-normal text-gray">User agent</p>
+                                    <p class="mt-4 break-words text-12 font-semibold leading-[18px] text-black-nike">{{ $selectedLead->user_agent ?: '-' }}</p>
+                                </div>
                             </section>
 
                             @if ($selectedConversation)

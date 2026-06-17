@@ -258,7 +258,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
             $lead->whatsapp_conversation_id = $conversation->id;
         }
 
-        if ($lead->status !== 'order_completed') {
+        if (! in_array($lead->status, ['order_completed', 'lost'], true)) {
             $lead->status = 'proforma_pending';
         }
 
