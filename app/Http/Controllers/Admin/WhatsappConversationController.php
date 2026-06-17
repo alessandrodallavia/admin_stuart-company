@@ -686,6 +686,7 @@ class WhatsappConversationController extends Controller
             'status_label' => $statusLabel,
             'message_at' => $this->formatAdminDateTime($message->received_at ?? $message->sent_at ?? $message->created_at),
             'status_at' => $this->formatAdminDateTime($message->read_at ?? $message->delivered_at ?? $message->sent_at ?? $message->created_at),
+            'sent_at' => $this->formatAdminDateTime($message->sent_at),
             'delivered_at' => $this->formatAdminDateTime($message->delivered_at),
             'read_at' => $this->formatAdminDateTime($message->read_at),
             'error_message' => $message->error_message,

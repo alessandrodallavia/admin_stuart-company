@@ -127,7 +127,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
 
             $status = $statusPayload['status'] ?? null;
             $statusAt = isset($statusPayload['timestamp'])
-                ? Carbon::createFromTimestamp((int) $statusPayload['timestamp'])
+                ? Carbon::createFromTimestamp((int) $statusPayload['timestamp'], config('app.timezone'))
                 : now();
 
             $updates = [
@@ -490,7 +490,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
     private function storeIncomingMessage(WhatsappConversation $conversation, array $message, string $from): WhatsappMessage
     {
         $receivedAt = isset($message['timestamp'])
-            ? Carbon::createFromTimestamp((int) $message['timestamp'])
+            ? Carbon::createFromTimestamp((int) $message['timestamp'], config('app.timezone'))
             : now();
 
         $providerMessageId = $message['id'] ?? null;

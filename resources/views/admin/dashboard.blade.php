@@ -428,7 +428,18 @@
                                             <div class="mt-8 flex flex-wrap items-center gap-8 text-11 font-bold uppercase tracking-normal {{ $isOutbound ? 'text-white/70' : 'text-gray' }}">
                                                 <span>{{ $message->source }}</span>
                                                 @if ($isOutbound)
-                                                    <span>{{ $statusLabel }} {{ optional($message->read_at ?? $message->delivered_at ?? $message->sent_at ?? $message->created_at)?->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</span>
+                                                    @if ($message->sent_at)
+                                                        <span>Inviato {{ $message->sent_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</span>
+                                                    @endif
+                                                    @if ($message->delivered_at)
+                                                        <span>Consegnato {{ $message->delivered_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</span>
+                                                    @endif
+                                                    @if ($message->read_at)
+                                                        <span>Letto {{ $message->read_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</span>
+                                                    @endif
+                                                    @unless ($message->sent_at || $message->delivered_at || $message->read_at)
+                                                        <span>{{ $statusLabel }} {{ optional($message->created_at)?->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</span>
+                                                    @endunless
                                                 @else
                                                     <span>{{ optional($message->received_at ?? $message->created_at)?->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</span>
                                                     <span>{{ $statusLabel }}</span>
@@ -741,6 +752,7 @@
                 const signature = messages.map((message) => [
                     message.id,
                     message.status_label,
+                    message.sent_at,
                     message.delivered_at,
                     message.read_at,
                     message.error_message,
@@ -763,8 +775,13 @@
                     const alignment = outbound ? 'justify-end' : 'justify-start';
                     const bubbleClass = outbound ? 'bg-bullstar text-white' : 'border border-gray-mid bg-white text-black-nike';
                     const metaClass = outbound ? 'text-white/70' : 'text-gray';
+                    const outboundTimeline = [
+                        message.sent_at ? `<span>Inviato ${escapeHtml(message.sent_at)}</span>` : '',
+                        message.delivered_at ? `<span>Consegnato ${escapeHtml(message.delivered_at)}</span>` : '',
+                        message.read_at ? `<span>Letto ${escapeHtml(message.read_at)}</span>` : '',
+                    ].filter(Boolean).join('');
                     const statusMeta = outbound
-                        ? `<span>${escapeHtml(message.status_label)} ${escapeHtml(message.status_at)}</span>`
+                        ? (outboundTimeline || `<span>${escapeHtml(message.status_label)} ${escapeHtml(message.status_at)}</span>`)
                         : `<span>${escapeHtml(message.message_at)}</span><span>${escapeHtml(message.status_label)}</span>`;
                     const error = message.error_message
                         ? `<p class="mt-8 text-12 font-bold text-red-100">${escapeHtml(message.error_message)}</p>`

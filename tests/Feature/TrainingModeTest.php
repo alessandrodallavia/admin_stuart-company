@@ -9,6 +9,7 @@ use App\Models\EmailConversation;
 use App\Models\Lead;
 use App\Models\WhatsappConversation;
 use App\Models\WhatsappMessage;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
@@ -242,6 +243,43 @@ class TrainingModeTest extends TestCase
             'source' => 'webhook',
         ]);
         Http::assertNothingSent();
+    }
+
+    public function test_incoming_whatsapp_timestamp_is_saved_in_application_timezone(): void
+    {
+        Http::fake();
+        config()->set('app.timezone', 'Europe/Rome');
+        config()->set('app.display_timezone', 'Europe/Rome');
+        $operator = $this->operator();
+        $lead = $this->lead([
+            'uuid' => 'TIME01',
+            'status' => 'completed',
+            'phone' => '393331234571',
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+            'training_scenario' => 'whatsapp',
+        ]);
+        WhatsappConversation::withoutGlobalScope('training')->create([
+            'lead_id' => $lead->id,
+            'contact_phone' => $lead->phone,
+            'mode' => 'manual',
+            'status' => 'open',
+            'needs_human' => true,
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+        ]);
+
+        $timestamp = Carbon::parse('2026-06-17 12:00:00', 'Europe/Rome')->timestamp;
+
+        app()->call([new ProcessWhatsappWebhookJob($this->whatsappWebhook(
+            $lead->phone,
+            'Messaggio con timestamp Meta.',
+            $timestamp,
+        )), 'handle']);
+
+        $message = WhatsappMessage::withoutGlobalScopes()->where('body', 'Messaggio con timestamp Meta.')->firstOrFail();
+
+        $this->assertSame('2026-06-17 12:00:00', $message->received_at->format('Y-m-d H:i:s'));
     }
 
     public function test_email_training_scenario_uses_real_email_and_leaves_name_and_phone_unknown(): void
@@ -622,7 +660,7 @@ class TrainingModeTest extends TestCase
         ]);
     }
 
-    private function whatsappWebhook(string $from, string $body): array
+    private function whatsappWebhook(string $from, string $body, ?int $timestamp = null): array
     {
         return [
             'entry' => [[
@@ -631,7 +669,7 @@ class TrainingModeTest extends TestCase
                         'messages' => [[
                             'id' => 'wamid.'.fake()->uuid(),
                             'from' => $from,
-                            'timestamp' => (string) now()->timestamp,
+                            'timestamp' => (string) ($timestamp ?? now()->timestamp),
                             'type' => 'text',
                             'text' => ['body' => $body],
                         ]],
