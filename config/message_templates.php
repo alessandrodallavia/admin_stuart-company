@@ -1,9 +1,9 @@
 <?php
 
 return [
-    ['title' => 'Risposta iniziale', 'message' => "Ciao 👋 Sono Andrea di Stuart.\nPer iniziare mandami pure:\n- logo o grafica\n- colore delle t-shirt\n- utilizzo (evento, azienda, staff, associazione, brand, ecc...)\n👉 Se hai già il logo in alta qualità puoi inviarmelo direttamente qui su Whatsapp"],
+    ['title' => 'Risposta iniziale', 'message' => "Ciao 👋 Sono Andrea di Stuart.\nPer iniziare mandami pure:\n- logo o grafica\n- quantità indicativa (min 15pz)\n- colore delle t-shirt\n- utilizzo (evento, azienda, staff, associazione, brand, ecc...)\n👉 Se hai già il logo in alta qualità puoi inviarmelo direttamente qui su Whatsapp"],
     ['title' => 'Proposta completa', 'message' => "Perfetto 👍\nTi preparo una proposta completa con:\n- anteprima realistica\n- soluzione consigliata\n- indicazione chiara dei prezzi\n\nAppena è pronta te la invio qui su Whatsapp 👌"],
-    ['title' => 'Informazioni mancanti', 'message' => "Perfetto 👍\nPer prepararti una proposta precisa mi servirebbe ancora:\n- quantità indicativa\n- colore delle t-shirt"],
+    ['title' => 'Informazioni mancanti', 'message' => "Perfetto 👍\nPer prepararti una proposta precisa mi servirebbe ancora:\n- quantità indicativa (min 15pz)\n- colore delle t-shirt"],
     ['title' => 'File non adatto', 'message' => "Perfetto 👍\nPer il mockup questo file va benissimo.\nPer la produzione però potrei aver bisogno del logo/file originale in qualità più alta.\nSe riesci inviami: ai, pdf, svg, psd, png ad alta risoluzione.\nSe il file è pesante puoi usare Smash o WeTransfer"],
     ['title' => 'Invio mockup + PDF', 'message' => "Ecco la proposta 👇\nNel PDF trovi:\n- anteprima realistica\n- soluzione consigliata\n- prezzi chiari\n- dettagli produzione\nCosì puoi vedere subito il risultato finale👍\nC'è qualcosa che vorresti modificare oppure la soluzione ti sembra già corretta? 👌"],
     ['title' => 'Follow-up dopo mockup', 'message' => "Ciao 👋\nHai avuto modo di dare un'occhiata alla proposta? 🙂\nSe vuoi posso anche fare delle modifiche, proporti alternative o mostrarti altre soluzioni"],

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Brevo\Brevo;
+use Brevo\Exceptions\BrevoApiException;
 use Brevo\TransactionalEmails\Requests\SendTransacEmailRequest;
 use Brevo\TransactionalEmails\Types\SendTransacEmailRequestReplyTo;
 use Brevo\TransactionalEmails\Types\SendTransacEmailRequestSender;
@@ -58,6 +59,8 @@ class BrevoEmailService
         } catch (Exception $e) {
             Log::error('Brevo admin notification email error', [
                 'message' => $e->getMessage(),
+                'status_code' => $e->getCode(),
+                'response_body' => $e instanceof BrevoApiException ? $e->getBody() : null,
                 'to' => $to['email'] ?? null,
                 'subject' => $subject,
             ]);

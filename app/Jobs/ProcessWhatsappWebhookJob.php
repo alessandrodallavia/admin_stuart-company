@@ -98,8 +98,10 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
                 $this->handleInteractive($message, $from, $conversation);
             }
 
-            if ($type === 'text') {
-                $this->handleText($message, $from, $lead, $conversation);
+            $automationText = $this->extractAutomationText($message);
+
+            if ($automationText !== null && trim($automationText) !== '') {
+                $this->handleText($message, $from, $lead, $conversation, $automationText);
             }
 
             $conversation = $conversation->fresh(['lead']);
@@ -269,9 +271,9 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
         $adminNotifications->notifyBankTransferProformaRequested($lead->fresh());
     }
 
-    private function handleText($message, $from, ?Lead $lead, WhatsappConversation $conversation)
+    private function handleText($message, $from, ?Lead $lead, WhatsappConversation $conversation, ?string $text = null)
     {
-        $text = $message['text']['body'] ?? '';
+        $text ??= $this->extractAutomationText($message) ?? '';
 
         if (! $lead) {
             $this->requestHumanHandoff($conversation, 'Lead non trovato: conversazione in modalità manuale.');
@@ -305,7 +307,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
 
             case 'confirmed':
 
-                $this->sendText($from, "Ciao 👋 Sono Andrea di Stuart.\nPer iniziare mandami pure:\n– logo o grafica\n- quantità indicativa\n– colore delle t-shirt\n- utilizzo (evento, azienda, staff, associazione, brand, ecc...)\n\n👉 Se hai già il logo in alta qualità puoi inviarmelo direttamente qui su Whatsapp.", $conversation);
+                $this->sendText($from, "Ciao 👋 Sono Andrea di Stuart.\nPer iniziare mandami pure:\n– logo o grafica\n- quantità indicativa (min 15pz)\n– colore delle t-shirt\n- utilizzo (evento, azienda, staff, associazione, brand, ecc...)\n\n👉 Se hai già il logo in alta qualità puoi inviarmelo direttamente qui su Whatsapp.", $conversation);
 
                 $lead->status = 'completed';
                 $lead->save();
@@ -402,7 +404,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
 
     private function findLeadByReference(array $message): ?Lead
     {
-        $text = $message['text']['body'] ?? '';
+        $text = $this->extractAutomationText($message) ?? '';
 
         preg_match('/ID richiesta:\s*([A-Z0-9]+)/i', $text, $matches);
         $uuid = $matches[1] ?? null;
@@ -725,6 +727,17 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
             'interactive' => $message['interactive']['button_reply']['title']
                 ?? $message['interactive']['list_reply']['title']
                 ?? null,
+            default => null,
+        };
+    }
+
+    private function extractAutomationText(array $message): ?string
+    {
+        return match ($message['type'] ?? null) {
+            'text' => $message['text']['body'] ?? null,
+            'image' => $message['image']['caption'] ?? null,
+            'document' => $message['document']['caption'] ?? null,
+            'video' => $message['video']['caption'] ?? null,
             default => null,
         };
     }
