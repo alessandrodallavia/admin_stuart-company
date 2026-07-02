@@ -358,6 +358,52 @@ class TrainingModeTest extends TestCase
         ]);
     }
 
+    public function test_operator_can_send_approved_whatsapp_template(): void
+    {
+        Http::fake([
+            'https://graph.facebook.com/*' => Http::response([
+                'messages' => [['id' => 'template-message']],
+            ]),
+        ]);
+        $operator = $this->operator();
+        $lead = $this->lead([
+            'phone' => '393331234567',
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+        ]);
+        $conversation = WhatsappConversation::withoutGlobalScope('training')->create([
+            'lead_id' => $lead->id,
+            'contact_phone' => $lead->phone,
+            'mode' => 'manual',
+            'status' => 'open',
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+        ]);
+
+        $this->actingAs($operator, 'admin')
+            ->post("/conversations/{$conversation->id}/messages", [
+                'whatsapp_template' => 'lead_senza_risposta',
+            ])
+            ->assertRedirect();
+
+        Http::assertSent(function ($request) use ($lead) {
+            return $request['messaging_product'] === 'whatsapp'
+                && $request['to'] === $lead->phone
+                && $request['type'] === 'template'
+                && $request['template']['name'] === 'lead_senza_risposta'
+                && $request['template']['language']['code'] === 'it'
+                && ! isset($request['template']['components']);
+        });
+
+        $this->assertDatabaseHas('whatsapp_messages', [
+            'whatsapp_conversation_id' => $conversation->id,
+            'provider_message_id' => 'template-message',
+            'type' => 'template',
+            'body' => 'Template WhatsApp: lead_senza_risposta',
+            'status' => 'sent',
+        ]);
+    }
+
     public function test_real_document_areas_are_blocked_during_training(): void
     {
         $operator = $this->operator();

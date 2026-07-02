@@ -463,6 +463,7 @@
                                 @if ($selectedConversation->mode === 'manual' && $canManageWhatsapp)
                                     @php
                                         $messageTemplates = config('message_templates');
+                                        $whatsappApprovedTemplates = config('whatsapp_templates.templates', []);
                                         $messageTemplateMessages = collect($messageTemplates)
                                             ->pluck('message')
                                             ->map(fn ($message) => str_replace('\n', "\n", $message))
@@ -482,6 +483,24 @@
                                             @endforeach
                                         </div>
 
+                                        @if (! empty($whatsappApprovedTemplates))
+                                            <label class="block">
+                                                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Modello WhatsApp approvato</span>
+                                                <select
+                                                    id="whatsapp-template-select"
+                                                    name="whatsapp_template"
+                                                    class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar"
+                                                >
+                                                    <option value="">Messaggio libero</option>
+                                                    @foreach ($whatsappApprovedTemplates as $key => $template)
+                                                        <option value="{{ $key }}" @selected(old('whatsapp_template') === $key)>
+                                                            {{ $template['label'] ?? $template['name'] ?? $key }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </label>
+                                        @endif
+
                                         <textarea
                                             id="message-composer"
                                             name="message"
@@ -495,6 +514,7 @@
                                             <label class="flex min-w-0 flex-1 items-center gap-10 rounded-10 border border-gray-mid bg-gray-light px-12 py-10 text-12 font-bold text-gray">
                                                 <span class="shrink-0 rounded-10 bg-white px-10 py-6 text-black-nike">Allega</span>
                                                 <input
+                                                    id="message-attachment"
                                                     name="attachment"
                                                     type="file"
                                                     accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
@@ -823,13 +843,43 @@
 
             function bindMessageTemplates() {
                 const composer = document.getElementById('message-composer');
+                const templateSelect = document.getElementById('whatsapp-template-select');
+                const attachment = document.getElementById('message-attachment');
 
                 if (!composer) {
                     return;
                 }
 
+                const syncApprovedTemplateComposer = () => {
+                    const hasApprovedTemplate = templateSelect && templateSelect.value !== '';
+
+                    composer.disabled = hasApprovedTemplate;
+                    composer.classList.toggle('bg-gray-light', hasApprovedTemplate);
+                    composer.placeholder = hasApprovedTemplate
+                        ? 'Il testo viene preso dal modello WhatsApp approvato.'
+                        : 'Scrivi un messaggio o una didascalia...';
+
+                    if (hasApprovedTemplate) {
+                        composer.value = '';
+                    }
+
+                    if (attachment) {
+                        attachment.disabled = hasApprovedTemplate;
+                        if (hasApprovedTemplate) {
+                            attachment.value = '';
+                        }
+                    }
+                };
+
+                templateSelect?.addEventListener('change', syncApprovedTemplateComposer);
+                syncApprovedTemplateComposer();
+
                 document.querySelectorAll('[data-message-template-index]').forEach((button) => {
                     button.addEventListener('click', () => {
+                        if (templateSelect) {
+                            templateSelect.value = '';
+                            syncApprovedTemplateComposer();
+                        }
                         composer.value = messageTemplates[Number(button.dataset.messageTemplateIndex)] || '';
                         composer.focus();
                     });

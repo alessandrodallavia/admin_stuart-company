@@ -224,12 +224,26 @@ class WhatsappConversationController extends Controller
         $data = $request->validate([
             'message' => ['nullable', 'string', 'max:4096'],
             'attachment' => ['nullable', 'file', 'max:20480'],
+            'whatsapp_template' => ['nullable', 'string'],
         ]);
 
+        $selectedTemplate = $this->approvedWhatsappTemplate($data['whatsapp_template'] ?? null);
         $body = trim($data['message'] ?? '');
         $attachment = $request->file('attachment');
 
-        if ($body === '' && ! $attachment) {
+        if (($data['whatsapp_template'] ?? null) && ! $selectedTemplate) {
+            return back()
+                ->withErrors(['message' => 'Seleziona un modello WhatsApp approvato valido.'])
+                ->withInput();
+        }
+
+        if ($selectedTemplate && $attachment) {
+            return back()
+                ->withErrors(['message' => 'I modelli WhatsApp approvati non possono essere inviati insieme a un allegato.'])
+                ->withInput();
+        }
+
+        if (! $selectedTemplate && $body === '' && ! $attachment) {
             return back()
                 ->withErrors(['message' => 'Scrivi un messaggio o allega un file prima di inviare.'])
                 ->withInput();
@@ -247,11 +261,15 @@ class WhatsappConversationController extends Controller
             }
         }
 
-        $messageType = $attachment
-            ? $this->whatsappTypeFromMimeType($mediaAttributes['media_mime_type'])
-            : 'text';
+        $messageType = $selectedTemplate
+            ? 'template'
+            : ($attachment
+                ? $this->whatsappTypeFromMimeType($mediaAttributes['media_mime_type'])
+                : 'text');
 
-        $payload = $this->buildOutgoingPayload($conversation, $messageType, $body, $mediaAttributes);
+        $payload = $selectedTemplate
+            ? $this->buildTemplatePayload($conversation, $selectedTemplate)
+            : $this->buildOutgoingPayload($conversation, $messageType, $body, $mediaAttributes);
 
         $response = Http::withToken(config('services.whatsapp.token'))
             ->post('https://graph.facebook.com/v25.0/'.config('services.whatsapp.phone_number_id').'/messages', $payload);
@@ -265,7 +283,7 @@ class WhatsappConversationController extends Controller
             'status' => $response->successful() ? 'sent' : 'failed',
             'from_phone' => config('services.whatsapp.phone_number_id'),
             'to_phone' => $conversation->contact_phone,
-            'body' => $body !== '' ? $body : null,
+            'body' => $selectedTemplate ? $this->templateMessageBody($selectedTemplate) : ($body !== '' ? $body : null),
             ...$mediaAttributes,
             'payload' => [
                 'request' => $payload,
@@ -289,11 +307,76 @@ class WhatsappConversationController extends Controller
                 ->withErrors(['message' => 'Messaggio salvato, ma invio WhatsApp fallito: '.($message->error_message ?? 'errore sconosciuto')]);
         }
 
-        $this->scheduleAutomaticFollowUp($conversation, $message);
+        if (! $selectedTemplate) {
+            $this->scheduleAutomaticFollowUp($conversation, $message);
+        }
 
         return redirect()
             ->route('admin.conversations.show', $conversation)
             ->with('status', 'Messaggio inviato.');
+    }
+
+    private function approvedWhatsappTemplate(?string $key): ?array
+    {
+        if (! $key) {
+            return null;
+        }
+
+        $template = config("whatsapp_templates.templates.{$key}");
+
+        if (! is_array($template) || empty($template['name'])) {
+            return null;
+        }
+
+        return $template;
+    }
+
+    private function buildTemplatePayload(WhatsappConversation $conversation, array $template): array
+    {
+        $language = $template['language'] ?? config('whatsapp_templates.default_language', 'it');
+        $components = $this->templateComponents($template['parameters'] ?? []);
+
+        $payload = [
+            'messaging_product' => 'whatsapp',
+            'to' => $conversation->contact_phone,
+            'type' => 'template',
+            'template' => [
+                'name' => $template['name'],
+                'language' => ['code' => $language],
+            ],
+        ];
+
+        if ($components !== []) {
+            $payload['template']['components'] = $components;
+        }
+
+        return $payload;
+    }
+
+    private function templateComponents(array $parameters): array
+    {
+        if ($parameters === []) {
+            return [];
+        }
+
+        return [
+            [
+                'type' => 'body',
+                'parameters' => collect($parameters)
+                    ->map(fn ($parameter) => [
+                        'type' => 'text',
+                        'text' => (string) $parameter,
+                    ])
+                    ->values()
+                    ->all(),
+            ],
+        ];
+    }
+
+    private function templateMessageBody(array $template): string
+    {
+        return $template['body']
+            ?? 'Template WhatsApp: '.($template['name'] ?? 'modello approvato');
     }
 
     private function scheduleAutomaticFollowUp(WhatsappConversation $conversation, WhatsappMessage $message): void
