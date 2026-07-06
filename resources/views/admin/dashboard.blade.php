@@ -170,16 +170,19 @@
                                                 {{ data_get($selectedConversation->metadata, 'handoff_reason', 'La chat richiede il tuo intervento.') }}
                                             </p>
                                         @endif
-                                        <div class="mt-6 flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
+                                        <div class="mt-6 flex flex-wrap items-center gap-8">
+                                            <a href="{{ route('admin.dashboard') }}" class="inline-flex h-28 w-fit shrink-0 items-center gap-6 rounded-10 border border-gray-mid px-10 text-12 font-extrabold uppercase tracking-normal text-black-nike transition hover:border-black-nike">
+                                                <svg class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 6l-6 6 6 6" />
+                                                </svg>
+                                                <span>Inbox</span>
+                                            </a>
                                             <p class="min-w-0 break-all text-13 font-semibold text-gray md:text-14">
                                                 {{ $selectedConversation->contact_phone }}
                                                 @if ($selectedConversation->lead?->email)
                                                     <span class="mx-6 text-gray-mid">/</span>{{ $selectedConversation->lead->email }}
                                                 @endif
                                             </p>
-                                            <a href="{{ route('admin.dashboard') }}" class="inline-flex w-fit shrink-0 rounded-10 border border-gray-mid px-10 py-7 text-12 font-extrabold uppercase tracking-normal text-black-nike transition hover:border-black-nike">
-                                                Inbox
-                                            </a>
                                         </div>
                                         @if ($selectedConversation->isExcludedFromFollowUps())
                                             <p class="mt-8 rounded-10 border border-gray-mid bg-gray-light px-12 py-10 text-14 font-bold text-gray">
@@ -469,6 +472,7 @@
                                         <p class="text-14 font-semibold text-gray">Nessun messaggio in questa chat.</p>
                                     </div>
                                 @endforelse
+                                <div id="message-list-bottom" class="h-px" aria-hidden="true"></div>
                             </div>
 
                             <div class="border-t border-gray-mid bg-white p-12 md:p-16">
@@ -802,7 +806,7 @@
                     return;
                 }
 
-                list.innerHTML = messages.map((message) => {
+                    list.innerHTML = messages.map((message) => {
                     const outbound = message.direction === 'outbound';
                     const alignment = outbound ? 'justify-end' : 'justify-start';
                     const bubbleClass = outbound ? 'bg-bullstar text-white' : 'border border-gray-mid bg-white text-black-nike';
@@ -838,7 +842,7 @@
                             </div>
                         </div>
                     `;
-                }).join('');
+                }).join('') + '<div id="message-list-bottom" class="h-px" aria-hidden="true"></div>';
 
                 if (wasNearBottom || shouldScrollToLatestMessage) {
                     scrollMessagesToBottom();
@@ -848,9 +852,14 @@
 
             function scrollMessagesToBottom() {
                 const list = document.getElementById('message-list');
+                const bottom = document.getElementById('message-list-bottom');
 
                 if (list) {
                     const scroll = () => {
+                        if (bottom) {
+                            bottom.scrollIntoView({ block: 'end' });
+                        }
+
                         list.scrollTop = list.scrollHeight;
                     };
 
