@@ -491,7 +491,6 @@
                                                     name="whatsapp_template"
                                                     class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar"
                                                 >
-                                                    <option value="">Messaggio libero</option>
                                                     @foreach ($whatsappApprovedTemplates as $key => $template)
                                                         <option value="{{ $key }}" @selected(old('whatsapp_template') === $key)>
                                                             {{ $template['label'] ?? $template['name'] ?? $key }}
