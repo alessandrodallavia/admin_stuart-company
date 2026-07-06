@@ -139,8 +139,8 @@
                 <section class="{{ $selectedConversation ? '' : 'hidden' }} overflow-hidden rounded-10 border border-gray-mid bg-white">
                     @if ($selectedConversation)
                         <div class="flex min-h-[calc(100vh-170px)] flex-col lg:min-h-[640px]">
-                            <div class="border-b border-gray-mid px-12 py-10 md:px-18 md:py-12">
-                                <div class="flex flex-col gap-16 xl:flex-row xl:items-center xl:justify-between">
+                            <div class="border-b border-gray-mid px-10 py-10 md:px-12 md:py-10">
+                                <div class="flex flex-col gap-12 xl:flex-row xl:items-center xl:justify-between">
                                     <div class="min-w-0">
                                         <div class="flex flex-wrap items-center gap-8">
                                             <h2 class="min-w-0 truncate text-20 font-black leading-tight md:text-24">
@@ -205,13 +205,13 @@
                                     </div>
 
                                     @if ($canManageWhatsapp)
-                                        <div class="flex flex-wrap gap-8">
-                                            <form method="POST" action="{{ route('admin.conversations.mark-unread', $selectedConversation) }}">
+                                        <div class="grid grid-cols-3 gap-6 md:flex md:flex-wrap md:gap-8">
+                                            <form method="POST" action="{{ route('admin.conversations.mark-unread', $selectedConversation) }}" class="min-w-0">
                                                 @csrf
                                                 @method('PATCH')
                                                 <button
                                                     type="submit"
-                                                    class="rounded-10 border border-gray-mid bg-white px-14 py-10 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike"
+                                                    class="w-full rounded-10 border border-gray-mid bg-white px-8 py-8 text-11 font-extrabold uppercase tracking-normal transition hover:border-black-nike md:px-14 md:py-10 md:text-12"
                                                 >
                                                     Da leggere
                                                 </button>
@@ -221,19 +221,19 @@
                                                 <button
                                                     type="button"
                                                     disabled
-                                                    class="rounded-10 border border-gray-mid bg-gray-light px-14 py-10 text-12 font-extrabold uppercase tracking-normal text-gray"
+                                                    class="w-full rounded-10 border border-gray-mid bg-gray-light px-8 py-8 text-11 font-extrabold uppercase tracking-normal text-gray md:px-14 md:py-10 md:text-12"
                                                     title="Chat già passata in manuale"
                                                 >
                                                     Auto
                                                 </button>
                                             @else
-                                                <form method="POST" action="{{ route('admin.conversations.mode', $selectedConversation) }}">
+                                                <form method="POST" action="{{ route('admin.conversations.mode', $selectedConversation) }}" class="min-w-0">
                                                     @csrf
                                                     @method('PATCH')
                                                     <input type="hidden" name="mode" value="auto">
                                                     <button
                                                         type="submit"
-                                                        class="rounded-10 border px-14 py-10 text-12 font-extrabold uppercase tracking-normal transition {{ $selectedConversation->mode === 'auto' ? 'border-whatsapp bg-whatsapp text-white' : 'border-gray-mid bg-white hover:border-whatsapp' }}"
+                                                        class="w-full rounded-10 border px-8 py-8 text-11 font-extrabold uppercase tracking-normal transition md:px-14 md:py-10 md:text-12 {{ $selectedConversation->mode === 'auto' ? 'border-whatsapp bg-whatsapp text-white' : 'border-gray-mid bg-white hover:border-whatsapp' }}"
                                                     >
                                                         Auto
                                                     </button>
@@ -244,18 +244,18 @@
                                                 <button
                                                     type="button"
                                                     disabled
-                                                    class="rounded-10 border border-bullstar bg-bullstar px-14 py-10 text-12 font-extrabold uppercase tracking-normal text-white"
+                                                    class="w-full rounded-10 border border-bullstar bg-bullstar px-8 py-8 text-11 font-extrabold uppercase tracking-normal text-white md:px-14 md:py-10 md:text-12"
                                                 >
                                                     Manuale
                                                 </button>
                                             @else
-                                                <form method="POST" action="{{ route('admin.conversations.mode', $selectedConversation) }}">
+                                                <form method="POST" action="{{ route('admin.conversations.mode', $selectedConversation) }}" class="min-w-0">
                                                     @csrf
                                                     @method('PATCH')
                                                     <input type="hidden" name="mode" value="manual">
                                                     <button
                                                         type="submit"
-                                                        class="rounded-10 border border-gray-mid bg-white px-14 py-10 text-12 font-extrabold uppercase tracking-normal transition hover:border-bullstar"
+                                                        class="w-full rounded-10 border border-gray-mid bg-white px-8 py-8 text-11 font-extrabold uppercase tracking-normal transition hover:border-bullstar md:px-14 md:py-10 md:text-12"
                                                     >
                                                         Manuale
                                                     </button>
@@ -267,13 +267,18 @@
                             </div>
 
                             <details id="follow-up-panel" class="admin-follow-up-panel border-b border-gray-mid bg-white">
-                                <summary class="flex items-center justify-between gap-12 px-12 py-10 text-12 font-extrabold uppercase tracking-normal text-gray md:hidden">
+                                <summary class="admin-follow-up-summary flex items-center justify-between gap-12 px-12 py-10 text-12 font-extrabold uppercase tracking-normal text-gray md:hidden">
                                     <span>Follow-up</span>
-                                    <span class="rounded-full bg-gray-light px-8 py-4 text-11 text-black-nike">{{ $selectedConversation->followUps->count() }}</span>
+                                    <span class="flex items-center gap-8">
+                                        <span class="rounded-full bg-gray-light px-8 py-4 text-11 text-black-nike">{{ $selectedConversation->followUps->count() }}</span>
+                                        <svg class="admin-follow-up-chevron h-14 w-14 text-black-nike transition" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6" />
+                                        </svg>
+                                    </span>
                                 </summary>
 
-                                <div class="admin-follow-up-grid px-12 py-10 md:px-16 md:py-10">
-                                <div class="rounded-10 border border-gray-mid bg-gray-light p-12">
+                                <div class="admin-follow-up-grid px-12 py-10 md:px-12 md:py-8">
+                                <div class="rounded-10 border border-gray-mid bg-gray-light p-10">
                                     <div class="mb-8 flex items-center justify-between gap-12">
                                         <div>
                                             <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Follow-up programmati</p>
@@ -281,12 +286,12 @@
                                         </div>
                                     </div>
 
-                                    <div id="follow-up-list" class="admin-follow-up-list space-y-8">
+                                    <div id="follow-up-list" class="admin-follow-up-list space-y-6">
                                         @forelse ($selectedConversation->followUps as $followUp)
                                             @php
                                                 $isFollowUpDue = $followUp->status === 'pending' && $followUp->due_at->isPast();
                                             @endphp
-                                            <div class="rounded-10 border border-gray-mid bg-white px-12 py-8">
+                                            <div class="rounded-10 border border-gray-mid bg-white px-10 py-7">
                                                 <div class="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
                                                     <div class="min-w-0">
                                                         <div class="flex flex-wrap items-center gap-8">
@@ -336,33 +341,33 @@
                                 </div>
 
                                 @if ($canManageWhatsapp)
-                                    <div class="space-y-12">
-                                        <form method="POST" action="{{ route('admin.conversations.follow-ups.store', $selectedConversation) }}" class="rounded-10 border border-gray-mid bg-white p-12">
+                                    <div class="space-y-8">
+                                        <form method="POST" action="{{ route('admin.conversations.follow-ups.store', $selectedConversation) }}" class="rounded-10 border border-gray-mid bg-white p-10">
                                             @csrf
                                             <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Nuovo follow-up</p>
                                             <input
                                                 name="due_at"
                                                 type="datetime-local"
                                                 value="{{ old('due_at') }}"
-                                                class="mt-8 w-full rounded-10 border-gray-mid px-12 py-9 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"
+                                                class="mt-6 w-full rounded-10 border-gray-mid px-10 py-7 text-13 font-semibold focus:border-bullstar focus:ring-bullstar"
                                             >
                                             <textarea
                                                 name="body"
                                                 rows="2"
                                                 maxlength="4096"
-                                                class="mt-8 w-full resize-none rounded-10 border-gray-mid px-12 py-9 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"
+                                                class="mt-6 w-full resize-none rounded-10 border-gray-mid px-10 py-7 text-13 font-semibold focus:border-bullstar focus:ring-bullstar"
                                                 placeholder="Messaggio follow-up..."
                                             >{{ old('body') }}</textarea>
-                                            <button type="submit" class="mt-8 w-full rounded-10 bg-bullstar px-14 py-9 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">
+                                            <button type="submit" class="mt-6 w-full rounded-10 bg-bullstar px-12 py-8 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">
                                                 Programma
                                             </button>
                                         </form>
 
-                                        <form method="POST" action="{{ route('admin.conversations.follow-up-exclusion', $selectedConversation) }}" class="rounded-10 border border-gray-mid bg-white p-12">
+                                        <form method="POST" action="{{ route('admin.conversations.follow-up-exclusion', $selectedConversation) }}" class="rounded-10 border border-gray-mid bg-white p-10">
                                             @csrf
                                             @method('PATCH')
                                             <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Esclusione follow-up</p>
-                                            <select name="exclusion_type" class="mt-8 w-full rounded-10 border-gray-mid px-12 py-9 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                            <select name="exclusion_type" class="mt-6 w-full rounded-10 border-gray-mid px-10 py-7 text-13 font-semibold focus:border-bullstar focus:ring-bullstar">
                                                 <option value="none">Attiva follow-up</option>
                                                 <option value="until" @selected($selectedConversation->follow_up_excluded_until && ! $selectedConversation->follow_up_excluded_permanently)>Escludi fino a data</option>
                                                 <option value="permanent" @selected($selectedConversation->follow_up_excluded_permanently)>Escludi a tempo indeterminato</option>
@@ -371,15 +376,15 @@
                                                 name="excluded_until"
                                                 type="datetime-local"
                                                 value="{{ old('excluded_until', $selectedConversation->follow_up_excluded_until?->timezone(config('app.display_timezone'))->format('Y-m-d\TH:i')) }}"
-                                                class="mt-8 w-full rounded-10 border-gray-mid px-12 py-9 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"
+                                                class="mt-6 w-full rounded-10 border-gray-mid px-10 py-7 text-13 font-semibold focus:border-bullstar focus:ring-bullstar"
                                             >
                                             <textarea
                                                 name="reason"
                                                 rows="2"
-                                                class="mt-8 w-full resize-none rounded-10 border-gray-mid px-12 py-9 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"
+                                                class="mt-6 w-full resize-none rounded-10 border-gray-mid px-10 py-7 text-13 font-semibold focus:border-bullstar focus:ring-bullstar"
                                                 placeholder="Motivo interno..."
                                             >{{ old('reason', $selectedConversation->follow_up_exclusion_reason) }}</textarea>
-                                            <button type="submit" class="mt-8 w-full rounded-10 border border-black-nike bg-white px-14 py-9 text-12 font-extrabold uppercase tracking-normal text-black-nike transition hover:bg-gray-light">
+                                            <button type="submit" class="mt-6 w-full rounded-10 border border-black-nike bg-white px-12 py-8 text-12 font-extrabold uppercase tracking-normal text-black-nike transition hover:bg-gray-light">
                                                 Salva esclusione
                                             </button>
                                         </form>
