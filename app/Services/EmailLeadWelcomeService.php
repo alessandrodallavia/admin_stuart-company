@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\EmailAccount;
 use App\Models\EmailConversation;
 use App\Models\Lead;
+use App\Support\MessageTemplates;
 
 class EmailLeadWelcomeService
 {
@@ -27,7 +28,7 @@ class EmailLeadWelcomeService
             return false;
         }
 
-        $template = config('message_templates.0');
+        $template = MessageTemplates::current()[0] ?? null;
         $body = $template['message'] ?? 'Ciao, sono Andrea di Stuart. Ho ricevuto la tua richiesta e ti scrivo per approfondire il progetto.';
         $conversation = EmailConversation::firstOrCreate(
             [

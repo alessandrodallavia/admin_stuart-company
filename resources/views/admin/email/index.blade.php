@@ -7,7 +7,7 @@
 @php
     $hasAccount = (bool) $account;
     $selectedMessages = $selectedConversation?->messages ?? collect();
-    $emailTemplates = config('message_templates');
+    $emailTemplates = \App\Support\MessageTemplates::current();
 @endphp
 
 @section('content')

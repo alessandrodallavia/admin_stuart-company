@@ -462,7 +462,7 @@
                             <div class="border-t border-gray-mid bg-white p-16">
                                 @if ($selectedConversation->mode === 'manual' && $canManageWhatsapp)
                                     @php
-                                        $messageTemplates = config('message_templates');
+                                        $messageTemplates = \App\Support\MessageTemplates::current();
                                         $whatsappApprovedTemplates = config('whatsapp_templates.templates', []);
                                         $messageTemplateMessages = collect($messageTemplates)
                                             ->pluck('message')
