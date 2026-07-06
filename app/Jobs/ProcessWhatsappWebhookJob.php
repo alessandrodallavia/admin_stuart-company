@@ -8,6 +8,7 @@ use App\Models\WhatsappMessage;
 use App\Services\AdminNotificationService;
 use App\Services\GoogleAdsConversionService;
 use App\Services\MetaConversionsApiService;
+use App\Support\MessageTemplates;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -307,7 +308,9 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
 
             case 'confirmed':
 
-                $this->sendText($from, "Ciao 👋 Sono Andrea di Stuart.\nPer iniziare mandami pure:\n– logo o grafica\n- quantità indicativa (min 15pz)\n– colore delle t-shirt\n- utilizzo (evento, azienda, staff, associazione, brand, ecc...)\n\n👉 Se hai già il logo in alta qualità puoi inviarmelo direttamente qui su Whatsapp.", $conversation);
+                $template = MessageTemplates::current()[0]['message'] ?? null;
+
+                $this->sendText($from, $template ?: "Ciao 👋 Sono Andrea di Stuart.\nPer iniziare mandami pure:\n– logo o grafica\n- quantità indicativa (min 15pz)\n– colore delle t-shirt\n- utilizzo (evento, azienda, staff, associazione, brand, ecc...)\n\n👉 Se hai già il logo in alta qualità puoi inviarmelo direttamente qui su Whatsapp.", $conversation);
 
                 $lead->status = 'completed';
                 $lead->save();
