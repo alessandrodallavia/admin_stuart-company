@@ -10,27 +10,27 @@
             @endphp
 
             <section class="{{ $selectedConversation ? 'hidden' : '' }} admin-stats-grid mb-12 md:mb-16">
-                <article class="rounded-10 border border-gray-mid bg-white p-12 md:p-16">
+                <article class="admin-stat-card rounded-10 border border-gray-mid bg-white p-12 md:p-16">
                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Conversazioni</p>
                     <p id="stat-total" class="mt-6 text-30 font-black leading-none tracking-normal md:mt-8 md:text-38">{{ $stats['total'] ?? 0 }}</p>
                 </article>
 
-                <article class="rounded-10 border border-gray-mid bg-white p-12 md:p-16">
+                <article class="admin-stat-card rounded-10 border border-gray-mid bg-white p-12 md:p-16">
                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Automatiche</p>
                     <p id="stat-auto" class="mt-6 text-30 font-black leading-none tracking-normal md:mt-8 md:text-38">{{ $stats['auto'] ?? 0 }}</p>
                 </article>
 
-                <article class="rounded-10 border border-gray-mid bg-white p-12 md:p-16">
+                <article class="admin-stat-card rounded-10 border border-gray-mid bg-white p-12 md:p-16">
                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Da prendere</p>
                     <p id="stat-needs-human" class="mt-6 text-30 font-black leading-none tracking-normal md:mt-8 md:text-38">{{ $stats['needs_human'] ?? 0 }}</p>
                 </article>
 
-                <article class="rounded-10 border border-gray-mid bg-white p-12 md:p-16">
+                <article class="admin-stat-card rounded-10 border border-gray-mid bg-white p-12 md:p-16">
                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Follow-up dovuti</p>
                     <p id="stat-follow-ups-due" class="mt-6 text-30 font-black leading-none tracking-normal md:mt-8 md:text-38">{{ $stats['follow_ups_due'] ?? 0 }}</p>
                 </article>
 
-                <article class="rounded-10 border border-gray-mid bg-white p-12 md:p-16">
+                <article class="admin-stat-card rounded-10 border border-gray-mid bg-white p-12 md:p-16">
                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Non letti</p>
                     <p id="stat-unread" class="mt-6 text-30 font-black leading-none tracking-normal md:mt-8 md:text-38">{{ $stats['unread'] ?? 0 }}</p>
                 </article>
@@ -139,10 +139,7 @@
                 <section class="{{ $selectedConversation ? '' : 'hidden' }} overflow-hidden rounded-10 border border-gray-mid bg-white">
                     @if ($selectedConversation)
                         <div class="flex min-h-[calc(100vh-170px)] flex-col lg:min-h-[640px]">
-                            <div class="border-b border-gray-mid px-12 py-12 md:px-20 md:py-16">
-                                <a href="{{ route('admin.dashboard') }}" class="mb-10 inline-flex rounded-10 border border-gray-mid px-10 py-7 text-12 font-extrabold uppercase tracking-normal text-black-nike transition hover:border-black-nike">
-                                    Inbox
-                                </a>
+                            <div class="border-b border-gray-mid px-12 py-10 md:px-18 md:py-12">
                                 <div class="flex flex-col gap-16 xl:flex-row xl:items-center xl:justify-between">
                                     <div class="min-w-0">
                                         <div class="flex flex-wrap items-center gap-8">
@@ -173,12 +170,17 @@
                                                 {{ data_get($selectedConversation->metadata, 'handoff_reason', 'La chat richiede il tuo intervento.') }}
                                             </p>
                                         @endif
-                                        <p class="mt-6 break-all text-13 font-semibold text-gray md:text-14">
-                                            {{ $selectedConversation->contact_phone }}
-                                            @if ($selectedConversation->lead?->email)
-                                                <span class="mx-6 text-gray-mid">/</span>{{ $selectedConversation->lead->email }}
-                                            @endif
-                                        </p>
+                                        <div class="mt-6 flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
+                                            <p class="min-w-0 break-all text-13 font-semibold text-gray md:text-14">
+                                                {{ $selectedConversation->contact_phone }}
+                                                @if ($selectedConversation->lead?->email)
+                                                    <span class="mx-6 text-gray-mid">/</span>{{ $selectedConversation->lead->email }}
+                                                @endif
+                                            </p>
+                                            <a href="{{ route('admin.dashboard') }}" class="inline-flex w-fit shrink-0 rounded-10 border border-gray-mid px-10 py-7 text-12 font-extrabold uppercase tracking-normal text-black-nike transition hover:border-black-nike">
+                                                Inbox
+                                            </a>
+                                        </div>
                                         @if ($selectedConversation->isExcludedFromFollowUps())
                                             <p class="mt-8 rounded-10 border border-gray-mid bg-gray-light px-12 py-10 text-14 font-bold text-gray">
                                                 @if ($selectedConversation->follow_up_excluded_permanently)
@@ -261,12 +263,18 @@
                                 </div>
                             </div>
 
-                            <div class="admin-follow-up-grid border-b border-gray-mid bg-white px-12 py-12 md:px-20 md:py-16">
-                                <div class="rounded-10 border border-gray-mid bg-gray-light p-14">
-                                    <div class="mb-12 flex items-center justify-between gap-12">
+                            <details id="follow-up-panel" class="admin-follow-up-panel border-b border-gray-mid bg-white">
+                                <summary class="flex items-center justify-between gap-12 px-12 py-10 text-12 font-extrabold uppercase tracking-normal text-gray md:hidden">
+                                    <span>Follow-up</span>
+                                    <span class="rounded-full bg-gray-light px-8 py-4 text-11 text-black-nike">{{ $selectedConversation->followUps->count() }}</span>
+                                </summary>
+
+                                <div class="admin-follow-up-grid px-12 py-10 md:px-16 md:py-10">
+                                <div class="rounded-10 border border-gray-mid bg-gray-light p-12">
+                                    <div class="mb-8 flex items-center justify-between gap-12">
                                         <div>
                                             <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Follow-up programmati</p>
-                                            <p class="mt-4 text-12 font-semibold text-gray">I follow-up in pausa restano in attesa finché l’esclusione scade.</p>
+                                            <p class="mt-3 text-12 font-semibold text-gray">I follow-up in pausa restano in attesa finché l’esclusione scade.</p>
                                         </div>
                                     </div>
 
@@ -275,7 +283,7 @@
                                             @php
                                                 $isFollowUpDue = $followUp->status === 'pending' && $followUp->due_at->isPast();
                                             @endphp
-                                            <div class="rounded-10 border border-gray-mid bg-white px-12 py-10">
+                                            <div class="rounded-10 border border-gray-mid bg-white px-12 py-8">
                                                 <div class="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
                                                     <div class="min-w-0">
                                                         <div class="flex flex-wrap items-center gap-8">
@@ -326,32 +334,32 @@
 
                                 @if ($canManageWhatsapp)
                                     <div class="space-y-12">
-                                        <form method="POST" action="{{ route('admin.conversations.follow-ups.store', $selectedConversation) }}" class="rounded-10 border border-gray-mid bg-white p-14">
+                                        <form method="POST" action="{{ route('admin.conversations.follow-ups.store', $selectedConversation) }}" class="rounded-10 border border-gray-mid bg-white p-12">
                                             @csrf
                                             <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Nuovo follow-up</p>
                                             <input
                                                 name="due_at"
                                                 type="datetime-local"
                                                 value="{{ old('due_at') }}"
-                                                class="mt-10 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"
+                                                class="mt-8 w-full rounded-10 border-gray-mid px-12 py-9 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"
                                             >
                                             <textarea
                                                 name="body"
-                                                rows="3"
+                                                rows="2"
                                                 maxlength="4096"
-                                                class="mt-10 w-full resize-none rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"
+                                                class="mt-8 w-full resize-none rounded-10 border-gray-mid px-12 py-9 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"
                                                 placeholder="Messaggio follow-up..."
                                             >{{ old('body') }}</textarea>
-                                            <button type="submit" class="mt-10 w-full rounded-10 bg-bullstar px-14 py-10 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">
+                                            <button type="submit" class="mt-8 w-full rounded-10 bg-bullstar px-14 py-9 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">
                                                 Programma
                                             </button>
                                         </form>
 
-                                        <form method="POST" action="{{ route('admin.conversations.follow-up-exclusion', $selectedConversation) }}" class="rounded-10 border border-gray-mid bg-white p-14">
+                                        <form method="POST" action="{{ route('admin.conversations.follow-up-exclusion', $selectedConversation) }}" class="rounded-10 border border-gray-mid bg-white p-12">
                                             @csrf
                                             @method('PATCH')
                                             <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Esclusione follow-up</p>
-                                            <select name="exclusion_type" class="mt-10 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                            <select name="exclusion_type" class="mt-8 w-full rounded-10 border-gray-mid px-12 py-9 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
                                                 <option value="none">Attiva follow-up</option>
                                                 <option value="until" @selected($selectedConversation->follow_up_excluded_until && ! $selectedConversation->follow_up_excluded_permanently)>Escludi fino a data</option>
                                                 <option value="permanent" @selected($selectedConversation->follow_up_excluded_permanently)>Escludi a tempo indeterminato</option>
@@ -360,21 +368,22 @@
                                                 name="excluded_until"
                                                 type="datetime-local"
                                                 value="{{ old('excluded_until', $selectedConversation->follow_up_excluded_until?->timezone(config('app.display_timezone'))->format('Y-m-d\TH:i')) }}"
-                                                class="mt-10 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"
+                                                class="mt-8 w-full rounded-10 border-gray-mid px-12 py-9 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"
                                             >
                                             <textarea
                                                 name="reason"
                                                 rows="2"
-                                                class="mt-10 w-full resize-none rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"
+                                                class="mt-8 w-full resize-none rounded-10 border-gray-mid px-12 py-9 text-14 font-semibold focus:border-bullstar focus:ring-bullstar"
                                                 placeholder="Motivo interno..."
                                             >{{ old('reason', $selectedConversation->follow_up_exclusion_reason) }}</textarea>
-                                            <button type="submit" class="mt-10 w-full rounded-10 border border-black-nike bg-white px-14 py-10 text-12 font-extrabold uppercase tracking-normal text-black-nike transition hover:bg-gray-light">
+                                            <button type="submit" class="mt-8 w-full rounded-10 border border-black-nike bg-white px-14 py-9 text-12 font-extrabold uppercase tracking-normal text-black-nike transition hover:bg-gray-light">
                                                 Salva esclusione
                                             </button>
                                         </form>
                                     </div>
                                 @endif
-                            </div>
+                                </div>
+                            </details>
 
                             <div id="message-list" class="admin-message-list flex-1 space-y-10 bg-gray-light px-10 py-14 md:space-y-12 md:px-24 md:py-20">
                                 @forelse ($selectedConversation->messages as $message)
@@ -567,6 +576,7 @@
             const canManageWhatsapp = @json($canManageWhatsapp);
             let lastMessageSignature = '';
             let lastFollowUpSignature = '';
+            let shouldScrollToLatestMessage = Boolean(selectedConversationId);
 
             function escapeHtml(value) {
                 return String(value ?? '')
@@ -830,8 +840,9 @@
                     `;
                 }).join('');
 
-                if (wasNearBottom) {
+                if (wasNearBottom || shouldScrollToLatestMessage) {
                     scrollMessagesToBottom();
+                    shouldScrollToLatestMessage = false;
                 }
             }
 
@@ -839,12 +850,14 @@
                 const list = document.getElementById('message-list');
 
                 if (list) {
-                    window.requestAnimationFrame(() => {
+                    const scroll = () => {
                         list.scrollTop = list.scrollHeight;
-                        window.setTimeout(() => {
-                            list.scrollTop = list.scrollHeight;
-                        }, 150);
-                    });
+                    };
+
+                    window.requestAnimationFrame(scroll);
+                    window.setTimeout(scroll, 80);
+                    window.setTimeout(scroll, 220);
+                    window.setTimeout(scroll, 500);
                 }
             }
 
@@ -921,8 +934,18 @@
                 }
             }
 
+            function initFollowUpPanel() {
+                const panel = document.getElementById('follow-up-panel');
+
+                if (panel && window.matchMedia('(min-width: 768px)').matches) {
+                    panel.open = true;
+                }
+            }
+
             bindMessageTemplates();
+            initFollowUpPanel();
             scrollMessagesToBottom();
+            window.addEventListener('load', scrollMessagesToBottom, { once: true });
             document.querySelectorAll('#message-list img').forEach((image) => {
                 image.addEventListener('load', scrollMessagesToBottom, { once: true });
             });
