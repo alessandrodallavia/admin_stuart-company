@@ -62,6 +62,7 @@ export default {
                 180: '180px',
                 200: '200px',
                 220: '220px',
+                240: '240px',
                 300: '300px',
                 320: '320px',
                 400: '400px',
@@ -95,6 +96,7 @@ export default {
             fontFamily: {
                 sans: ['Inter', ...defaultTheme.fontFamily.sans],
                 inter: ['Inter', ...defaultTheme.fontFamily.sans],
+                montserrat: ['Montserrat', 'sans-serif'],
             },
             letterSpacing: {
                 // valori già presenti: tight = -0.025em, normal = 0em

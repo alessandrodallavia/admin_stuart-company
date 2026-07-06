@@ -9,35 +9,35 @@
                 $canManageWhatsapp = auth('admin')->user()?->hasAdminPermission('whatsapp.manage');
             @endphp
 
-            <section class="admin-stats-grid mb-16">
-                <article class="rounded-10 border border-gray-mid bg-white p-16">
+            <section class="{{ $selectedConversation ? 'hidden' : '' }} admin-stats-grid mb-12 md:mb-16">
+                <article class="rounded-10 border border-gray-mid bg-white p-12 md:p-16">
                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Conversazioni</p>
-                    <p id="stat-total" class="mt-8 text-38 font-black leading-none tracking-normal">{{ $stats['total'] ?? 0 }}</p>
+                    <p id="stat-total" class="mt-6 text-30 font-black leading-none tracking-normal md:mt-8 md:text-38">{{ $stats['total'] ?? 0 }}</p>
                 </article>
 
-                <article class="rounded-10 border border-gray-mid bg-white p-16">
+                <article class="rounded-10 border border-gray-mid bg-white p-12 md:p-16">
                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Automatiche</p>
-                    <p id="stat-auto" class="mt-8 text-38 font-black leading-none tracking-normal">{{ $stats['auto'] ?? 0 }}</p>
+                    <p id="stat-auto" class="mt-6 text-30 font-black leading-none tracking-normal md:mt-8 md:text-38">{{ $stats['auto'] ?? 0 }}</p>
                 </article>
 
-                <article class="rounded-10 border border-gray-mid bg-white p-16">
+                <article class="rounded-10 border border-gray-mid bg-white p-12 md:p-16">
                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Da prendere</p>
-                    <p id="stat-needs-human" class="mt-8 text-38 font-black leading-none tracking-normal">{{ $stats['needs_human'] ?? 0 }}</p>
+                    <p id="stat-needs-human" class="mt-6 text-30 font-black leading-none tracking-normal md:mt-8 md:text-38">{{ $stats['needs_human'] ?? 0 }}</p>
                 </article>
 
-                <article class="rounded-10 border border-gray-mid bg-white p-16">
+                <article class="rounded-10 border border-gray-mid bg-white p-12 md:p-16">
                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Follow-up dovuti</p>
-                    <p id="stat-follow-ups-due" class="mt-8 text-38 font-black leading-none tracking-normal">{{ $stats['follow_ups_due'] ?? 0 }}</p>
+                    <p id="stat-follow-ups-due" class="mt-6 text-30 font-black leading-none tracking-normal md:mt-8 md:text-38">{{ $stats['follow_ups_due'] ?? 0 }}</p>
                 </article>
 
-                <article class="rounded-10 border border-gray-mid bg-white p-16">
+                <article class="rounded-10 border border-gray-mid bg-white p-12 md:p-16">
                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Non letti</p>
-                    <p id="stat-unread" class="mt-8 text-38 font-black leading-none tracking-normal">{{ $stats['unread'] ?? 0 }}</p>
+                    <p id="stat-unread" class="mt-6 text-30 font-black leading-none tracking-normal md:mt-8 md:text-38">{{ $stats['unread'] ?? 0 }}</p>
                 </article>
             </section>
 
-            <section class="grid min-h-[640px] flex-1 gap-16 lg:grid-cols-[360px_minmax(0,1fr)]">
-                <aside class="overflow-hidden rounded-10 border border-gray-mid bg-white">
+            <section class="grid min-h-[calc(100vh-220px)] flex-1 gap-12">
+                <aside class="{{ $selectedConversation ? 'hidden' : '' }} overflow-hidden rounded-10 border border-gray-mid bg-white">
                     <div class="flex items-center justify-between border-b border-gray-mid px-16 py-14">
                         <div>
                             <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Inbox</p>
@@ -51,7 +51,7 @@
                         </a>
                     </div>
 
-                    <div id="conversation-list" class="max-h-[590px] overflow-y-auto">
+                    <div id="conversation-list" class="max-h-[calc(100vh-250px)] overflow-y-auto">
                         @forelse ($conversations as $conversation)
                             @php
                                 $latestMessage = $conversation->latestMessage;
@@ -61,7 +61,7 @@
                             <a
                                 data-conversation-id="{{ $conversation->id }}"
                                 href="{{ route('admin.conversations.show', $conversation) }}"
-                                class="block border-b border-gray-mid px-14 py-10 transition hover:bg-gray-light {{ $isSelected ? 'bg-gray-light' : 'bg-white' }}"
+                                class="block border-b border-gray-mid px-14 py-12 transition hover:bg-gray-light md:py-10 {{ $isSelected ? 'bg-gray-light' : 'bg-white' }}"
                             >
                                 <div class="mb-4 min-w-0">
                                     <div class="flex min-w-0 items-start justify-between gap-10">
@@ -136,14 +136,17 @@
                     </div>
                 </aside>
 
-                <section class="overflow-hidden rounded-10 border border-gray-mid bg-white">
+                <section class="{{ $selectedConversation ? '' : 'hidden' }} overflow-hidden rounded-10 border border-gray-mid bg-white">
                     @if ($selectedConversation)
-                        <div class="flex min-h-[640px] flex-col">
-                            <div class="border-b border-gray-mid px-20 py-16">
+                        <div class="flex min-h-[calc(100vh-170px)] flex-col lg:min-h-[640px]">
+                            <div class="border-b border-gray-mid px-12 py-12 md:px-20 md:py-16">
+                                <a href="{{ route('admin.dashboard') }}" class="mb-10 inline-flex rounded-10 border border-gray-mid px-10 py-7 text-12 font-extrabold uppercase tracking-normal text-black-nike transition hover:border-black-nike">
+                                    Inbox
+                                </a>
                                 <div class="flex flex-col gap-16 xl:flex-row xl:items-center xl:justify-between">
                                     <div class="min-w-0">
                                         <div class="flex flex-wrap items-center gap-8">
-                                            <h2 class="min-w-0 truncate text-24 font-black leading-tight">
+                                            <h2 class="min-w-0 truncate text-20 font-black leading-tight md:text-24">
                                                 {{ $selectedConversation->lead?->name ?: $selectedConversation->contact_phone }}
                                             </h2>
                                             @if ($selectedConversation->needs_human)
@@ -170,7 +173,7 @@
                                                 {{ data_get($selectedConversation->metadata, 'handoff_reason', 'La chat richiede il tuo intervento.') }}
                                             </p>
                                         @endif
-                                        <p class="mt-6 text-14 font-semibold text-gray">
+                                        <p class="mt-6 break-all text-13 font-semibold text-gray md:text-14">
                                             {{ $selectedConversation->contact_phone }}
                                             @if ($selectedConversation->lead?->email)
                                                 <span class="mx-6 text-gray-mid">/</span>{{ $selectedConversation->lead->email }}
@@ -258,7 +261,7 @@
                                 </div>
                             </div>
 
-                            <div class="admin-follow-up-grid border-b border-gray-mid bg-white px-20 py-16">
+                            <div class="admin-follow-up-grid border-b border-gray-mid bg-white px-12 py-12 md:px-20 md:py-16">
                                 <div class="rounded-10 border border-gray-mid bg-gray-light p-14">
                                     <div class="mb-12 flex items-center justify-between gap-12">
                                         <div>
@@ -373,7 +376,7 @@
                                 @endif
                             </div>
 
-                            <div id="message-list" class="admin-message-list flex-1 space-y-12 bg-gray-light px-16 py-20 md:px-24">
+                            <div id="message-list" class="admin-message-list flex-1 space-y-10 bg-gray-light px-10 py-14 md:space-y-12 md:px-24 md:py-20">
                                 @forelse ($selectedConversation->messages as $message)
                                     @php
                                         $isOutbound = $message->direction === 'outbound';
@@ -391,7 +394,7 @@
                                     @endphp
 
                                     <div class="flex {{ $isOutbound ? 'justify-end' : 'justify-start' }}">
-                                        <div class="max-w-[78%] rounded-10 px-16 py-12 {{ $isOutbound ? 'bg-bullstar text-white' : 'border border-gray-mid bg-white text-black-nike' }}">
+                                        <div class="max-w-[92%] rounded-10 px-12 py-10 md:max-w-[78%] md:px-16 md:py-12 {{ $isOutbound ? 'bg-bullstar text-white' : 'border border-gray-mid bg-white text-black-nike' }}">
                                             @if ($message->media_path)
                                                 @php
                                                     $mediaUrl = route('admin.messages.media', $message);
@@ -459,7 +462,7 @@
                                 @endforelse
                             </div>
 
-                            <div class="border-t border-gray-mid bg-white p-16">
+                            <div class="border-t border-gray-mid bg-white p-12 md:p-16">
                                 @if ($selectedConversation->mode === 'manual' && $canManageWhatsapp)
                                     @php
                                         $messageTemplates = \App\Support\MessageTemplates::current();
@@ -471,7 +474,7 @@
                                     @endphp
                                     <form method="POST" action="{{ route('admin.conversations.messages.store', $selectedConversation) }}" enctype="multipart/form-data" class="flex flex-col gap-12">
                                         @csrf
-                                        <div class="flex flex-wrap gap-8">
+                                        <div class="flex max-h-96 flex-wrap gap-8 overflow-y-auto pr-2 md:max-h-none md:overflow-visible">
                                             @foreach ($messageTemplates as $template)
                                                 <button
                                                     type="button"
@@ -505,7 +508,7 @@
                                             name="message"
                                             rows="4"
                                             maxlength="4096"
-                                            class="min-h-[172px] resize-none rounded-10 border-gray-mid px-16 py-12 text-14 font-semibold text-black-nike placeholder:text-gray focus:border-bullstar focus:ring-bullstar"
+                                            class="min-h-[130px] resize-none rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold text-black-nike placeholder:text-gray focus:border-bullstar focus:ring-bullstar md:min-h-[172px] md:px-16 md:py-12"
                                             placeholder="Scrivi un messaggio o una didascalia..."
                                         >{{ old('message') }}</textarea>
 
@@ -523,7 +526,7 @@
 
                                             <button
                                                 type="submit"
-                                                class="rounded-10 bg-bullstar px-24 py-12 text-14 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover"
+                                                class="rounded-10 bg-bullstar px-24 py-12 text-14 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover md:w-auto"
                                             >
                                                 Invia
                                             </button>
@@ -814,7 +817,7 @@
 
                     return `
                         <div class="flex ${alignment}">
-                            <div class="max-w-[78%] rounded-10 px-16 py-12 ${bubbleClass}">
+                            <div class="max-w-[92%] rounded-10 px-12 py-10 md:max-w-[78%] md:px-16 md:py-12 ${bubbleClass}">
                                 ${media}
                                 ${body}
                                 <div class="mt-8 flex flex-wrap items-center gap-8 text-11 font-bold uppercase tracking-normal ${metaClass}">
@@ -828,7 +831,7 @@
                 }).join('');
 
                 if (wasNearBottom) {
-                    list.scrollTop = list.scrollHeight;
+                    scrollMessagesToBottom();
                 }
             }
 
@@ -836,7 +839,12 @@
                 const list = document.getElementById('message-list');
 
                 if (list) {
-                    list.scrollTop = list.scrollHeight;
+                    window.requestAnimationFrame(() => {
+                        list.scrollTop = list.scrollHeight;
+                        window.setTimeout(() => {
+                            list.scrollTop = list.scrollHeight;
+                        }, 150);
+                    });
                 }
             }
 
@@ -915,6 +923,9 @@
 
             bindMessageTemplates();
             scrollMessagesToBottom();
+            document.querySelectorAll('#message-list img').forEach((image) => {
+                image.addEventListener('load', scrollMessagesToBottom, { once: true });
+            });
             pollConversation();
             window.setInterval(pollConversation, 3000);
     </script>
