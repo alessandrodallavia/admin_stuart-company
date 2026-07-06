@@ -61,6 +61,7 @@ input[type="file"] {
 .admin-follow-up-grid {
     display: grid;
     gap: 12px;
+    align-items: stretch;
 }
 
 .admin-line-clamp-2 {
