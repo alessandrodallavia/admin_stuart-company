@@ -531,8 +531,18 @@ class WhatsappConversationController extends Controller
         $mimeType = $attachment->getMimeType() ?: 'application/octet-stream';
         $filename = $attachment->getClientOriginalName() ?: 'allegato';
         $path = $attachment->getRealPath();
+        $isVoiceRecording = str_starts_with($filename, 'nota-vocale-');
 
-        if ($mimeType === 'audio/webm' || strtolower(pathinfo($filename, PATHINFO_EXTENSION)) === 'webm') {
+        if ($isVoiceRecording && in_array($mimeType, ['video/mp4', 'application/mp4'], true)) {
+            return [
+                'path' => $path,
+                'mime_type' => 'audio/mp4',
+                'filename' => pathinfo($filename, PATHINFO_FILENAME).'.m4a',
+                'temporary' => false,
+            ];
+        }
+
+        if (in_array($mimeType, ['audio/webm', 'video/webm'], true) || strtolower(pathinfo($filename, PATHINFO_EXTENSION)) === 'webm') {
             $convertedPath = storage_path('app/private/whatsapp-upload-'.Str::uuid().'.ogg');
             [$conversionExitCode, $conversionOutput] = $this->convertWebmAudioToOgg($path, $convertedPath);
 
@@ -552,10 +562,9 @@ class WhatsappConversationController extends Controller
             ]);
 
             return [
-                'path' => $path,
-                'mime_type' => 'application/octet-stream',
-                'filename' => pathinfo($filename, PATHINFO_FILENAME).'.webm',
-                'temporary' => false,
+                'media_mime_type' => $mimeType,
+                'media_filename' => $filename,
+                'error_message' => 'La registrazione è WebM e non può essere inviata a WhatsApp senza conversione. Sul server deve essere disponibile ffmpeg con una funzione PHP shell abilitata.',
             ];
         }
 

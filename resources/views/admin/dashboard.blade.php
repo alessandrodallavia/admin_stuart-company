@@ -1058,7 +1058,12 @@
                                 return;
                             }
 
-                            const blobType = recorder.mimeType || mimeType || 'audio/ogg';
+                            let blobType = recorder.mimeType || mimeType || 'audio/ogg';
+
+                            if (blobType.includes('mp4')) {
+                                blobType = 'audio/mp4';
+                            }
+
                             const extension = blobType.includes('aac')
                                 ? 'aac'
                                 : (blobType.includes('webm') ? 'webm' : (blobType.includes('mp4') ? 'm4a' : 'ogg'));
