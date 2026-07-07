@@ -16,7 +16,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
-use Symfony\Component\Process\Process;
 
 class WhatsappConversationController extends Controller
 {
@@ -530,22 +529,26 @@ class WhatsappConversationController extends Controller
 
         if ($mimeType === 'audio/webm' || strtolower(pathinfo($filename, PATHINFO_EXTENSION)) === 'webm') {
             $convertedPath = storage_path('app/private/whatsapp-upload-'.Str::uuid().'.ogg');
-            $process = new Process([
-                'ffmpeg',
-                '-y',
-                '-i',
-                $path,
-                '-vn',
-                '-c:a',
-                'libopus',
-                '-b:a',
-                '32k',
-                $convertedPath,
-            ]);
-            $process->setTimeout(30);
-            $process->run();
+            $conversionOutput = [];
+            $conversionExitCode = 1;
 
-            if ($process->isSuccessful() && file_exists($convertedPath)) {
+            if (function_exists('exec') && ! in_array('exec', array_map('trim', explode(',', (string) ini_get('disable_functions'))), true)) {
+                exec(implode(' ', [
+                    'ffmpeg',
+                    '-y',
+                    '-i',
+                    escapeshellarg($path),
+                    '-vn',
+                    '-c:a',
+                    'libopus',
+                    '-b:a',
+                    '32k',
+                    escapeshellarg($convertedPath),
+                    '2>&1',
+                ]), $conversionOutput, $conversionExitCode);
+            }
+
+            if ($conversionExitCode === 0 && file_exists($convertedPath)) {
                 return [
                     'path' => $convertedPath,
                     'mime_type' => 'audio/ogg',
@@ -557,7 +560,7 @@ class WhatsappConversationController extends Controller
             Log::warning('Conversione nota vocale WhatsApp fallita', [
                 'mime_type' => $mimeType,
                 'filename' => $filename,
-                'error' => $process->getErrorOutput(),
+                'error' => implode("\n", $conversionOutput) ?: 'Funzione exec non disponibile.',
             ]);
         }
 

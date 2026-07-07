@@ -577,7 +577,6 @@
                                                         Rimuovi audio
                                                     </button>
                                                 </div>
-                                                <p id="voice-record-status" class="pointer-events-none absolute left-0 top-full mt-2 text-11 font-bold leading-[16px] text-gray"></p>
                                             </div>
 
                                             <button
@@ -975,14 +974,11 @@
                 const preview = document.getElementById('voice-preview');
                 const audio = document.getElementById('voice-preview-audio');
                 const clearButton = document.getElementById('voice-clear-button');
-                const status = document.getElementById('voice-record-status');
+                const defaultButtonText = button?.textContent.trim() || 'Tieni premuto per nota vocale';
 
                 if (!button || !input || !window.MediaRecorder || !navigator.mediaDevices?.getUserMedia) {
-                    if (status) {
-                        status.textContent = button ? 'Registrazione non supportata da questo browser.' : '';
-                    }
-
                     if (button) {
+                        button.textContent = 'Registrazione non supportata';
                         button.disabled = true;
                     }
 
@@ -1002,7 +998,7 @@
                 ].find((type) => MediaRecorder.isTypeSupported(type)) || '';
 
                 const setStatus = (message, active = false) => {
-                    status.textContent = message;
+                    button.textContent = message || defaultButtonText;
                     button.classList.toggle('border-whatsapp', active);
                     button.classList.toggle('bg-whatsapp', active);
                     button.classList.toggle('text-white', active);
