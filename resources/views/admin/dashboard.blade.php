@@ -976,7 +976,7 @@
                 const clearButton = document.getElementById('voice-clear-button');
                 const defaultButtonText = button?.textContent.trim() || 'Tieni premuto per nota vocale';
 
-                if (!button || !input || !window.MediaRecorder || !navigator.mediaDevices?.getUserMedia) {
+                if (!button || !input || !window.lamejs?.Mp3Encoder || !window.AudioContext && !window.webkitAudioContext || !navigator.mediaDevices?.getUserMedia) {
                     if (button) {
                         button.textContent = 'Registrazione non supportata';
                         button.disabled = true;
@@ -985,18 +985,15 @@
                     return;
                 }
 
-                let recorder = null;
                 let stream = null;
-                let chunks = [];
+                let audioContext = null;
+                let sourceNode = null;
+                let processorNode = null;
+                let muteNode = null;
+                let samples = [];
+                let isRecording = false;
                 let recordingStartedAt = null;
                 let previewUrl = null;
-
-                const recordingMimeType = () => [
-                    'audio/mp4',
-                    'audio/aac',
-                    'audio/ogg;codecs=opus',
-                    'audio/webm;codecs=opus',
-                ].find((type) => MediaRecorder.isTypeSupported(type)) || '';
 
                 const setStatus = (message, active = false) => {
                     button.textContent = message || defaultButtonText;
@@ -1023,15 +1020,71 @@
                 };
 
                 const stopStream = () => {
+                    processorNode?.disconnect();
+                    sourceNode?.disconnect();
+                    muteNode?.disconnect();
+                    audioContext?.close();
+                    processorNode = null;
+                    sourceNode = null;
+                    muteNode = null;
+                    audioContext = null;
                     stream?.getTracks().forEach((track) => track.stop());
                     stream = null;
+                };
+
+                const mergeSamples = (buffers) => {
+                    const length = buffers.reduce((total, buffer) => total + buffer.length, 0);
+                    const merged = new Float32Array(length);
+                    let offset = 0;
+
+                    buffers.forEach((buffer) => {
+                        merged.set(buffer, offset);
+                        offset += buffer.length;
+                    });
+
+                    return merged;
+                };
+
+                const floatTo16BitPcm = (inputSamples) => {
+                    const output = new Int16Array(inputSamples.length);
+
+                    for (let index = 0; index < inputSamples.length; index += 1) {
+                        const sample = Math.max(-1, Math.min(1, inputSamples[index]));
+                        output[index] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
+                    }
+
+                    return output;
+                };
+
+                const encodeMp3 = (inputSamples, sampleRate) => {
+                    const encoder = new window.lamejs.Mp3Encoder(1, sampleRate, 64);
+                    const pcm = floatTo16BitPcm(inputSamples);
+                    const chunks = [];
+                    const blockSize = 1152;
+
+                    for (let offset = 0; offset < pcm.length; offset += blockSize) {
+                        const block = pcm.subarray(offset, offset + blockSize);
+                        const encoded = encoder.encodeBuffer(block);
+
+                        if (encoded.length > 0) {
+                            chunks.push(encoded);
+                        }
+                    }
+
+                    const flush = encoder.flush();
+
+                    if (flush.length > 0) {
+                        chunks.push(flush);
+                    }
+
+                    return new Blob(chunks, { type: 'audio/mpeg' });
                 };
 
                 const startRecording = async (event) => {
                     event.preventDefault();
                     button.setPointerCapture?.(event.pointerId);
 
-                    if (button.disabled || recorder?.state === 'recording') {
+                    if (button.disabled || isRecording) {
                         return;
                     }
 
@@ -1039,50 +1092,31 @@
 
                     try {
                         stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                        const mimeType = recordingMimeType();
-                        recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-                        chunks = [];
+                        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        sourceNode = audioContext.createMediaStreamSource(stream);
+                        processorNode = audioContext.createScriptProcessor(4096, 1, 1);
+                        muteNode = audioContext.createGain();
+                        muteNode.gain.value = 0;
+                        samples = [];
+                        isRecording = true;
                         recordingStartedAt = Date.now();
 
-                        recorder.addEventListener('dataavailable', (recordEvent) => {
-                            if (recordEvent.data.size > 0) {
-                                chunks.push(recordEvent.data);
-                            }
-                        });
-
-                        recorder.addEventListener('stop', () => {
-                            stopStream();
-
-                            if (!chunks.length || Date.now() - recordingStartedAt < 400) {
-                                setStatus('Registrazione troppo breve.');
+                        processorNode.onaudioprocess = (audioEvent) => {
+                            if (!isRecording) {
                                 return;
                             }
 
-                            let blobType = recorder.mimeType || mimeType || 'audio/ogg';
+                            samples.push(new Float32Array(audioEvent.inputBuffer.getChannelData(0)));
+                        };
 
-                            if (blobType.includes('mp4')) {
-                                blobType = 'audio/mp4';
-                            }
+                        sourceNode.connect(processorNode);
+                        processorNode.connect(muteNode);
+                        muteNode.connect(audioContext.destination);
 
-                            const extension = blobType.includes('aac')
-                                ? 'aac'
-                                : (blobType.includes('webm') ? 'webm' : (blobType.includes('mp4') ? 'm4a' : 'ogg'));
-                            const blob = new Blob(chunks, { type: blobType });
-                            const file = new File([blob], `nota-vocale-${Date.now()}.${extension}`, { type: blobType });
-                            const transfer = new DataTransfer();
-
-                            transfer.items.add(file);
-                            input.files = transfer.files;
-                            previewUrl = URL.createObjectURL(blob);
-                            audio.src = previewUrl;
-                            preview?.classList.remove('hidden');
-                            setStatus('Nota vocale pronta.');
-                        });
-
-                        recorder.start();
                         setStatus('Registrazione in corso...', true);
                     } catch (error) {
                         stopStream();
+                        isRecording = false;
                         setStatus('Microfono non disponibile o permesso negato.');
                     }
                 };
@@ -1093,8 +1127,35 @@
                         button.releasePointerCapture(event.pointerId);
                     }
 
-                    if (recorder?.state === 'recording') {
-                        recorder.stop();
+                    if (!isRecording) {
+                        return;
+                    }
+
+                    isRecording = false;
+                    const duration = Date.now() - recordingStartedAt;
+                    const sampleRate = audioContext?.sampleRate || 44100;
+                    const recordedSamples = mergeSamples(samples);
+
+                    stopStream();
+
+                    if (!recordedSamples.length || duration < 400) {
+                        setStatus('Registrazione troppo breve.');
+                        return;
+                    }
+
+                    try {
+                        const blob = encodeMp3(recordedSamples, sampleRate);
+                        const file = new File([blob], `nota-vocale-${Date.now()}.mp3`, { type: 'audio/mpeg' });
+                        const transfer = new DataTransfer();
+
+                        transfer.items.add(file);
+                        input.files = transfer.files;
+                        previewUrl = URL.createObjectURL(blob);
+                        audio.src = previewUrl;
+                        preview?.classList.remove('hidden');
+                        setStatus('Nota vocale pronta.');
+                    } catch (error) {
+                        setStatus('Errore creazione audio.');
                     }
                 };
 
@@ -1104,7 +1165,7 @@
                 button.addEventListener('contextmenu', (event) => event.preventDefault());
                 button.addEventListener('selectstart', (event) => event.preventDefault());
                 button.addEventListener('lostpointercapture', (event) => {
-                    if (recorder?.state === 'recording') {
+                    if (isRecording) {
                         stopRecording(event);
                     }
                 });
