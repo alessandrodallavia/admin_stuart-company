@@ -87,7 +87,7 @@ class AdminEmailWorkflowTest extends TestCase
             ->get('/email')
             ->assertOk()
             ->assertSee('Risposta iniziale')
-            ->assertSee('Follow-up pagamento');
+            ->assertSee('Follow-up 4 dopo link');
     }
 
     public function test_lead_area_shows_email_actions_for_quote_and_payment(): void
@@ -247,6 +247,41 @@ class AdminEmailWorkflowTest extends TestCase
         ]);
         $this->assertSame('Collezione Estate / versione A', $lead->fresh()->quote_number);
         $this->assertSame('375.25', $lead->fresh()->quote_amount);
+    }
+
+    public function test_operator_can_save_proposal_without_pdf(): void
+    {
+        Storage::fake('local');
+        Notification::fake();
+        $operator = $this->operator();
+        $lead = Lead::create([
+            'uuid' => 'QUOTE-NO-PDF',
+            'status' => 'confirmed',
+            'name' => 'Cliente senza PDF',
+            'email' => 'nopdf@example.test',
+        ]);
+
+        $this->actingAs($operator, 'admin')
+            ->post("/leads/{$lead->id}/quote-pdfs", [
+                'proposal_number' => 'PROPOSTA-SENZA-PDF',
+                'proposal_amount' => 180,
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        $proposal = $lead->quotePdfs()->firstOrFail();
+
+        $this->assertSame('PROPOSTA-SENZA-PDF', $proposal->proposal_number);
+        $this->assertSame('180.00', $proposal->amount);
+        $this->assertNull($proposal->path);
+        $this->assertNull($proposal->filename);
+        $this->assertSame('PROPOSTA-SENZA-PDF', $lead->fresh()->quote_number);
+        $this->assertSame('180.00', $lead->fresh()->quote_amount);
+
+        $this->actingAs($operator, 'admin')
+            ->get("/leads/{$lead->id}")
+            ->assertOk()
+            ->assertSee('Nessun PDF allegato');
     }
 
     public function test_payment_link_email_is_plain_and_mentions_bank_transfer_proforma(): void

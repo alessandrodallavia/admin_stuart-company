@@ -127,6 +127,12 @@ class WhatsappConversationController extends Controller
 
     public function storeFollowUp(Request $request, WhatsappConversation $conversation): RedirectResponse
     {
+        if (! $this->canCreateFollowUpForConversation($conversation)) {
+            return back()->withErrors([
+                'message' => 'Non puoi programmare follow-up per lead completati o persi.',
+            ]);
+        }
+
         $data = $request->validate([
             'due_at' => ['required', 'date'],
             'body' => ['required', 'string', 'max:4096'],
@@ -224,12 +230,20 @@ class WhatsappConversationController extends Controller
         $data = $request->validate([
             'message' => ['nullable', 'string', 'max:4096'],
             'attachment' => ['nullable', 'file', 'max:20480'],
+            'attachments' => ['nullable', 'array', 'max:10'],
+            'attachments.*' => ['file', 'max:20480'],
             'whatsapp_template' => ['nullable', 'string'],
         ]);
 
         $selectedTemplate = $this->approvedWhatsappTemplate($data['whatsapp_template'] ?? null);
         $body = trim($data['message'] ?? '');
-        $attachment = $request->file('attachment');
+        $attachments = collect($request->file('attachments', []))
+            ->filter()
+            ->values();
+
+        if ($request->file('attachment')) {
+            $attachments->prepend($request->file('attachment'));
+        }
 
         if (($data['whatsapp_template'] ?? null) && ! $selectedTemplate) {
             return back()
@@ -237,53 +251,105 @@ class WhatsappConversationController extends Controller
                 ->withInput();
         }
 
-        if ($selectedTemplate && $attachment) {
+        if ($selectedTemplate && $attachments->isNotEmpty()) {
             return back()
                 ->withErrors(['message' => 'I modelli WhatsApp approvati non possono essere inviati insieme a un allegato.'])
                 ->withInput();
         }
 
-        if (! $selectedTemplate && $body === '' && ! $attachment) {
+        if (! $selectedTemplate && $body === '' && $attachments->isEmpty()) {
             return back()
                 ->withErrors(['message' => 'Scrivi un messaggio o allega un file prima di inviare.'])
                 ->withInput();
         }
 
-        $mediaAttributes = [];
+        $messages = collect();
 
-        if ($attachment) {
-            $mediaAttributes = $this->uploadAttachmentForWhatsapp($conversation, $attachment);
+        if ($selectedTemplate) {
+            $payload = $this->buildTemplatePayload($conversation, $selectedTemplate);
+            $messages->push($this->sendOutgoingWhatsappMessage(
+                $conversation,
+                'template',
+                $this->templateMessageBody($selectedTemplate),
+                $payload
+            ));
+        } elseif ($attachments->isEmpty()) {
+            $payload = $this->buildOutgoingPayload($conversation, 'text', $body, []);
+            $messages->push($this->sendOutgoingWhatsappMessage($conversation, 'text', $body, $payload));
+        } else {
+            foreach ($attachments as $index => $attachment) {
+                $mediaAttributes = $this->uploadAttachmentForWhatsapp($conversation, $attachment);
 
-            if (empty($mediaAttributes['media_id'])) {
-                return back()
-                    ->withErrors(['message' => 'Upload allegato su WhatsApp fallito.'])
-                    ->withInput();
+                if (empty($mediaAttributes['media_id'])) {
+                    return back()
+                        ->withErrors(['message' => 'Upload allegato su WhatsApp fallito.'])
+                        ->withInput();
+                }
+
+                $messageType = $this->whatsappTypeFromMimeType($mediaAttributes['media_mime_type']);
+                $messageBody = $index === 0 ? $body : '';
+                $payload = $this->buildOutgoingPayload($conversation, $messageType, $messageBody, $mediaAttributes);
+
+                $messages->push($this->sendOutgoingWhatsappMessage(
+                    $conversation,
+                    $messageType,
+                    $messageBody !== '' ? $messageBody : null,
+                    $payload,
+                    $mediaAttributes
+                ));
             }
         }
 
-        $messageType = $selectedTemplate
-            ? 'template'
-            : ($attachment
-                ? $this->whatsappTypeFromMimeType($mediaAttributes['media_mime_type'])
-                : 'text');
+        $message = $messages->last();
 
-        $payload = $selectedTemplate
-            ? $this->buildTemplatePayload($conversation, $selectedTemplate)
-            : $this->buildOutgoingPayload($conversation, $messageType, $body, $mediaAttributes);
+        $conversation->forceFill([
+            'assigned_user_id' => Auth::guard('admin')->id(),
+            'needs_human' => false,
+            'last_message_at' => $message->created_at,
+        ])->save();
 
+        $failedMessage = $messages->firstWhere('status', 'failed');
+
+        if ($failedMessage) {
+            return redirect()
+                ->route('admin.conversations.show', $conversation)
+                ->withErrors(['message' => 'Messaggio salvato, ma invio WhatsApp fallito: '.($failedMessage->error_message ?? 'errore sconosciuto')]);
+        }
+
+        if (! $selectedTemplate) {
+            $this->scheduleAutomaticFollowUp($conversation, $message);
+        }
+
+        return redirect()
+            ->route('admin.conversations.show', $conversation)
+            ->with('status', 'Messaggio inviato.');
+    }
+
+    private function sendOutgoingWhatsappMessage(
+        WhatsappConversation $conversation,
+        string $messageType,
+        ?string $body,
+        array $payload,
+        array $mediaAttributes = []
+    ): WhatsappMessage {
         $response = Http::withToken(config('services.whatsapp.token'))
             ->post('https://graph.facebook.com/v25.0/'.config('services.whatsapp.phone_number_id').'/messages', $payload);
+        $providerMessageId = $response->json('messages.0.id');
 
-        $message = WhatsappMessage::create([
+        if ($providerMessageId && WhatsappMessage::where('provider_message_id', $providerMessageId)->exists()) {
+            $providerMessageId = null;
+        }
+
+        return WhatsappMessage::create([
             'whatsapp_conversation_id' => $conversation->id,
-            'provider_message_id' => $response->json('messages.0.id'),
+            'provider_message_id' => $providerMessageId,
             'direction' => 'outbound',
             'source' => 'user',
             'type' => $messageType,
             'status' => $response->successful() ? 'sent' : 'failed',
             'from_phone' => config('services.whatsapp.phone_number_id'),
             'to_phone' => $conversation->contact_phone,
-            'body' => $selectedTemplate ? $this->templateMessageBody($selectedTemplate) : ($body !== '' ? $body : null),
+            'body' => $body,
             ...$mediaAttributes,
             'payload' => [
                 'request' => $payload,
@@ -294,26 +360,6 @@ class WhatsappConversationController extends Controller
             'sent_at' => $response->successful() ? now() : null,
             'failed_at' => $response->failed() ? now() : null,
         ]);
-
-        $conversation->forceFill([
-            'assigned_user_id' => Auth::guard('admin')->id(),
-            'needs_human' => false,
-            'last_message_at' => $message->created_at,
-        ])->save();
-
-        if ($response->failed()) {
-            return redirect()
-                ->route('admin.conversations.show', $conversation)
-                ->withErrors(['message' => 'Messaggio salvato, ma invio WhatsApp fallito: '.($message->error_message ?? 'errore sconosciuto')]);
-        }
-
-        if (! $selectedTemplate) {
-            $this->scheduleAutomaticFollowUp($conversation, $message);
-        }
-
-        return redirect()
-            ->route('admin.conversations.show', $conversation)
-            ->with('status', 'Messaggio inviato.');
     }
 
     private function approvedWhatsappTemplate(?string $key): ?array
@@ -381,7 +427,10 @@ class WhatsappConversationController extends Controller
 
     private function scheduleAutomaticFollowUp(WhatsappConversation $conversation, WhatsappMessage $message): void
     {
-        if (! config('whatsapp_follow_up.auto_enabled', true) || $conversation->isExcludedFromFollowUps()) {
+        if (! config('whatsapp_follow_up.auto_enabled', true)
+            || $conversation->isExcludedFromFollowUps()
+            || ! $this->canCreateFollowUpForConversation($conversation)
+        ) {
             return;
         }
 
@@ -408,6 +457,11 @@ class WhatsappConversationController extends Controller
             'body' => $body,
             'status' => 'pending',
         ]);
+    }
+
+    private function canCreateFollowUpForConversation(WhatsappConversation $conversation): bool
+    {
+        return ! in_array($conversation->lead?->status, ['completed', 'order_completed', 'lost'], true);
     }
 
     private function uploadAttachmentForWhatsapp(WhatsappConversation $conversation, $attachment): array
@@ -915,6 +969,7 @@ class WhatsappConversationController extends Controller
             'image/jpeg' => 'jpg',
             'image/png' => 'png',
             'image/webp' => 'webp',
+            'image/gif' => 'gif',
             'audio/mpeg' => 'mp3',
             'audio/ogg' => 'ogg',
             'audio/aac' => 'aac',

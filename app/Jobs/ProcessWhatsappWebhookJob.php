@@ -695,6 +695,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
             'image/jpeg' => 'jpg',
             'image/png' => 'png',
             'image/webp' => 'webp',
+            'image/gif' => 'gif',
             'audio/mpeg' => 'mp3',
             'audio/ogg' => 'ogg',
             'audio/aac' => 'aac',
@@ -730,6 +731,9 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
             'interactive' => $message['interactive']['button_reply']['title']
                 ?? $message['interactive']['list_reply']['title']
                 ?? null,
+            'reaction' => ! empty($message['reaction']['emoji'])
+                ? 'Reazione: '.$message['reaction']['emoji']
+                : 'Reazione rimossa',
             default => null,
         };
     }

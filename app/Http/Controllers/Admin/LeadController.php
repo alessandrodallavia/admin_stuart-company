@@ -152,28 +152,34 @@ class LeadController extends Controller
             ->with('status', 'Lead aggiornato.');
     }
 
-    public function storeQuotePdfs(Request $request, Lead $lead): RedirectResponse
+    public function storeQuotePdfs(Request $request, Lead $lead, LeadConversionTrackingService $tracking): RedirectResponse
     {
         $data = $request->validate([
             'proposal_number' => ['required', 'string', 'max:100', Rule::unique('lead_quote_pdfs', 'proposal_number')],
             'proposal_amount' => ['required', 'numeric', 'min:0.50', 'max:99999999.99'],
-            'proposal_pdf' => ['required', 'file', 'mimes:pdf', 'mimetypes:application/pdf', 'max:20480'],
+            'proposal_pdf' => ['nullable', 'file', 'mimes:pdf', 'mimetypes:application/pdf', 'max:20480'],
+            'send_google_event' => ['nullable', 'boolean'],
         ]);
 
-        $file = $data['proposal_pdf'];
-        $originalName = $file->getClientOriginalName() ?: 'proposta.pdf';
-        $baseName = Str::limit(Str::slug(pathinfo($originalName, PATHINFO_FILENAME)), 90, '');
-        $filename = ($baseName ?: 'proposta').'-'.now()->format('YmdHis').'-'.Str::random(6).'.pdf';
-        $path = $file->storeAs("leads/{$lead->id}/proposals", $filename, self::QUOTE_PDF_DISK);
+        $file = $data['proposal_pdf'] ?? null;
+        $originalName = null;
+        $path = null;
+
+        if ($file) {
+            $originalName = $file->getClientOriginalName() ?: 'proposta.pdf';
+            $baseName = Str::limit(Str::slug(pathinfo($originalName, PATHINFO_FILENAME)), 90, '');
+            $filename = ($baseName ?: 'proposta').'-'.now()->format('YmdHis').'-'.Str::random(6).'.pdf';
+            $path = $file->storeAs("leads/{$lead->id}/proposals", $filename, self::QUOTE_PDF_DISK);
+        }
 
         $lead->quotePdfs()->create([
             'proposal_number' => $data['proposal_number'],
             'amount' => $data['proposal_amount'],
-            'disk' => self::QUOTE_PDF_DISK,
+            'disk' => $file ? self::QUOTE_PDF_DISK : null,
             'path' => $path,
             'filename' => $originalName,
-            'mime_type' => $file->getMimeType() ?: 'application/pdf',
-            'size' => $file->getSize(),
+            'mime_type' => $file ? ($file->getMimeType() ?: 'application/pdf') : null,
+            'size' => $file?->getSize(),
             'uploaded_at' => now(),
         ]);
 
@@ -182,16 +188,24 @@ class LeadController extends Controller
             'quote_amount' => $data['proposal_amount'],
         ])->save();
 
+        if ($request->boolean('send_google_event')) {
+            if ($this->shouldAdvanceStatus($lead->status, 'quote_sent')) {
+                $lead->forceFill(['status' => 'quote_sent'])->save();
+            }
+
+            $tracking->trackQuoteSent($lead->fresh());
+        }
+
         return redirect()
             ->route('admin.leads.index', ['lead' => $lead])
-            ->with('status', 'Proposta caricata.');
+            ->with('status', $file ? 'Proposta caricata.' : 'Proposta salvata senza PDF.');
     }
 
     public function showQuotePdf(Lead $lead, LeadQuotePdf $quotePdf)
     {
         $quotePdf = $this->quotePdfForLead($lead, $quotePdf);
 
-        if (! Storage::disk($quotePdf->disk)->exists($quotePdf->path)) {
+        if (! $quotePdf->disk || ! $quotePdf->path || ! Storage::disk($quotePdf->disk)->exists($quotePdf->path)) {
             abort(404);
         }
 
@@ -207,7 +221,7 @@ class LeadController extends Controller
     {
         $quotePdf = $this->quotePdfForLead($lead, $quotePdf);
 
-        if (Storage::disk($quotePdf->disk)->exists($quotePdf->path)) {
+        if ($quotePdf->disk && $quotePdf->path && Storage::disk($quotePdf->disk)->exists($quotePdf->path)) {
             Storage::disk($quotePdf->disk)->delete($quotePdf->path);
         }
 
@@ -428,11 +442,15 @@ class LeadController extends Controller
             ->with('status', 'Link pagamento inviato su WhatsApp con pulsante.');
     }
 
-    public function sendQuotePdfWhatsapp(Lead $lead, LeadQuotePdf $quotePdf): RedirectResponse
+    public function sendQuotePdfWhatsapp(Request $request, Lead $lead, LeadQuotePdf $quotePdf): RedirectResponse
     {
+        $request->validate([
+            'send_google_event' => ['nullable', 'boolean'],
+        ]);
+
         $quotePdf = $this->quotePdfForLead($lead, $quotePdf);
 
-        if (! Storage::disk($quotePdf->disk)->exists($quotePdf->path)) {
+        if (! $quotePdf->disk || ! $quotePdf->path || ! Storage::disk($quotePdf->disk)->exists($quotePdf->path)) {
             return back()->withErrors([
                 'quote_pdf' => 'Carica prima un PDF proposta valido.',
             ]);
@@ -538,22 +556,29 @@ class LeadController extends Controller
         if ($this->shouldAdvanceStatus($lead->status, 'quote_sent')) {
             $lead->forceFill(['status' => 'quote_sent'])->save();
         }
-        app(LeadConversionTrackingService::class)->trackQuoteSent($lead->fresh());
+
+        if ($request->boolean('send_google_event')) {
+            app(LeadConversionTrackingService::class)->trackQuoteSent($lead->fresh());
+        }
 
         return redirect()
             ->route('admin.leads.index', ['lead' => $lead])
             ->with('status', 'Proposta inviata su WhatsApp.');
     }
 
-    public function sendQuotePdfEmail(Lead $lead, LeadQuotePdf $quotePdf, EmailMailboxService $mailbox, LeadConversionTrackingService $tracking): RedirectResponse
+    public function sendQuotePdfEmail(Request $request, Lead $lead, LeadQuotePdf $quotePdf, EmailMailboxService $mailbox, LeadConversionTrackingService $tracking): RedirectResponse
     {
+        $request->validate([
+            'send_google_event' => ['nullable', 'boolean'],
+        ]);
+
         $quotePdf = $this->quotePdfForLead($lead, $quotePdf);
 
         if (! $lead->email) {
             return back()->withErrors(['email' => 'Inserisci prima l’email del cliente.']);
         }
 
-        if (! Storage::disk($quotePdf->disk)->exists($quotePdf->path)) {
+        if (! $quotePdf->disk || ! $quotePdf->path || ! Storage::disk($quotePdf->disk)->exists($quotePdf->path)) {
             return back()->withErrors(['quote_pdf' => 'Carica prima un PDF proposta valido.']);
         }
 
@@ -591,7 +616,10 @@ class LeadController extends Controller
         if ($this->shouldAdvanceStatus($lead->status, 'quote_sent')) {
             $lead->forceFill(['status' => 'quote_sent'])->save();
         }
-        $tracking->trackQuoteSent($lead->fresh());
+
+        if ($request->boolean('send_google_event')) {
+            $tracking->trackQuoteSent($lead->fresh());
+        }
 
         return redirect()
             ->route('admin.leads.index', ['lead' => $lead])

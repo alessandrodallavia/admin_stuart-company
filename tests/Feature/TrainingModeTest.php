@@ -11,6 +11,7 @@ use App\Models\WhatsappConversation;
 use App\Models\WhatsappMessage;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
@@ -382,8 +383,9 @@ class TrainingModeTest extends TestCase
 
         $this->actingAs($operator, 'admin')
             ->post("/conversations/{$conversation->id}/messages", [
-                'whatsapp_template' => 'lead_senza_risposta',
+                'whatsapp_template' => 'followup1_risposta_automatica',
             ])
+            ->assertSessionHasNoErrors()
             ->assertRedirect();
 
         Http::assertSent(function ($request) use ($lead) {
@@ -399,9 +401,86 @@ class TrainingModeTest extends TestCase
             'whatsapp_conversation_id' => $conversation->id,
             'provider_message_id' => 'template-message',
             'type' => 'template',
-            'body' => 'Template WhatsApp: lead_senza_risposta',
+            'body' => config('whatsapp_templates.templates.followup1_risposta_automatica.body'),
             'status' => 'sent',
         ]);
+    }
+
+    public function test_completed_or_lost_leads_cannot_receive_manual_follow_ups(): void
+    {
+        $operator = $this->operator();
+        $lead = $this->lead([
+            'status' => 'order_completed',
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+        ]);
+        $conversation = WhatsappConversation::withoutGlobalScope('training')->create([
+            'lead_id' => $lead->id,
+            'contact_phone' => $lead->phone,
+            'mode' => 'manual',
+            'status' => 'open',
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+        ]);
+
+        $this->actingAs($operator, 'admin')
+            ->post("/conversations/{$conversation->id}/follow-ups", [
+                'due_at' => now()->addDay()->format('Y-m-d\TH:i'),
+                'body' => 'Promemoria da non creare',
+            ])
+            ->assertSessionHasErrors('message');
+
+        $this->assertDatabaseMissing('whatsapp_follow_ups', [
+            'whatsapp_conversation_id' => $conversation->id,
+            'body' => 'Promemoria da non creare',
+        ]);
+    }
+
+    public function test_operator_can_send_multiple_whatsapp_attachments_at_once(): void
+    {
+        Storage::fake('local');
+        Http::fake([
+            'https://graph.facebook.com/*/media' => Http::response(['id' => 'uploaded-media']),
+            'https://graph.facebook.com/*/messages' => Http::response([
+                'messages' => [['id' => 'sent-message']],
+            ]),
+        ]);
+        $operator = $this->operator();
+        $lead = $this->lead([
+            'phone' => '393331234567',
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+        ]);
+        $conversation = WhatsappConversation::withoutGlobalScope('training')->create([
+            'lead_id' => $lead->id,
+            'contact_phone' => $lead->phone,
+            'mode' => 'manual',
+            'status' => 'open',
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+        ]);
+
+        $this->actingAs($operator, 'admin')
+            ->post("/conversations/{$conversation->id}/messages", [
+                'message' => 'Ecco i file',
+                'attachments' => [
+                    UploadedFile::fake()->image('mockup.jpg'),
+                    UploadedFile::fake()->create('nota.ogg', 10, 'audio/ogg'),
+                ],
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        $messages = WhatsappMessage::withoutGlobalScope('training')
+            ->where('whatsapp_conversation_id', $conversation->id)
+            ->oldest()
+            ->get();
+
+        $this->assertCount(2, $messages);
+        $this->assertSame(['image', 'audio'], $messages->pluck('type')->all());
+        $this->assertSame('Ecco i file', $messages[0]->body);
+        $this->assertNull($messages[1]->body);
+        Http::assertSentCount(4);
     }
 
     public function test_real_document_areas_are_blocked_during_training(): void
@@ -413,6 +492,41 @@ class TrainingModeTest extends TestCase
             ->get('/documents')
             ->assertRedirect('/training')
             ->assertSessionHas('error');
+    }
+
+    public function test_incoming_whatsapp_reaction_is_readable(): void
+    {
+        $operator = $this->operator();
+        $this->lead([
+            'phone' => '393331234567',
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+        ]);
+
+        app()->call([new ProcessWhatsappWebhookJob([
+            'entry' => [[
+                'changes' => [[
+                    'value' => [
+                        'messages' => [[
+                            'id' => 'wamid.reaction-1',
+                            'from' => '393331234567',
+                            'timestamp' => (string) now()->timestamp,
+                            'type' => 'reaction',
+                            'reaction' => [
+                                'message_id' => 'wamid.original',
+                                'emoji' => '👍',
+                            ],
+                        ]],
+                    ],
+                ]],
+            ]],
+        ]), 'handle']);
+
+        $this->assertDatabaseHas('whatsapp_messages', [
+            'provider_message_id' => 'wamid.reaction-1',
+            'type' => 'reaction',
+            'body' => 'Reazione: 👍',
+        ]);
     }
 
     public function test_training_payment_completion_does_not_send_external_events(): void

@@ -341,27 +341,36 @@
                                 </div>
 
                                 @if ($canManageWhatsapp)
+                                    @php
+                                        $canCreateFollowUps = ! in_array($selectedConversation->lead?->status, ['completed', 'order_completed', 'lost'], true);
+                                    @endphp
                                     <div class="h-full space-y-8">
-                                        <form method="POST" action="{{ route('admin.conversations.follow-ups.store', $selectedConversation) }}" class="rounded-10 border border-gray-mid bg-white p-8">
-                                            @csrf
-                                            <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Nuovo follow-up</p>
-                                            <input
-                                                name="due_at"
-                                                type="datetime-local"
-                                                value="{{ old('due_at') }}"
-                                                class="mt-4 h-32 w-full rounded-10 border-gray-mid px-10 py-5 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"
-                                            >
-                                            <textarea
-                                                name="body"
-                                                rows="1"
-                                                maxlength="4096"
-                                                class="mt-4 min-h-32 w-full resize-none rounded-10 border-gray-mid px-10 py-5 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"
-                                                placeholder="Messaggio follow-up..."
-                                            >{{ old('body') }}</textarea>
-                                            <button type="submit" class="mt-4 w-full rounded-10 bg-bullstar px-12 py-6 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">
-                                                Programma
-                                            </button>
-                                        </form>
+                                        @if ($canCreateFollowUps)
+                                            <form method="POST" action="{{ route('admin.conversations.follow-ups.store', $selectedConversation) }}" class="rounded-10 border border-gray-mid bg-white p-8">
+                                                @csrf
+                                                <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Nuovo follow-up</p>
+                                                <input
+                                                    name="due_at"
+                                                    type="datetime-local"
+                                                    value="{{ old('due_at') }}"
+                                                    class="mt-4 h-32 w-full rounded-10 border-gray-mid px-10 py-5 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"
+                                                >
+                                                <textarea
+                                                    name="body"
+                                                    rows="1"
+                                                    maxlength="4096"
+                                                    class="mt-4 min-h-32 w-full resize-none rounded-10 border-gray-mid px-10 py-5 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"
+                                                    placeholder="Messaggio follow-up..."
+                                                >{{ old('body') }}</textarea>
+                                                <button type="submit" class="mt-4 w-full rounded-10 bg-bullstar px-12 py-6 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">
+                                                    Programma
+                                                </button>
+                                            </form>
+                                        @else
+                                            <div class="rounded-10 border border-gray-mid bg-white p-8 text-12 font-bold leading-[18px] text-gray">
+                                                Follow-up disattivati per questo lead.
+                                            </div>
+                                        @endif
 
                                         <form method="POST" action="{{ route('admin.conversations.follow-up-exclusion', $selectedConversation) }}" class="rounded-10 border border-gray-mid bg-white p-8">
                                             @csrf
@@ -417,7 +426,9 @@
                                                     $mediaUrl = route('admin.messages.media', $message);
                                                     $mediaKind = str_starts_with((string) $message->media_mime_type, 'image/')
                                                         ? 'image'
-                                                        : (str_starts_with((string) $message->media_mime_type, 'audio/') ? 'audio' : 'document');
+                                                        : (str_starts_with((string) $message->media_mime_type, 'audio/')
+                                                            ? 'audio'
+                                                            : (str_starts_with((string) $message->media_mime_type, 'video/') ? 'video' : 'document'));
                                                 @endphp
 
                                                 @if ($mediaKind === 'image')
@@ -428,6 +439,10 @@
                                                     <audio controls class="w-[260px] max-w-full">
                                                         <source src="{{ $mediaUrl }}" type="{{ $message->media_mime_type }}">
                                                     </audio>
+                                                @elseif ($mediaKind === 'video')
+                                                    <video controls class="max-h-[320px] w-[320px] max-w-full rounded-10 bg-black">
+                                                        <source src="{{ $mediaUrl }}" type="{{ $message->media_mime_type }}">
+                                                    </video>
                                                 @else
                                                     <a href="{{ $mediaUrl }}" target="_blank" class="flex items-center gap-12 rounded-10 bg-white/15 px-12 py-10 text-14 font-bold underline-offset-4 hover:underline">
                                                         <span>Documento</span>
@@ -535,8 +550,9 @@
                                                 <span class="shrink-0 rounded-10 bg-white px-10 py-6 text-black-nike">Allega</span>
                                                 <input
                                                     id="message-attachment"
-                                                    name="attachment"
+                                                    name="attachments[]"
                                                     type="file"
+                                                    multiple
                                                     accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
                                                     class="min-w-0 flex-1 text-12 file:hidden"
                                                 >

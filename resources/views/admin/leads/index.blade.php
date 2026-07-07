@@ -278,21 +278,34 @@
                                     </label>
                                     <label class="block min-w-0">
                                         <span class="text-12 font-extrabold uppercase tracking-normal text-gray">PDF proposta</span>
-                                        <input name="proposal_pdf" type="file" accept="application/pdf,.pdf" required class="mt-6 block w-full min-w-0 overflow-hidden rounded-10 border border-gray-mid bg-white px-8 py-8 text-12 font-semibold text-black-nike file:mr-8 file:rounded-10 file:border-0 file:bg-black-nike file:px-10 file:py-8 file:text-11 file:font-extrabold file:uppercase file:tracking-normal file:text-white focus:border-bullstar focus:ring-bullstar">
-                                        <span class="mt-6 block text-11 font-semibold text-gray">Un PDF per proposta, massimo 20 MB.</span>
+                                        <input name="proposal_pdf" type="file" accept="application/pdf,.pdf" class="mt-6 block w-full min-w-0 overflow-hidden rounded-10 border border-gray-mid bg-white px-8 py-8 text-12 font-semibold text-black-nike file:mr-8 file:rounded-10 file:border-0 file:bg-black-nike file:px-10 file:py-8 file:text-11 file:font-extrabold file:uppercase file:tracking-normal file:text-white focus:border-bullstar focus:ring-bullstar">
+                                        <span class="mt-6 block text-11 font-semibold text-gray">PDF facoltativo, massimo 20 MB.</span>
+                                    </label>
+                                    <label class="flex items-start gap-8 rounded-10 border border-gray-mid bg-white px-10 py-8">
+                                        <input name="send_google_event" value="1" type="checkbox" class="mt-1 rounded border-gray-mid text-bullstar focus:ring-bullstar">
+                                        <span class="min-w-0 text-12 font-bold leading-[18px] text-black-nike">
+                                            Invia evento proposta a Google
+                                        </span>
                                     </label>
                                     <button type="submit" class="w-full rounded-10 bg-bullstar px-16 py-12 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">
-                                        Carica proposta
+                                        Salva proposta
                                     </button>
                                 </form>
 
                                 <div class="mt-12 grid gap-8">
                                     @forelse ($selectedLead->quotePdfs as $quotePdf)
+                                        @php
+                                            $hasProposalPdf = $quotePdf->disk && $quotePdf->path;
+                                        @endphp
                                         <div class="rounded-10 border border-gray-mid bg-gray-light p-10">
                                             <div class="flex flex-wrap items-center justify-between gap-6">
                                                 <div class="min-w-0">
                                                     <p class="text-13 font-black text-black-nike">{{ $quotePdf->proposal_number }} · € {{ number_format((float) $quotePdf->amount, 2, ',', '.') }}</p>
-                                                    <a href="{{ route('admin.leads.quote-pdfs.show', [$selectedLead, $quotePdf]) }}" target="_blank" class="mt-2 block truncate text-12 font-bold text-bullstar underline-offset-4 hover:underline">{{ $quotePdf->filename }}</a>
+                                                    @if ($hasProposalPdf)
+                                                        <a href="{{ route('admin.leads.quote-pdfs.show', [$selectedLead, $quotePdf]) }}" target="_blank" class="mt-2 block truncate text-12 font-bold text-bullstar underline-offset-4 hover:underline">{{ $quotePdf->filename }}</a>
+                                                    @else
+                                                        <p class="mt-2 text-12 font-bold text-gray">Nessun PDF allegato</p>
+                                                    @endif
                                                 </div>
                                                 <p class="text-11 font-semibold text-gray">
                                                     {{ $quotePdf->uploaded_at?->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}
@@ -301,13 +314,21 @@
                                             <div class="mt-8 grid gap-6 min-[700px]:grid-cols-3 min-[1280px]:grid-cols-1">
                                                 <form method="POST" action="{{ route('admin.leads.quote-pdfs.whatsapp', [$selectedLead, $quotePdf]) }}">
                                                     @csrf
-                                                    <button type="submit" class="w-full rounded-10 border border-whatsapp bg-whatsapp px-10 py-8 text-11 font-extrabold uppercase leading-none tracking-normal text-white transition hover:bg-whatsapp/90">
+                                                    <label class="mb-6 flex items-center gap-6 text-11 font-bold text-gray">
+                                                        <input name="send_google_event" value="1" type="checkbox" class="rounded border-gray-mid text-bullstar focus:ring-bullstar">
+                                                        Google
+                                                    </label>
+                                                    <button type="submit" @disabled(! $hasProposalPdf) class="w-full rounded-10 border border-whatsapp bg-whatsapp px-10 py-8 text-11 font-extrabold uppercase leading-none tracking-normal text-white transition hover:bg-whatsapp/90 disabled:cursor-not-allowed disabled:border-gray-mid disabled:bg-gray">
                                                         Invia su WhatsApp
                                                     </button>
                                                 </form>
                                                 <form method="POST" action="{{ route('admin.leads.quote-pdfs.email', [$selectedLead, $quotePdf]) }}">
                                                     @csrf
-                                                    <button type="submit" @disabled(! $selectedLead->email) class="w-full rounded-10 border border-bullstar bg-bullstar px-10 py-8 text-11 font-extrabold uppercase leading-none tracking-normal text-white transition hover:bg-bullstar-hover disabled:cursor-not-allowed disabled:border-gray-mid disabled:bg-gray">
+                                                    <label class="mb-6 flex items-center gap-6 text-11 font-bold text-gray">
+                                                        <input name="send_google_event" value="1" type="checkbox" class="rounded border-gray-mid text-bullstar focus:ring-bullstar">
+                                                        Google
+                                                    </label>
+                                                    <button type="submit" @disabled(! $selectedLead->email || ! $hasProposalPdf) class="w-full rounded-10 border border-bullstar bg-bullstar px-10 py-8 text-11 font-extrabold uppercase leading-none tracking-normal text-white transition hover:bg-bullstar-hover disabled:cursor-not-allowed disabled:border-gray-mid disabled:bg-gray">
                                                         Invia via email
                                                     </button>
                                                 </form>
