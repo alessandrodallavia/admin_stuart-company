@@ -561,14 +561,14 @@
 
                                             <input id="voice-attachment" name="attachments[]" type="file" accept="audio/*" class="hidden">
 
-                                            <div id="voice-recorder" class="flex min-w-0 flex-col gap-6 md:min-w-[210px]">
+                                            <div id="voice-recorder" class="hidden min-w-0 flex-col gap-6 md:flex md:min-w-[260px]">
                                                 <button
                                                     type="button"
                                                     id="voice-record-button"
                                                     style="touch-action: none;"
-                                                    class="rounded-10 border border-gray-mid bg-white px-14 py-11 text-12 font-extrabold uppercase tracking-normal text-black-nike transition hover:border-whatsapp hover:text-whatsapp active:bg-whatsapp active:text-white disabled:cursor-not-allowed disabled:bg-gray-light disabled:text-gray"
+                                                    class="rounded-10 bg-bullstar px-24 py-12 text-14 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover active:bg-whatsapp disabled:cursor-not-allowed disabled:bg-gray disabled:text-white/70"
                                                 >
-                                                    Tieni premuto
+                                                    Tieni premuto per nota vocale
                                                 </button>
                                                 <div id="voice-preview" class="hidden min-w-0 rounded-10 border border-gray-mid bg-gray-light px-10 py-8">
                                                     <audio id="voice-preview-audio" controls class="w-full max-w-[220px]"></audio>
