@@ -976,9 +976,18 @@
                 const clearButton = document.getElementById('voice-clear-button');
                 const defaultButtonText = button?.textContent.trim() || 'Tieni premuto per nota vocale';
 
-                if (!button || !input || !window.lamejs?.Mp3Encoder || !window.AudioContext && !window.webkitAudioContext || !navigator.mediaDevices?.getUserMedia) {
+                const mp3Encoder = window.lamejs?.Mp3Encoder ?? window.lamejs?.default?.Mp3Encoder;
+                const audioContextClass = window.AudioContext || window.webkitAudioContext;
+                const missingSupport = [
+                    !mp3Encoder ? 'encoder MP3 non caricato' : null,
+                    !audioContextClass ? 'Web Audio non disponibile' : null,
+                    !navigator.mediaDevices?.getUserMedia ? 'microfono non disponibile: usa HTTPS' : null,
+                ].filter(Boolean);
+
+                if (!button || !input || missingSupport.length > 0) {
                     if (button) {
-                        button.textContent = 'Registrazione non supportata';
+                        button.textContent = missingSupport[0] || 'Registrazione non supportata';
+                        button.title = missingSupport.join(' / ');
                         button.disabled = true;
                     }
 
@@ -1057,7 +1066,7 @@
                 };
 
                 const encodeMp3 = (inputSamples, sampleRate) => {
-                    const encoder = new window.lamejs.Mp3Encoder(1, sampleRate, 64);
+                    const encoder = new mp3Encoder(1, sampleRate, 64);
                     const pcm = floatTo16BitPcm(inputSamples);
                     const chunks = [];
                     const blockSize = 1152;
@@ -1092,7 +1101,7 @@
 
                     try {
                         stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        audioContext = new audioContextClass();
                         sourceNode = audioContext.createMediaStreamSource(stream);
                         processorNode = audioContext.createScriptProcessor(4096, 1, 1);
                         muteNode = audioContext.createGain();
