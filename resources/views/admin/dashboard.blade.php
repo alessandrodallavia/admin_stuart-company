@@ -527,6 +527,7 @@
                                                     name="whatsapp_template"
                                                     class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar"
                                                 >
+                                                    <option value="">Messaggio libero</option>
                                                     @foreach ($whatsappApprovedTemplates as $key => $template)
                                                         <option value="{{ $key }}" @selected(old('whatsapp_template') === $key)>
                                                             {{ $template['label'] ?? $template['name'] ?? $key }}
@@ -557,6 +558,26 @@
                                                     class="min-w-0 flex-1 text-12 file:hidden"
                                                 >
                                             </label>
+
+                                            <input id="voice-attachment" name="attachments[]" type="file" accept="audio/*" class="hidden">
+
+                                            <div id="voice-recorder" class="flex min-w-0 flex-col gap-6 md:min-w-[210px]">
+                                                <button
+                                                    type="button"
+                                                    id="voice-record-button"
+                                                    style="touch-action: none;"
+                                                    class="rounded-10 border border-gray-mid bg-white px-14 py-11 text-12 font-extrabold uppercase tracking-normal text-black-nike transition hover:border-whatsapp hover:text-whatsapp active:bg-whatsapp active:text-white disabled:cursor-not-allowed disabled:bg-gray-light disabled:text-gray"
+                                                >
+                                                    Tieni premuto
+                                                </button>
+                                                <div id="voice-preview" class="hidden min-w-0 rounded-10 border border-gray-mid bg-gray-light px-10 py-8">
+                                                    <audio id="voice-preview-audio" controls class="w-full max-w-[220px]"></audio>
+                                                    <button type="button" id="voice-clear-button" class="mt-6 text-11 font-extrabold uppercase tracking-normal text-red-700">
+                                                        Rimuovi audio
+                                                    </button>
+                                                </div>
+                                                <p id="voice-record-status" class="text-11 font-bold leading-[16px] text-gray"></p>
+                                            </div>
 
                                             <button
                                                 type="submit"
@@ -895,6 +916,8 @@
                 const composer = document.getElementById('message-composer');
                 const templateSelect = document.getElementById('whatsapp-template-select');
                 const attachment = document.getElementById('message-attachment');
+                const voiceAttachment = document.getElementById('voice-attachment');
+                const voiceButton = document.getElementById('voice-record-button');
 
                 if (!composer) {
                     return;
@@ -919,6 +942,15 @@
                             attachment.value = '';
                         }
                     }
+
+                    if (voiceButton) {
+                        voiceButton.disabled = hasApprovedTemplate;
+                    }
+
+                    if (voiceAttachment && hasApprovedTemplate) {
+                        voiceAttachment.value = '';
+                        document.getElementById('voice-clear-button')?.click();
+                    }
                 };
 
                 templateSelect?.addEventListener('change', syncApprovedTemplateComposer);
@@ -934,6 +966,142 @@
                         composer.focus();
                     });
                 });
+            }
+
+            function bindVoiceRecorder() {
+                const button = document.getElementById('voice-record-button');
+                const input = document.getElementById('voice-attachment');
+                const preview = document.getElementById('voice-preview');
+                const audio = document.getElementById('voice-preview-audio');
+                const clearButton = document.getElementById('voice-clear-button');
+                const status = document.getElementById('voice-record-status');
+
+                if (!button || !input || !window.MediaRecorder || !navigator.mediaDevices?.getUserMedia) {
+                    if (status) {
+                        status.textContent = button ? 'Registrazione non supportata da questo browser.' : '';
+                    }
+
+                    if (button) {
+                        button.disabled = true;
+                    }
+
+                    return;
+                }
+
+                let recorder = null;
+                let stream = null;
+                let chunks = [];
+                let recordingStartedAt = null;
+                let previewUrl = null;
+
+                const recordingMimeType = () => [
+                    'audio/ogg;codecs=opus',
+                    'audio/webm;codecs=opus',
+                    'audio/mp4',
+                ].find((type) => MediaRecorder.isTypeSupported(type)) || '';
+
+                const setStatus = (message, active = false) => {
+                    status.textContent = message;
+                    button.classList.toggle('border-whatsapp', active);
+                    button.classList.toggle('bg-whatsapp', active);
+                    button.classList.toggle('text-white', active);
+                };
+
+                const clearRecording = () => {
+                    input.value = '';
+
+                    if (previewUrl) {
+                        URL.revokeObjectURL(previewUrl);
+                        previewUrl = null;
+                    }
+
+                    if (audio) {
+                        audio.removeAttribute('src');
+                        audio.load();
+                    }
+
+                    preview?.classList.add('hidden');
+                    setStatus('');
+                };
+
+                const stopStream = () => {
+                    stream?.getTracks().forEach((track) => track.stop());
+                    stream = null;
+                };
+
+                const startRecording = async (event) => {
+                    event.preventDefault();
+                    button.setPointerCapture?.(event.pointerId);
+
+                    if (button.disabled || recorder?.state === 'recording') {
+                        return;
+                    }
+
+                    clearRecording();
+
+                    try {
+                        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        const mimeType = recordingMimeType();
+                        recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+                        chunks = [];
+                        recordingStartedAt = Date.now();
+
+                        recorder.addEventListener('dataavailable', (recordEvent) => {
+                            if (recordEvent.data.size > 0) {
+                                chunks.push(recordEvent.data);
+                            }
+                        });
+
+                        recorder.addEventListener('stop', () => {
+                            stopStream();
+
+                            if (!chunks.length || Date.now() - recordingStartedAt < 400) {
+                                setStatus('Registrazione troppo breve.');
+                                return;
+                            }
+
+                            const blobType = recorder.mimeType || mimeType || 'audio/ogg';
+                            const extension = blobType.includes('webm') ? 'webm' : (blobType.includes('mp4') ? 'm4a' : 'ogg');
+                            const blob = new Blob(chunks, { type: blobType });
+                            const file = new File([blob], `nota-vocale-${Date.now()}.${extension}`, { type: blobType });
+                            const transfer = new DataTransfer();
+
+                            transfer.items.add(file);
+                            input.files = transfer.files;
+                            previewUrl = URL.createObjectURL(blob);
+                            audio.src = previewUrl;
+                            preview?.classList.remove('hidden');
+                            setStatus('Nota vocale pronta.');
+                        });
+
+                        recorder.start();
+                        setStatus('Registrazione in corso...', true);
+                    } catch (error) {
+                        stopStream();
+                        setStatus('Microfono non disponibile o permesso negato.');
+                    }
+                };
+
+                const stopRecording = (event) => {
+                    event.preventDefault();
+                    if (button.hasPointerCapture?.(event.pointerId)) {
+                        button.releasePointerCapture(event.pointerId);
+                    }
+
+                    if (recorder?.state === 'recording') {
+                        recorder.stop();
+                    }
+                };
+
+                button.addEventListener('pointerdown', startRecording);
+                button.addEventListener('pointerup', stopRecording);
+                button.addEventListener('pointercancel', stopRecording);
+                button.addEventListener('lostpointercapture', (event) => {
+                    if (recorder?.state === 'recording') {
+                        stopRecording(event);
+                    }
+                });
+                clearButton?.addEventListener('click', clearRecording);
             }
 
             async function pollConversation() {
@@ -973,6 +1141,7 @@
             }
 
             bindMessageTemplates();
+            bindVoiceRecorder();
             initFollowUpPanel();
             scrollMessagesToBottom();
             window.addEventListener('load', scrollMessagesToBottom, { once: true });
