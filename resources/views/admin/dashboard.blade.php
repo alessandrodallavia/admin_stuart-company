@@ -561,22 +561,22 @@
 
                                             <input id="voice-attachment" name="attachments[]" type="file" accept="audio/*" class="hidden">
 
-                                            <div id="voice-recorder" class="hidden min-w-0 flex-col gap-6 md:flex md:min-w-[260px]">
+                                            <div id="voice-recorder" class="min-w-0 md:min-w-[260px]">
                                                 <button
                                                     type="button"
                                                     id="voice-record-button"
                                                     style="touch-action: none;"
-                                                    class="rounded-10 bg-bullstar px-24 py-12 text-14 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover active:bg-whatsapp disabled:cursor-not-allowed disabled:bg-gray disabled:text-white/70"
+                                                    class="w-full rounded-10 bg-bullstar px-24 py-12 text-14 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover active:bg-whatsapp disabled:cursor-not-allowed disabled:bg-gray disabled:text-white/70 md:w-auto"
                                                 >
                                                     Tieni premuto per nota vocale
                                                 </button>
-                                                <div id="voice-preview" class="hidden min-w-0 rounded-10 border border-gray-mid bg-gray-light px-10 py-8">
+                                                <div id="voice-preview" class="mt-6 hidden min-w-0 rounded-10 border border-gray-mid bg-gray-light px-10 py-8">
                                                     <audio id="voice-preview-audio" controls class="w-full max-w-[220px]"></audio>
                                                     <button type="button" id="voice-clear-button" class="mt-6 text-11 font-extrabold uppercase tracking-normal text-red-700">
                                                         Rimuovi audio
                                                     </button>
                                                 </div>
-                                                <p id="voice-record-status" class="text-11 font-bold leading-[16px] text-gray"></p>
+                                                <p id="voice-record-status" class="mt-4 text-11 font-bold leading-[16px] text-gray"></p>
                                             </div>
 
                                             <button
