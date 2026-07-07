@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
+use Symfony\Component\Process\Process;
 
 class WhatsappConversationController extends Controller
 {
@@ -282,7 +283,7 @@ class WhatsappConversationController extends Controller
 
                 if (empty($mediaAttributes['media_id'])) {
                     return back()
-                        ->withErrors(['message' => 'Upload allegato su WhatsApp fallito.'])
+                        ->withErrors(['message' => $mediaAttributes['error_message'] ?? 'Upload allegato su WhatsApp fallito.'])
                         ->withInput();
                 }
 
@@ -507,6 +508,7 @@ class WhatsappConversationController extends Controller
                 'media_mime_type' => $mimeType,
                 'media_filename' => $originalName,
                 'media_size' => filesize(Storage::disk(self::MEDIA_DISK)->path($localPath)),
+                'error_message' => 'Upload allegato su WhatsApp fallito: '.($response->json('error.message') ?: 'formato non accettato o errore sconosciuto'),
             ];
         }
 
@@ -525,6 +527,39 @@ class WhatsappConversationController extends Controller
         $mimeType = $attachment->getMimeType() ?: 'application/octet-stream';
         $filename = $attachment->getClientOriginalName() ?: 'allegato';
         $path = $attachment->getRealPath();
+
+        if ($mimeType === 'audio/webm' || strtolower(pathinfo($filename, PATHINFO_EXTENSION)) === 'webm') {
+            $convertedPath = storage_path('app/private/whatsapp-upload-'.Str::uuid().'.ogg');
+            $process = new Process([
+                'ffmpeg',
+                '-y',
+                '-i',
+                $path,
+                '-vn',
+                '-c:a',
+                'libopus',
+                '-b:a',
+                '32k',
+                $convertedPath,
+            ]);
+            $process->setTimeout(30);
+            $process->run();
+
+            if ($process->isSuccessful() && file_exists($convertedPath)) {
+                return [
+                    'path' => $convertedPath,
+                    'mime_type' => 'audio/ogg',
+                    'filename' => pathinfo($filename, PATHINFO_FILENAME).'.ogg',
+                    'temporary' => true,
+                ];
+            }
+
+            Log::warning('Conversione nota vocale WhatsApp fallita', [
+                'mime_type' => $mimeType,
+                'filename' => $filename,
+                'error' => $process->getErrorOutput(),
+            ]);
+        }
 
         if (! str_starts_with($mimeType, 'image/') || in_array($mimeType, ['image/jpeg', 'image/png'], true)) {
             return [

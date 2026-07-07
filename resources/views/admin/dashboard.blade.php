@@ -561,12 +561,13 @@
 
                                             <input id="voice-attachment" name="attachments[]" type="file" accept="audio/*" class="hidden">
 
-                                            <div id="voice-recorder" class="min-w-0 md:min-w-[260px]">
+                                            <div id="voice-recorder" class="relative min-w-0 select-none md:min-w-[260px]">
                                                 <button
                                                     type="button"
                                                     id="voice-record-button"
-                                                    style="touch-action: none;"
-                                                    class="w-full rounded-10 bg-bullstar px-24 py-12 text-14 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover active:bg-whatsapp disabled:cursor-not-allowed disabled:bg-gray disabled:text-white/70 md:w-auto"
+                                                    style="touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;"
+                                                    class="w-full select-none rounded-10 bg-bullstar px-24 py-12 text-14 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover active:scale-[0.98] active:bg-whatsapp disabled:cursor-not-allowed disabled:bg-gray disabled:text-white/70 md:w-auto"
+                                                    draggable="false"
                                                 >
                                                     Tieni premuto per nota vocale
                                                 </button>
@@ -576,7 +577,7 @@
                                                         Rimuovi audio
                                                     </button>
                                                 </div>
-                                                <p id="voice-record-status" class="mt-4 text-11 font-bold leading-[16px] text-gray"></p>
+                                                <p id="voice-record-status" class="pointer-events-none absolute left-0 top-full mt-2 text-11 font-bold leading-[16px] text-gray"></p>
                                             </div>
 
                                             <button
@@ -1096,6 +1097,8 @@
                 button.addEventListener('pointerdown', startRecording);
                 button.addEventListener('pointerup', stopRecording);
                 button.addEventListener('pointercancel', stopRecording);
+                button.addEventListener('contextmenu', (event) => event.preventDefault());
+                button.addEventListener('selectstart', (event) => event.preventDefault());
                 button.addEventListener('lostpointercapture', (event) => {
                     if (recorder?.state === 'recording') {
                         stopRecording(event);
