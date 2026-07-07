@@ -467,6 +467,11 @@ class WhatsappConversationController extends Controller
     private function uploadAttachmentForWhatsapp(WhatsappConversation $conversation, $attachment): array
     {
         $preparedFile = $this->prepareAttachmentForWhatsapp($attachment);
+
+        if (! empty($preparedFile['error_message'])) {
+            return $preparedFile;
+        }
+
         $mimeType = $preparedFile['mime_type'];
         $originalName = $preparedFile['filename'];
         $safeName = Str::limit(Str::slug(pathinfo($originalName, PATHINFO_FILENAME)), 80, '');
@@ -529,24 +534,7 @@ class WhatsappConversationController extends Controller
 
         if ($mimeType === 'audio/webm' || strtolower(pathinfo($filename, PATHINFO_EXTENSION)) === 'webm') {
             $convertedPath = storage_path('app/private/whatsapp-upload-'.Str::uuid().'.ogg');
-            $conversionOutput = [];
-            $conversionExitCode = 1;
-
-            if (function_exists('exec') && ! in_array('exec', array_map('trim', explode(',', (string) ini_get('disable_functions'))), true)) {
-                exec(implode(' ', [
-                    'ffmpeg',
-                    '-y',
-                    '-i',
-                    escapeshellarg($path),
-                    '-vn',
-                    '-c:a',
-                    'libopus',
-                    '-b:a',
-                    '32k',
-                    escapeshellarg($convertedPath),
-                    '2>&1',
-                ]), $conversionOutput, $conversionExitCode);
-            }
+            [$conversionExitCode, $conversionOutput] = $this->convertWebmAudioToOgg($path, $convertedPath);
 
             if ($conversionExitCode === 0 && file_exists($convertedPath)) {
                 return [
@@ -562,6 +550,13 @@ class WhatsappConversationController extends Controller
                 'filename' => $filename,
                 'error' => implode("\n", $conversionOutput) ?: 'Funzione exec non disponibile.',
             ]);
+
+            return [
+                'path' => $path,
+                'mime_type' => 'application/octet-stream',
+                'filename' => pathinfo($filename, PATHINFO_FILENAME).'.webm',
+                'temporary' => false,
+            ];
         }
 
         if (! str_starts_with($mimeType, 'image/') || in_array($mimeType, ['image/jpeg', 'image/png'], true)) {
@@ -612,6 +607,70 @@ class WhatsappConversationController extends Controller
             'filename' => pathinfo($filename, PATHINFO_FILENAME).'.jpg',
             'temporary' => true,
         ];
+    }
+
+    private function convertWebmAudioToOgg(string $sourcePath, string $targetPath): array
+    {
+        $disabledFunctions = array_map('trim', explode(',', (string) ini_get('disable_functions')));
+        $binaries = ['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg'];
+        $lastOutput = '';
+
+        foreach ($binaries as $binary) {
+            $command = implode(' ', [
+                escapeshellcmd($binary),
+                '-y',
+                '-i',
+                escapeshellarg($sourcePath),
+                '-vn',
+                '-c:a',
+                'libopus',
+                '-b:a',
+                '32k',
+                escapeshellarg($targetPath),
+                '2>&1',
+            ]);
+
+            if (function_exists('exec') && ! in_array('exec', $disabledFunctions, true)) {
+                $output = [];
+                $exitCode = 1;
+                exec($command, $output, $exitCode);
+                $lastOutput = implode("\n", $output);
+
+                if ($exitCode === 0 && file_exists($targetPath)) {
+                    return [0, $lastOutput];
+                }
+            }
+
+            if (function_exists('shell_exec') && ! in_array('shell_exec', $disabledFunctions, true)) {
+                $lastOutput = (string) shell_exec($command);
+
+                if (file_exists($targetPath)) {
+                    return [0, $lastOutput];
+                }
+            }
+
+            if (function_exists('system') && ! in_array('system', $disabledFunctions, true)) {
+                ob_start();
+                system($command, $exitCode);
+                $lastOutput = (string) ob_get_clean();
+
+                if ($exitCode === 0 && file_exists($targetPath)) {
+                    return [0, $lastOutput];
+                }
+            }
+
+            if (function_exists('passthru') && ! in_array('passthru', $disabledFunctions, true)) {
+                ob_start();
+                passthru($command, $exitCode);
+                $lastOutput = (string) ob_get_clean();
+
+                if ($exitCode === 0 && file_exists($targetPath)) {
+                    return [0, $lastOutput];
+                }
+            }
+        }
+
+        return [1, $lastOutput ?: 'Nessuna funzione shell disponibile o ffmpeg non trovato.'];
     }
 
     private function buildOutgoingPayload(WhatsappConversation $conversation, string $messageType, string $body, array $mediaAttributes): array

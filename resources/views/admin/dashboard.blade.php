@@ -992,9 +992,10 @@
                 let previewUrl = null;
 
                 const recordingMimeType = () => [
+                    'audio/mp4',
+                    'audio/aac',
                     'audio/ogg;codecs=opus',
                     'audio/webm;codecs=opus',
-                    'audio/mp4',
                 ].find((type) => MediaRecorder.isTypeSupported(type)) || '';
 
                 const setStatus = (message, active = false) => {
@@ -1058,7 +1059,9 @@
                             }
 
                             const blobType = recorder.mimeType || mimeType || 'audio/ogg';
-                            const extension = blobType.includes('webm') ? 'webm' : (blobType.includes('mp4') ? 'm4a' : 'ogg');
+                            const extension = blobType.includes('aac')
+                                ? 'aac'
+                                : (blobType.includes('webm') ? 'webm' : (blobType.includes('mp4') ? 'm4a' : 'ogg'));
                             const blob = new Blob(chunks, { type: blobType });
                             const file = new File([blob], `nota-vocale-${Date.now()}.${extension}`, { type: blobType });
                             const transfer = new DataTransfer();
