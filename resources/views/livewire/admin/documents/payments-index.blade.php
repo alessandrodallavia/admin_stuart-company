@@ -1,4 +1,4 @@
-<div>
+<div class="font-montserrat">
     <section class="mb-16 flex flex-wrap gap-8">
         <a href="{{ route('admin.documents.index') }}" class="rounded-10 border border-gray-mid bg-white px-12 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">Documenti</a>
         @foreach (['unpaid' => 'Da pagare', 'partial' => 'Parziali', 'paid' => 'Pagati'] as $value => $label)
@@ -7,7 +7,7 @@
         <button type="button" wire:click="filter('')" class="rounded-10 border px-12 py-8 text-12 font-extrabold uppercase tracking-normal transition {{ $status === '' ? 'border-bullstar bg-bullstar text-white' : 'border-gray-mid bg-white hover:border-black-nike' }}">Tutti</button>
     </section>
 
-    <section class="overflow-hidden rounded-10 border border-gray-mid bg-white">
+    <section class="document-surface overflow-hidden">
         <div class="border-b border-gray-mid px-16 py-12">
             <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Scadenziario Livewire</p>
             <p class="mt-4 text-14 font-bold text-black-nike">{{ $payments->total() }} scadenze trovate</p>

@@ -14,7 +14,7 @@ class Index extends Component
 
     public function render()
     {
-        $type = request()->string('type')->toString();
+        $type = request()->string('type')->toString() ?: 'offline_order';
         $status = $type !== '' ? request()->string('status')->toString() : '';
         $paymentStatus = request()->string('payment_status')->toString();
         $search = trim(request()->string('search')->toString() ?: request()->string('q')->toString());

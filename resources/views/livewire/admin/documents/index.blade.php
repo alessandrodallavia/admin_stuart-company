@@ -15,71 +15,44 @@
         ]]);
 @endphp
 
-<div>
-    <section class="mb-16 grid gap-12 md:grid-cols-3">
-        <article class="rounded-10 border border-gray-mid bg-white p-16">
-            <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Documenti</p>
-            <p class="mt-8 text-38 font-black leading-none tracking-normal">{{ $stats['total'] }}</p>
-        </article>
-        <article class="rounded-10 border border-gray-mid bg-white p-16">
-            <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Scaduti</p>
-            <p class="mt-8 text-38 font-black leading-none tracking-normal">{{ $stats['overdue'] }}</p>
-        </article>
-        <article class="rounded-10 border border-gray-mid bg-white p-16">
-            <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Fatture</p>
-            <p class="mt-8 text-38 font-black leading-none tracking-normal">{{ $stats['by_type']['invoice'] ?? 0 }}</p>
-        </article>
-    </section>
-
-    <section class="mb-16 overflow-hidden rounded-10 border border-gray-mid bg-white">
-        <div class="border-b border-gray-mid px-16 py-12">
-            <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Aree documenti</p>
-            <p class="mt-4 text-14 font-bold text-black-nike">Archivio separato per flusso amministrativo</p>
+<div class="font-montserrat">
+    <section class="mb-24 flex flex-col gap-16 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <h2 class="text-24 font-semibold text-gray-800">{{ $activeArea['label'] ?? 'Documenti' }}</h2>
+            <p class="mt-4 text-14 text-gray">{{ $activeArea['description'] ?? 'Archivio documenti' }}</p>
         </div>
-        <div class="grid gap-px bg-gray-mid md:grid-cols-2 xl:grid-cols-6">
-            <a
-                href="{{ route('admin.documents.index', request()->except(['type', 'page'])) }}"
-                class="bg-white p-10 transition hover:bg-gray-light {{ $currentType === '' ? 'ring-2 ring-inset ring-bullstar' : '' }}"
-            >
-                <p class="text-12 font-extrabold uppercase tracking-normal {{ $currentType === '' ? 'text-bullstar' : 'text-gray' }}">Tutti</p>
-                <p class="mt-6 text-20 font-black leading-none tracking-normal">{{ $stats['total'] }}</p>
-                <p class="mt-4 text-12 font-semibold text-gray">Vista raggruppata</p>
+        <div class="flex flex-wrap items-center gap-8">
+            @if ($currentType === 'invoice')
+                <a href="{{ route('admin.documents.import-xml') }}" class="rounded-md border border-gray-mid bg-gray-light px-16 py-10 text-14 font-medium text-gray-800 transition hover:bg-gray-200">Importa XML</a>
+                <form id="sdi-export-form" method="GET" action="{{ route('admin.documents.export-sdi') }}">
+                    <button type="submit" class="rounded-md border border-gray-mid bg-gray-light px-16 py-10 text-14 font-medium text-gray-800 transition hover:bg-gray-200">Invia allo SDI</button>
+                </form>
+            @endif
+            <a href="{{ route('admin.documents.create', ['type' => $currentType]) }}" class="flex items-center gap-8 rounded-md bg-bullstar px-16 py-10 text-14 font-medium text-white shadow transition hover:bg-bullstar-hover">
+                <span class="text-18 leading-none">+</span>
+                <span>Crea nuovo {{ strtolower($activeArea['label'] ?? 'documento') }}</span>
             </a>
-            @foreach ($documentAreas as $area)
-                @php
-                    $areaCount = $stats['by_type'][$area['type']] ?? 0;
-                    $areaTotal = $stats['totals_by_type'][$area['type']] ?? 0;
-                @endphp
-                <a
-                    href="{{ route('admin.documents.index', array_merge(request()->except(['type', 'page']), ['type' => $area['type']])) }}"
-                    class="bg-white p-10 transition hover:bg-gray-light {{ $currentType === $area['type'] ? 'ring-2 ring-inset ring-bullstar' : '' }}"
-                >
-                    <p class="text-12 font-extrabold uppercase tracking-normal {{ $currentType === $area['type'] ? 'text-bullstar' : 'text-gray' }}">{{ $area['label'] }}</p>
-                    <p class="mt-6 text-20 font-black leading-none tracking-normal">{{ $areaCount }}</p>
-                    <p class="mt-4 text-12 font-semibold text-gray">€ {{ number_format((float) $areaTotal, 2, ',', '.') }}</p>
-                </a>
-            @endforeach
         </div>
     </section>
 
-    <section class="mb-16 overflow-hidden rounded-10 border border-gray-mid bg-white">
-        <form method="GET" action="{{ route('admin.documents.index') }}" data-auto-filter-form class="grid gap-12 p-16 {{ $isDeliveryNoteArea ? 'xl:grid-cols-[160px_minmax(220px,1fr)_180px_auto]' : 'xl:grid-cols-[160px_minmax(220px,1fr)_180px_180px_auto]' }} xl:items-end">
+    <section class="mb-24">
+        <form method="GET" action="{{ route('admin.documents.index') }}" data-auto-filter-form class="grid gap-12 {{ $isDeliveryNoteArea ? 'lg:grid-cols-[180px_minmax(260px,1fr)_180px_auto]' : 'lg:grid-cols-[180px_minmax(260px,1fr)_180px_180px_auto]' }} lg:items-center">
             @if ($currentType !== '')
                 <input type="hidden" name="type" value="{{ $currentType }}">
             @endif
             <label class="block">
-                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Numero documento</span>
-                <input name="search_number" value="{{ $searchNumber }}" data-auto-filter-input type="search" placeholder="OFF-1 o 1" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                <span class="sr-only">Numero documento</span>
+                <input name="search_number" value="{{ $searchNumber }}" data-auto-filter-input type="search" placeholder="Cerca numero..." class="w-full rounded-md border-gray-400 px-16 py-10 text-14 shadow-sm focus:border-bullstar focus:ring-bullstar">
             </label>
             <label class="block">
-                <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Cerca</span>
-                <input name="search" value="{{ $search }}" data-auto-filter-input type="search" placeholder="Cliente, email, telefono, CF/P.IVA, città" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                <span class="sr-only">Cerca</span>
+                <input name="search" value="{{ $search }}" data-auto-filter-input type="search" placeholder="Cerca per cliente..." class="w-full rounded-md border-gray-400 px-16 py-10 text-14 shadow-sm focus:border-bullstar focus:ring-bullstar">
             </label>
             @if ($currentType !== '')
                 <label class="block">
-                    <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Stato</span>
-                    <select name="status" data-auto-filter-select class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
-                        <option value="">Tutti</option>
+                    <span class="sr-only">Stato</span>
+                    <select name="status" data-auto-filter-select class="w-full rounded-md border-gray-400 px-12 py-10 text-14 shadow-sm focus:border-bullstar focus:ring-bullstar">
+                        <option value="">Tutti gli stati</option>
                         @foreach ($statuses as $value => $label)
                             <option value="{{ $value }}" @selected($currentStatus === $value)>{{ $label }}</option>
                         @endforeach
@@ -88,9 +61,9 @@
             @endif
             @unless ($isDeliveryNoteArea)
                 <label class="block">
-                    <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Pagamento</span>
-                    <select name="payment_status" data-auto-filter-select class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
-                        <option value="">Tutti</option>
+                    <span class="sr-only">Pagamento</span>
+                    <select name="payment_status" data-auto-filter-select class="w-full rounded-md border-gray-400 px-12 py-10 text-14 shadow-sm focus:border-bullstar focus:ring-bullstar">
+                        <option value="">Tutti i pagamenti</option>
                         @foreach ($paymentStatuses as $value => $label)
                             <option value="{{ $value }}" @selected($currentPaymentStatus === $value)>{{ $label }}</option>
                         @endforeach
@@ -98,34 +71,17 @@
                 </label>
             @endunless
             <div class="flex gap-8">
-                <a href="{{ $currentType === '' ? route('admin.documents.index') : route('admin.documents.index', ['type' => $currentType]) }}" class="rounded-10 border border-gray-mid px-16 py-10 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">Reset</a>
+                <a href="{{ route('admin.documents.index', ['type' => $currentType]) }}" class="rounded-md border border-gray-mid bg-white px-16 py-10 text-14 font-medium text-gray transition hover:bg-gray-light">Reset</a>
             </div>
         </form>
     </section>
 
-    <section class="overflow-hidden rounded-10 border border-gray-mid bg-white">
-        <div class="flex flex-col gap-12 border-b border-gray-mid px-16 py-12 md:flex-row md:items-center md:justify-between">
-            <div>
-                <p class="text-12 font-extrabold uppercase tracking-normal text-gray">{{ $currentType === '' ? 'Archivio per area' : $activeArea['label'] ?? 'Archivio' }}</p>
-                <p class="mt-4 text-14 font-bold text-black-nike">{{ $documents->total() }} documenti trovati{{ $currentType === '' ? ', suddivisi per tipologia' : '' }}</p>
-            </div>
-            <div class="flex flex-wrap gap-8">
-                @if ($currentType === 'invoice')
-                    <a href="{{ route('admin.documents.payments') }}" class="rounded-10 border border-gray-mid px-12 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">Pagamenti</a>
-                    <a href="{{ route('admin.documents.import-xml') }}" class="rounded-10 border border-gray-mid px-12 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">Importa XML</a>
-                    <form id="sdi-export-form" method="GET" action="{{ route('admin.documents.export-sdi') }}">
-                        <button type="submit" class="rounded-10 border border-gray-mid px-12 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">Export SDI Aruba</button>
-                    </form>
-                @endif
-                @if ($currentType !== '')
-                    <a href="{{ route('admin.documents.create', ['type' => $currentType]) }}" class="rounded-10 bg-bullstar px-12 py-8 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">+ {{ $activeArea['label'] ?? 'Documento' }}</a>
-                @endif
-            </div>
-        </div>
+    <section class="document-surface overflow-hidden">
+        <div class="border-b border-gray-mid px-16 py-12 text-14 text-gray">{{ $documents->total() }} documenti trovati</div>
 
         <div class="overflow-x-auto">
             <table class="w-full {{ $isDeliveryNoteArea ? 'min-w-[840px]' : 'min-w-[1000px]' }} text-left">
-                <thead class="border-b border-gray-mid bg-gray-light text-11 font-extrabold uppercase tracking-normal text-gray">
+                <thead class="border-b border-gray-mid bg-gray-100 text-12 font-semibold text-gray">
                     <tr>
                         <th class="w-48 px-12 py-12">
                             <input type="checkbox" data-toggle-sdi-selection class="rounded border-gray-mid text-bullstar focus:ring-bullstar" aria-label="Seleziona tutte le fatture esportabili">
@@ -167,7 +123,7 @@
                             @endif
 
                             @foreach ($group['documents'] as $document)
-                                <tr>
+                                <tr class="text-14 text-gray-700 transition hover:bg-gray-50">
                                     <td class="px-12 py-12 align-top">
                                         @if ($document->type === 'invoice' && ! in_array($document->status, ['draft', 'cancelled'], true))
                                             <input form="sdi-export-form" name="document_ids[]" value="{{ $document->id }}" type="checkbox" data-sdi-selection class="rounded border-gray-mid text-bullstar focus:ring-bullstar" aria-label="Seleziona {{ $document->type_label }} {{ $document->display_code }} per export SDI">
@@ -176,21 +132,21 @@
                                         @endif
                                     </td>
                                     <td class="px-12 py-12">
-                                        <p class="text-14 font-black">{{ $document->type_label }} {{ $document->display_code }}</p>
-                                        <p class="mt-4 text-11 font-semibold text-gray">{{ optional($document->document_date)->format('d/m/Y') }} · {{ $document->items_count }} righe</p>
+                                        <p class="text-14 font-medium text-gray-800">{{ $document->type_label }} {{ $document->display_code }}</p>
+                                        <p class="mt-4 text-12 font-normal text-gray">{{ optional($document->document_date)->format('d/m/Y') }} · {{ $document->items_count }} righe</p>
                                     </td>
                                     <td class="px-12 py-12">
-                                        <p class="max-w-[260px] truncate text-14 font-bold">{{ $document->customer_name }}</p>
-                                        <p class="mt-4 max-w-[260px] truncate text-11 font-semibold text-gray">{{ $document->customer_email ?: $document->customer_phone ?: 'Contatto non indicato' }}</p>
+                                        <p class="max-w-[260px] truncate text-14 font-normal text-gray-700">{{ $document->customer_name }}</p>
+                                        <p class="mt-4 max-w-[260px] truncate text-12 font-normal text-gray">{{ $document->customer_email ?: $document->customer_phone ?: 'Contatto non indicato' }}</p>
                                     </td>
-                                    <td class="px-12 py-12"><span class="rounded-full {{ $document->status_badge_class }} px-10 py-6 text-11 font-extrabold uppercase tracking-normal">{{ $document->status_label }}</span></td>
+                                    <td class="px-12 py-12"><span class="rounded-full {{ $document->status_badge_class }} px-10 py-6 text-12 font-medium">{{ $document->status_label }}</span></td>
                                     @unless ($isDeliveryNoteArea)
                                         <td class="px-12 py-12">
                                             @unless ($document->type === 'delivery_note')
-                                                <span class="rounded-full {{ $document->payment_status === 'paid' ? 'bg-whatsapp/10 text-whatsapp' : 'bg-gray-light text-gray' }} px-10 py-6 text-11 font-extrabold uppercase tracking-normal">{{ $document->payment_status_label }}</span>
+                                                <span class="rounded-full {{ $document->payment_status === 'paid' ? 'bg-whatsapp/10 text-whatsapp' : 'bg-gray-light text-gray' }} px-10 py-6 text-12 font-medium">{{ $document->payment_status_label }}</span>
                                             @endunless
                                         </td>
-                                        <td class="px-12 py-12 text-right text-14 font-black">
+                                        <td class="px-12 py-12 text-right text-14 font-normal">
                                             @unless ($document->type === 'delivery_note')
                                                 € {{ number_format((float) $document->total, 2, ',', '.') }}
                                             @endunless
@@ -198,16 +154,16 @@
                                     @endunless
                                     <td class="px-12 py-12 text-right">
                                         <div class="flex justify-end gap-6">
-                                            <a href="{{ route('admin.documents.preview', $document) }}" target="_blank" class="rounded-10 border border-gray-mid px-10 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">PDF</a>
+                                            <a href="{{ route('admin.documents.preview', $document) }}" target="_blank" class="rounded-md border border-gray-mid px-10 py-8 text-12 font-medium transition hover:bg-gray-light">PDF</a>
                                             @if ($document->type === 'invoice')
-                                                <a href="{{ route('admin.documents.xml', $document) }}" class="rounded-10 border border-gray-mid px-10 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">XML</a>
+                                                <a href="{{ route('admin.documents.xml', $document) }}" class="rounded-md border border-gray-mid px-10 py-8 text-12 font-medium transition hover:bg-gray-light">XML</a>
                                             @endif
                                             <form method="POST" action="{{ route('admin.documents.duplicate', $document) }}">
                                                 @csrf
                                                 <input type="hidden" name="type" value="{{ $document->type }}">
-                                                <button type="submit" class="rounded-10 border border-gray-mid px-10 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">Copia</button>
+                                                <button type="submit" class="rounded-md border border-gray-mid px-10 py-8 text-12 font-medium transition hover:bg-gray-light">Copia</button>
                                             </form>
-                                            <a href="{{ route('admin.documents.show', $document) }}" class="rounded-10 border border-gray-mid px-12 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-bullstar hover:text-bullstar">Apri</a>
+                                            <a href="{{ route('admin.documents.show', $document) }}" class="rounded-md px-12 py-8 text-12 font-medium text-bullstar transition hover:bg-bullstar/10">Vedi</a>
                                         </div>
                                     </td>
                                 </tr>

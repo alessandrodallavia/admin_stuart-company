@@ -5,6 +5,7 @@
 @section('active_nav', 'documents')
 
 @section('content')
+    <div class="font-montserrat">
     <section class="mb-16 flex flex-col gap-12 md:flex-row md:items-center md:justify-between">
         <div class="flex flex-wrap gap-8">
             @php
@@ -308,4 +309,5 @@
             @endif
         </aside>
     </section>
+    </div>
 @endsection

@@ -290,6 +290,7 @@ class DocumentController extends Controller
             'customer_province' => ['nullable', 'string', 'max:10'],
             'customer_postal_code' => ['nullable', 'string', 'max:20'],
             'customer_country' => ['required', 'string', 'size:2'],
+            'shipping_same_as_customer' => ['nullable', 'boolean'],
             'shipping_name' => ['nullable', 'string', 'max:255'],
             'shipping_phone' => ['nullable', 'string', 'max:40'],
             'shipping_address' => ['nullable', 'string', 'max:255'],
@@ -351,6 +352,23 @@ class DocumentController extends Controller
         $data['customer_recipient_code'] = Str::upper(trim((string) ($data['customer_recipient_code'] ?? ''))) ?: null;
         $data['customer_province'] = Str::upper(trim((string) ($data['customer_province'] ?? ''))) ?: null;
         $data['customer_country'] = Str::upper($data['customer_country']);
+
+        if ((bool) ($data['shipping_same_as_customer'] ?? false)) {
+            foreach ([
+                'name',
+                'phone',
+                'address',
+                'street_number',
+                'city',
+                'province',
+                'postal_code',
+                'country',
+            ] as $field) {
+                $data['shipping_'.$field] = $data['customer_'.$field] ?? null;
+            }
+        }
+
+        unset($data['shipping_same_as_customer']);
         $data['shipping_province'] = Str::upper(trim((string) ($data['shipping_province'] ?? ''))) ?: null;
         $data['shipping_country'] = Str::upper(trim((string) ($data['shipping_country'] ?? ''))) ?: null;
 

@@ -24,9 +24,34 @@
     $transportCareOptions = ['Mittente', 'Destinatario', 'Vettore'];
     $goodsAppearanceOptions = ['Cartoni', 'Scatole', 'Bancale', 'Buste', 'Colli', 'A vista'];
     $carrierOptions = ['BRT', 'SDA', 'DHL', 'GLS', 'TNT', 'UPS', 'Ritiro cliente', 'Nostro mezzo'];
+    $shippingSameAsCustomer = old('shipping_same_as_customer');
+
+    if ($shippingSameAsCustomer === null) {
+        $shippingValues = collect([
+            $document->shipping_name,
+            $document->shipping_phone,
+            $document->shipping_address,
+            $document->shipping_street_number,
+            $document->shipping_city,
+            $document->shipping_province,
+            $document->shipping_postal_code,
+            $document->shipping_country,
+        ]);
+        $shippingSameAsCustomer = $shippingValues->every(fn ($value) => blank($value))
+            || (
+                $document->shipping_name === $document->customer_name
+                && $document->shipping_phone === $document->customer_phone
+                && $document->shipping_address === $document->customer_address
+                && $document->shipping_street_number === $document->customer_street_number
+                && $document->shipping_city === $document->customer_city
+                && $document->shipping_province === $document->customer_province
+                && $document->shipping_postal_code === $document->customer_postal_code
+                && $document->shipping_country === $document->customer_country
+            );
+    }
 @endphp
 
-<form method="POST" action="{{ $document->exists ? route('admin.documents.update', $document) : route('admin.documents.store') }}" class="space-y-16" data-document-form>
+<form method="POST" action="{{ $document->exists ? route('admin.documents.update', $document) : route('admin.documents.store') }}" class="space-y-24 font-montserrat" data-document-form>
     @csrf
     @if ($document->exists)
         @method('PATCH')
@@ -139,11 +164,18 @@
     </section>
 
     <section class="rounded-10 border border-gray-mid bg-white p-16">
-        <div class="mb-12">
-            <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Destinazione</p>
-            <h2 class="mt-4 text-20 font-black leading-tight">Indirizzo spedizione</h2>
+        <div class="mb-12 flex flex-col gap-10 md:flex-row md:items-center md:justify-between">
+            <div>
+                <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Destinazione</p>
+                <h2 class="mt-4 text-20 font-black leading-tight">Indirizzo spedizione</h2>
+            </div>
+            <label class="flex items-center gap-8 rounded-md border border-gray-mid bg-gray-light px-12 py-10 text-13 font-medium text-gray-700">
+                <input type="hidden" name="shipping_same_as_customer" value="0">
+                <input name="shipping_same_as_customer" value="1" type="checkbox" data-shipping-same-as-customer @checked((bool) $shippingSameAsCustomer) class="rounded border-gray-mid text-bullstar focus:ring-bullstar">
+                <span>Usa lo stesso indirizzo dell’intestazione</span>
+            </label>
         </div>
-        <div class="grid gap-12 lg:grid-cols-3">
+        <div class="grid gap-12 lg:grid-cols-3" data-shipping-fields>
             <label class="block lg:col-span-2">
                 <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Destinatario</span>
                 <input name="shipping_name" value="{{ old('shipping_name', $document->shipping_name) }}" maxlength="255" placeholder="{{ $document->customer_name ?: 'Come intestazione' }}" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
@@ -443,9 +475,38 @@
         });
 
         const form = document.querySelector('[data-document-form]');
+        const shippingSameAsCustomer = form?.querySelector('[data-shipping-same-as-customer]');
+        const shippingFieldNames = ['name', 'phone', 'address', 'street_number', 'city', 'province', 'postal_code', 'country'];
         const statusesByType = @json(\App\Models\AdminDocument::STATUSES);
         const money = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' });
         let lastSyncedSinglePayment = null;
+
+        const syncShippingFields = () => {
+            const shouldSync = shippingSameAsCustomer?.checked ?? false;
+
+            shippingFieldNames.forEach((field) => {
+                const customerField = form?.elements.namedItem(`customer_${field}`);
+                const shippingField = form?.elements.namedItem(`shipping_${field}`);
+
+                if (!shippingField) {
+                    return;
+                }
+
+                if (shouldSync) {
+                    shippingField.value = customerField?.value ?? '';
+                }
+
+                shippingField.readOnly = shouldSync;
+                shippingField.classList.toggle('bg-gray-light', shouldSync);
+                shippingField.classList.toggle('text-gray', shouldSync);
+            });
+        };
+
+        shippingSameAsCustomer?.addEventListener('change', syncShippingFields);
+        shippingFieldNames.forEach((field) => {
+            form?.elements.namedItem(`customer_${field}`)?.addEventListener('input', syncShippingFields);
+        });
+        syncShippingFields();
 
         const numberValue = (input) => Number.parseFloat(String(input?.value || '0').replace(',', '.')) || 0;
         const roundMoney = (value) => {

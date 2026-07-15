@@ -17,7 +17,7 @@ class AdminDocumentWorkflowTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_documents_index_is_grouped_by_document_area(): void
+    public function test_documents_index_opens_offline_orders_by_default(): void
     {
         $admin = AdminUser::create([
             'name' => 'Admin Test',
@@ -64,11 +64,10 @@ class AdminDocumentWorkflowTest extends TestCase
         $this->actingAs($admin, 'admin')
             ->get('/documents')
             ->assertOk()
-            ->assertSee('Aree documenti')
-            ->assertSee('Archivio per area')
-            ->assertSee('Preventivo PREV-1')
-            ->assertSee('Fattura FPR 7/26')
-            ->assertSee('Apri area');
+            ->assertSee('Ordine offline')
+            ->assertSee('Crea nuovo ordine offline')
+            ->assertDontSee('Preventivo PREV-1')
+            ->assertDontSee('Fattura FPR 7/26');
     }
 
     public function test_documents_area_only_shows_create_button_for_current_type(): void
@@ -84,9 +83,9 @@ class AdminDocumentWorkflowTest extends TestCase
         $this->actingAs($admin, 'admin')
             ->get('/documents?type=invoice')
             ->assertOk()
-            ->assertSee('+ Fattura')
-            ->assertDontSee('+ Ordine offline')
-            ->assertDontSee('+ Preventivo');
+            ->assertSee('Crea nuovo fattura')
+            ->assertDontSee('Crea nuovo ordine offline')
+            ->assertDontSee('Crea nuovo preventivo');
     }
 
     public function test_documents_filters_are_contextual_and_auto_submitted(): void
@@ -151,16 +150,15 @@ class AdminDocumentWorkflowTest extends TestCase
         $this->actingAs($admin, 'admin')
             ->get('/documents?type=invoice')
             ->assertOk()
-            ->assertSee('Pagamenti')
             ->assertSee('Importa XML')
-            ->assertSee('Export SDI Aruba');
+            ->assertSee('Invia allo SDI')
+            ->assertSee('Scadenze pagamenti');
 
         $this->actingAs($admin, 'admin')
             ->get('/documents?type=offline_order')
             ->assertOk()
-            ->assertDontSee('Pagamenti')
             ->assertDontSee('Importa XML')
-            ->assertDontSee('Export SDI Aruba');
+            ->assertDontSee('Invia allo SDI');
     }
 
     public function test_paid_order_payment_is_preserved_when_generating_invoice(): void
@@ -626,5 +624,52 @@ class AdminDocumentWorkflowTest extends TestCase
             ->assertOk()
             ->assertSee('Collega documento esistente')
             ->assertSee('DDT DDT-10');
+    }
+
+    public function test_shipping_address_can_be_copied_from_customer_on_save(): void
+    {
+        $admin = AdminUser::create([
+            'name' => 'Admin Test',
+            'email' => 'admin-shipping-copy@example.test',
+            'password' => 'password',
+            'role' => 'owner',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->post(route('admin.documents.store'), [
+                'type' => 'offline_order',
+                'document_date' => '2026-07-15',
+                'status' => 'draft',
+                'currency' => 'EUR',
+                'payment_conditions' => 'TP02',
+                'customer_name' => 'Mario Rossi',
+                'customer_phone' => '3331234567',
+                'customer_address' => 'Via Roma',
+                'customer_street_number' => '12',
+                'customer_city' => 'Milano',
+                'customer_province' => 'mi',
+                'customer_postal_code' => '20100',
+                'customer_country' => 'it',
+                'shipping_same_as_customer' => '1',
+                'items' => [[
+                    'description' => 'Articolo test',
+                    'quantity' => 1,
+                    'unit_price' => 10,
+                    'vat_rate' => 22,
+                ]],
+            ])
+            ->assertRedirect();
+
+        $document = AdminDocument::latest('id')->firstOrFail();
+
+        $this->assertSame('Mario Rossi', $document->shipping_name);
+        $this->assertSame('3331234567', $document->shipping_phone);
+        $this->assertSame('Via Roma', $document->shipping_address);
+        $this->assertSame('12', $document->shipping_street_number);
+        $this->assertSame('Milano', $document->shipping_city);
+        $this->assertSame('MI', $document->shipping_province);
+        $this->assertSame('20100', $document->shipping_postal_code);
+        $this->assertSame('IT', $document->shipping_country);
     }
 }

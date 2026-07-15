@@ -7,6 +7,34 @@ html {
     scroll-behavior: smooth;
 }
 
+.document-surface {
+    border-radius: 8px;
+    background: rgb(var(--color-white));
+    box-shadow: 0 1px 3px rgb(15 23 42 / 0.1), 0 1px 2px rgb(15 23 42 / 0.06);
+}
+
+/* La UI documenti replica la scala tipografica dell'admin Bullstar. */
+.font-montserrat .font-extrabold {
+    font-weight: 600;
+}
+
+.font-montserrat .font-black {
+    font-weight: 700;
+}
+
+[data-document-form] > section {
+    border-color: rgb(229 231 235);
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgb(15 23 42 / 0.08), 0 1px 2px rgb(15 23 42 / 0.05);
+}
+
+[data-document-form] input,
+[data-document-form] select,
+[data-document-form] textarea {
+    border-radius: 6px;
+    font-weight: 400;
+}
+
 button,
 [role="button"],
 a,

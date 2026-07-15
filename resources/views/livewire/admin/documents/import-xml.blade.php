@@ -1,4 +1,4 @@
-<div class="space-y-12">
+<div class="space-y-16 font-montserrat">
     @if (session('status'))
         <div class="rounded-10 border border-whatsapp/20 bg-whatsapp/10 px-12 py-8 text-14 font-bold text-whatsapp">
             {{ session('status') }}
@@ -16,7 +16,7 @@
         </div>
     @endif
 
-    <form wire:submit.prevent="import" class="rounded-10 border border-gray-mid bg-white p-12">
+    <form wire:submit.prevent="import" class="document-surface p-20">
         <div class="grid gap-12 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-end">
             <label class="block">
                 <span class="text-12 font-extrabold uppercase tracking-normal text-gray">File XML fattura</span>

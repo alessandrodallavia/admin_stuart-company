@@ -31,6 +31,32 @@
         $unreadNotificationsCount = $adminUser && ! $adminUser->training_mode_active
             ? $adminUser->unreadNotifications()->count()
             : 0;
+        $routeDocument = request()->route('document');
+        $currentDocumentType = request()->string('type')->toString();
+
+        if ($routeDocument instanceof \App\Models\AdminDocument) {
+            $currentDocumentType = $routeDocument->type;
+        }
+
+        $documentNavigationItems = [
+            ['label' => 'Ordini offline', 'type' => 'offline_order'],
+            ['label' => 'Fatture', 'type' => 'invoice'],
+            ['label' => 'Documenti di trasporto', 'type' => 'delivery_note'],
+            ['label' => 'Preventivi', 'type' => 'quote'],
+            ['label' => 'Proforma', 'type' => 'proforma'],
+        ];
+
+        $documentNavigationItems = collect($documentNavigationItems)
+            ->map(fn ($item) => array_merge($item, [
+                'route' => route('admin.documents.index', ['type' => $item['type']]),
+                'active' => $activeNav === 'documents' && $currentDocumentType === $item['type'],
+            ]))
+            ->push([
+                'label' => 'Scadenze pagamenti',
+                'route' => route('admin.documents.payments'),
+                'active' => request()->routeIs('admin.documents.payments'),
+            ])
+            ->all();
 
         $navGroups = [
             [
@@ -59,8 +85,9 @@
                 'items' => array_values(array_filter([
                     $adminUser?->hasAdminPermission('documents.view') && ! $adminUser->training_mode_active ? [
                         'label' => 'Documenti',
-                        'route' => route('admin.documents.index'),
+                        'route' => route('admin.documents.index', ['type' => 'offline_order']),
                         'active' => $activeNav === 'documents',
+                        'children' => $documentNavigationItems,
                     ] : null,
                     $adminUser?->hasAdminPermission('shipments.view') && ! $adminUser->training_mode_active ? [
                         'label' => 'Spedizioni',
@@ -166,6 +193,18 @@
                                         </span>
                                     @endif
                                 </a>
+                                @if (! empty($item['children']))
+                                    <div data-admin-sidebar-expanded class="ml-12 mt-2 space-y-1 border-l border-gray-mid pl-12">
+                                        @foreach ($item['children'] as $child)
+                                            <a
+                                                href="{{ $child['route'] }}"
+                                                class="block rounded-[8px] px-12 py-6 text-12 transition {{ $child['active'] ? 'bg-gray-light font-semibold text-bullstar' : 'font-normal text-gray hover:bg-gray-light hover:text-black-nike' }}"
+                                            >
+                                                {{ $child['label'] }}
+                                            </a>
+                                        @endforeach
+                                    </div>
+                                @endif
                             @endforeach
                         </div>
                     </div>
@@ -235,6 +274,18 @@
                                         </span>
                                     @endif
                                 </a>
+                                @if (! empty($item['children']))
+                                    <div class="ml-12 mt-2 space-y-1 border-l border-gray-mid pl-12">
+                                        @foreach ($item['children'] as $child)
+                                            <a
+                                                href="{{ $child['route'] }}"
+                                                class="block rounded-[8px] px-12 py-6 text-12 transition {{ $child['active'] ? 'bg-gray-light font-semibold text-bullstar' : 'font-normal text-gray hover:bg-gray-light hover:text-black-nike' }}"
+                                            >
+                                                {{ $child['label'] }}
+                                            </a>
+                                        @endforeach
+                                    </div>
+                                @endif
                             @endforeach
                         </div>
                     </div>
