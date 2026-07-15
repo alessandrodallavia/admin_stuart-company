@@ -397,6 +397,13 @@ class AdminDocumentWorkflowTest extends TestCase
             ->assertSee('Filiera documenti')
             ->assertSee('Ordine offline OFF-4')
             ->assertSee('DDT BOZZA');
+
+        $this->actingAs($admin, 'admin')
+            ->get(route('admin.documents.index', ['type' => 'delivery_note']))
+            ->assertOk()
+            ->assertSee('Documenti collegati')
+            ->assertSee('Ordine offline OFF-4')
+            ->assertSee(route('admin.documents.show', $order), false);
     }
 
     public function test_delivery_note_detail_does_not_show_prices_or_payments(): void

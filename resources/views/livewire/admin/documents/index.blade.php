@@ -80,13 +80,14 @@
         <div class="border-b border-gray-mid px-16 py-12 text-14 text-gray">{{ $documents->total() }} documenti trovati</div>
 
         <div class="overflow-x-auto">
-            <table class="w-full {{ $isDeliveryNoteArea ? 'min-w-[840px]' : 'min-w-[1000px]' }} text-left">
+            <table class="w-full {{ $isDeliveryNoteArea ? 'min-w-[1040px]' : 'min-w-[1200px]' }} text-left">
                 <thead class="border-b border-gray-mid bg-gray-100 text-12 font-semibold text-gray">
                     <tr>
                         <th class="w-48 px-12 py-12">
                             <input type="checkbox" data-toggle-sdi-selection class="rounded border-gray-mid text-bullstar focus:ring-bullstar" aria-label="Seleziona tutte le fatture esportabili">
                         </th>
                         <th class="px-12 py-12">Documento</th>
+                        <th class="px-12 py-12">Documenti collegati</th>
                         <th class="px-12 py-12">Cliente</th>
                         <th class="px-12 py-12">Stato</th>
                         @unless ($isDeliveryNoteArea)
@@ -99,7 +100,7 @@
                 <tbody class="divide-y divide-gray-mid">
                     @if ($documents->count() === 0)
                         <tr>
-                            <td colspan="7" class="px-16 py-28">
+                            <td colspan="8" class="px-16 py-28">
                                 <div class="rounded-10 border border-dashed border-gray-mid bg-gray-light p-20 text-14 font-semibold text-gray">Nessun documento con questi filtri.</div>
                             </td>
                         </tr>
@@ -134,6 +135,21 @@
                                     <td class="px-12 py-12">
                                         <p class="text-14 font-medium text-gray-800">{{ $document->type_label }} {{ $document->display_code }}</p>
                                         <p class="mt-4 text-12 font-normal text-gray">{{ optional($document->document_date)->format('d/m/Y') }} · {{ $document->items_count }} righe</p>
+                                    </td>
+                                    <td class="px-12 py-12">
+                                        <div class="flex max-w-[240px] flex-wrap gap-6">
+                                            @forelse ($relatedDocuments[$document->id] ?? [] as $relatedDocument)
+                                                <a
+                                                    href="{{ route('admin.documents.show', $relatedDocument) }}"
+                                                    class="rounded-full px-8 py-4 text-11 font-medium transition hover:opacity-75 {{ match ($relatedDocument->type) { 'offline_order' => 'bg-blue-100 text-blue-700', 'delivery_note' => 'bg-purple-100 text-purple-700', 'invoice' => 'bg-green-100 text-green-700', 'quote' => 'bg-yellow-100 text-yellow-700', default => 'bg-gray-100 text-gray-700' } }}"
+                                                    title="Apri {{ $relatedDocument->type_label }} {{ $relatedDocument->display_code }}"
+                                                >
+                                                    {{ $relatedDocument->type_label }} {{ $relatedDocument->display_code }}
+                                                </a>
+                                            @empty
+                                                <span class="text-12 text-gray-400">—</span>
+                                            @endforelse
+                                        </div>
                                     </td>
                                     <td class="px-12 py-12">
                                         <p class="max-w-[260px] truncate text-14 font-normal text-gray-700">{{ $document->customer_name }}</p>

@@ -20,8 +20,8 @@ class Index extends Component
         $search = trim(request()->string('search')->toString() ?: request()->string('q')->toString());
         $searchNumber = trim(request()->string('search_number')->toString());
 
-        return view('livewire.admin.documents.index', [
-            'documents' => AdminDocument::query()
+        $documents = AdminDocument::query()
+                ->with(['sourceDocument', 'generatedDocuments'])
                 ->withCount('items')
                 ->when($type !== '', fn ($query) => $query->where('type', $type))
                 ->when($type !== '' && $status !== '', fn ($query) => $query->where('status', $status))
@@ -44,7 +44,11 @@ class Index extends Component
                 ->latest('number')
                 ->latest()
                 ->paginate(15)
-                ->withQueryString(),
+                ->withQueryString();
+
+        return view('livewire.admin.documents.index', [
+            'documents' => $documents,
+            'relatedDocuments' => $this->relatedDocuments($documents->getCollection()),
             'types' => AdminDocument::TYPES,
             'statuses' => $type !== '' ? AdminDocument::statusesFor($type) : [],
             'paymentStatuses' => AdminDocument::PAYMENT_STATUSES,
@@ -56,6 +60,46 @@ class Index extends Component
             'stats' => $this->stats(),
             'documentAreas' => $this->documentAreas(),
         ]);
+    }
+
+    private function relatedDocuments($documents): array
+    {
+        $documentIds = $documents->pluck('id');
+        $relations = DocumentRelation::query()
+            ->whereIn('from_id', $documentIds)
+            ->orWhereIn('to_id', $documentIds)
+            ->get();
+        $relatedIds = $relations->flatMap(fn (DocumentRelation $relation) => [$relation->from_id, $relation->to_id])
+            ->merge($documents->pluck('source_document_id'))
+            ->merge($documents->flatMap(fn (AdminDocument $document) => $document->generatedDocuments->pluck('id')))
+            ->filter()
+            ->unique();
+        $documentLookup = AdminDocument::query()->whereIn('id', $relatedIds)->get()->keyBy('id');
+
+        return $documents->mapWithKeys(function (AdminDocument $document) use ($relations, $documentLookup) {
+            $type = $document->currentDocumentType();
+            $linked = collect($relations
+                ->filter(fn (DocumentRelation $relation) =>
+                    ($relation->from_type === $type && (int) $relation->from_id === (int) $document->id)
+                    || ($relation->to_type === $type && (int) $relation->to_id === (int) $document->id)
+                )
+                ->map(function (DocumentRelation $relation) use ($document, $type, $documentLookup) {
+                    $relatedId = $relation->from_type === $type && (int) $relation->from_id === (int) $document->id
+                        ? $relation->to_id
+                        : $relation->from_id;
+
+                    return $documentLookup->get((int) $relatedId);
+                })
+                ->filter()
+                ->all())
+                ->when($document->sourceDocument, fn ($linked) => $linked->push($document->sourceDocument))
+                ->concat($document->generatedDocuments)
+                ->reject(fn (AdminDocument $related) => (int) $related->id === (int) $document->id)
+                ->unique('id')
+                ->values();
+
+            return [$document->id => $linked];
+        })->all();
     }
 
     private function applyNumberSearch($query, string $searchNumber): void
