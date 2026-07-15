@@ -17,7 +17,7 @@ class AdminDocumentService
     {
         return DB::transaction(function () use ($data) {
             $document = AdminDocument::create($this->documentAttributes($data));
-            $this->syncItems($document, $data['items'] ?? []);
+            $this->syncItems($document, $data['items'] ?? [], (bool) ($data['prices_include_vat'] ?? false));
             $this->syncPayments($document, $data['payments'] ?? []);
             $document->refreshTotals();
 
@@ -29,7 +29,7 @@ class AdminDocumentService
     {
         return DB::transaction(function () use ($document, $data) {
             $document->update($this->documentAttributes($data, $document));
-            $this->syncItems($document, $data['items'] ?? []);
+            $this->syncItems($document, $data['items'] ?? [], (bool) ($data['prices_include_vat'] ?? false));
             $this->syncPayments($document, $data['payments'] ?? []);
             $document->refreshTotals();
 
@@ -76,6 +76,7 @@ class AdminDocumentService
                     'notes',
                     'subtotal',
                     'vat_total',
+                    'rounding_adjustment',
                     'total',
                     'payment_conditions',
                     'payment_method',
@@ -324,6 +325,7 @@ class AdminDocumentService
             'net_weight_kg',
             'carrier_name',
             'notes',
+            'rounding_adjustment',
             'payment_conditions',
         ]) + [
             'year' => $year,
@@ -332,7 +334,7 @@ class AdminDocumentService
         ] + $paymentSnapshot;
     }
 
-    private function syncItems(AdminDocument $document, array $items): void
+    private function syncItems(AdminDocument $document, array $items, bool $pricesIncludeVat = false): void
     {
         $document->items()->delete();
 
@@ -342,10 +344,19 @@ class AdminDocumentService
             }
 
             $quantity = blank($item['quantity'] ?? null) ? 0 : (float) $item['quantity'];
-            $unitPrice = $document->type === 'delivery_note' ? 0 : (float) ($item['unit_price'] ?? 0);
             $vatRate = $document->type === 'delivery_note' ? 0 : (float) ($item['vat_rate'] ?? 22);
-            $lineSubtotal = $document->type === 'delivery_note' ? 0 : round($quantity * $unitPrice, 2);
-            $lineVat = $document->type === 'delivery_note' ? 0 : round($lineSubtotal * $vatRate / 100, 2);
+            $enteredUnitPrice = (float) ($item['unit_price'] ?? 0);
+            $unitPrice = $document->type === 'delivery_note'
+                ? 0
+                : round(
+                    $pricesIncludeVat && $vatRate !== -100.0
+                        ? $enteredUnitPrice / (1 + ($vatRate / 100))
+                        : $enteredUnitPrice,
+                    2,
+                    PHP_ROUND_HALF_UP
+                );
+            $lineSubtotal = $document->type === 'delivery_note' ? 0 : round($quantity * $unitPrice, 2, PHP_ROUND_HALF_UP);
+            $lineVat = $document->type === 'delivery_note' ? 0 : round($lineSubtotal * $vatRate / 100, 2, PHP_ROUND_HALF_UP);
 
             $document->items()->create([
                 'position' => $index + 1,
@@ -356,7 +367,7 @@ class AdminDocumentService
                 'vat_rate' => $vatRate,
                 'line_subtotal' => $lineSubtotal,
                 'line_vat' => $lineVat,
-                'line_total' => round($lineSubtotal + $lineVat, 2),
+                'line_total' => round($lineSubtotal + $lineVat, 2, PHP_ROUND_HALF_UP),
             ]);
         }
     }

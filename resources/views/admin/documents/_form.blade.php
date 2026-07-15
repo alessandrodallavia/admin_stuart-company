@@ -217,7 +217,14 @@
                 <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Righe</p>
                 <h2 class="mt-4 text-20 font-black leading-tight">Articoli e servizi</h2>
             </div>
-            <button type="button" data-add-row="items" class="rounded-10 border border-gray-mid px-12 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">Aggiungi riga</button>
+            <div class="flex flex-wrap items-center justify-end gap-8">
+                <label data-ddt-money-field class="flex items-center gap-8 rounded-md border border-gray-mid bg-gray-light px-12 py-8 text-12 font-medium text-gray-700">
+                    <input type="hidden" name="prices_include_vat" value="0">
+                    <input name="prices_include_vat" value="1" type="checkbox" data-prices-include-vat @checked((bool) old('prices_include_vat', false)) class="rounded border-gray-mid text-bullstar focus:ring-bullstar">
+                    <span>Inserisco prezzi IVA inclusa</span>
+                </label>
+                <button type="button" data-add-row="items" class="rounded-10 border border-gray-mid px-12 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">Aggiungi riga</button>
+            </div>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full min-w-[1120px] text-left">
@@ -227,7 +234,7 @@
                         <th class="w-120 px-12 py-10">Codice</th>
                         <th class="px-12 py-10">Descrizione</th>
                         <th class="w-100 px-12 py-10">Q.tà</th>
-                        <th data-ddt-money-field class="w-120 px-12 py-10">Prezzo</th>
+                        <th data-ddt-money-field class="w-120 px-12 py-10"><span data-unit-price-label>Prezzo netto</span></th>
                         <th data-ddt-money-field class="w-90 px-12 py-10">IVA %</th>
                         <th data-ddt-money-field class="w-120 px-12 py-10 text-right">Imponibile</th>
                         <th class="w-60 px-12 py-10 text-right"></th>
@@ -246,7 +253,7 @@
                             <td class="px-8 py-8 align-top"><input name="items[{{ $index }}][item_code]" value="{{ $item['item_code'] ?? '' }}" placeholder="Codice" maxlength="80" class="h-50 w-full rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold uppercase focus:border-bullstar focus:ring-bullstar"></td>
                             <td class="px-8 py-8 align-top"><textarea name="items[{{ $index }}][description]" placeholder="Descrizione riga" class="h-50 w-full resize-y rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold focus:border-bullstar focus:ring-bullstar">{{ $item['description'] ?? '' }}</textarea></td>
                             <td class="px-8 py-8 align-top"><input data-line-quantity name="items[{{ $index }}][quantity]" value="{{ $item['quantity'] ?? 0 }}" type="number" min="0" step="0.01" class="h-50 w-full rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
-                            <td data-ddt-money-field class="px-8 py-8 align-top"><input data-line-unit-price name="items[{{ $index }}][unit_price]" value="{{ $item['unit_price'] ?? 0 }}" type="number" step="0.0001" class="h-50 w-full rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
+                            <td data-ddt-money-field class="px-8 py-8 align-top"><input data-line-unit-price name="items[{{ $index }}][unit_price]" value="{{ number_format((float) ($item['unit_price'] ?? 0), 2, '.', '') }}" type="number" step="0.01" class="h-50 w-full rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
                             <td data-ddt-money-field class="px-8 py-8 align-top"><input data-line-vat-rate name="items[{{ $index }}][vat_rate]" value="{{ $item['vat_rate'] ?? 22 }}" type="number" min="0" step="0.01" class="h-50 w-full rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
                             <td data-ddt-money-field class="px-12 py-10 text-right align-top text-14 font-black"><span class="flex h-50 items-center justify-end" data-line-total>€ 0,00</span></td>
                             <td class="px-8 py-8 align-top">
@@ -271,6 +278,15 @@
                     <tr>
                         <td colspan="7" class="px-12 py-10 text-right">IVA</td>
                         <td class="px-12 py-10 text-right" data-summary-vat>€ 0,00</td>
+                    </tr>
+                    <tr>
+                        <td colspan="7" class="px-12 py-10 text-right">
+                            <label for="rounding-adjustment">Arrotondamento</label>
+                            <span class="ml-6 text-11 font-normal text-gray">anche negativo</span>
+                        </td>
+                        <td class="px-8 py-8 text-right">
+                            <input id="rounding-adjustment" name="rounding_adjustment" data-rounding-adjustment value="{{ number_format((float) old('rounding_adjustment', $document->rounding_adjustment ?: 0), 2, '.', '') }}" type="number" step="0.01" class="w-full rounded-md border-gray-mid px-8 py-6 text-right text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                        </td>
                     </tr>
                     <tr>
                         <td colspan="7" class="px-12 py-10 text-right">Totale</td>
@@ -439,7 +455,7 @@
                 <td class="px-8 py-8 align-top"><input name="items[${index}][item_code]" placeholder="Codice" maxlength="80" class="h-50 w-full rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold uppercase focus:border-bullstar focus:ring-bullstar"></td>
                 <td class="px-8 py-8 align-top"><textarea name="items[${index}][description]" placeholder="Descrizione riga" class="h-50 w-full resize-y rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"></textarea></td>
                 <td class="px-8 py-8 align-top"><input data-line-quantity name="items[${index}][quantity]" type="number" min="0" step="0.01" class="h-50 w-full rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
-                <td data-ddt-money-field class="px-8 py-8 align-top"><input data-line-unit-price name="items[${index}][unit_price]" value="0" type="number" step="0.0001" class="h-50 w-full rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
+                <td data-ddt-money-field class="px-8 py-8 align-top"><input data-line-unit-price name="items[${index}][unit_price]" value="0.00" type="number" step="0.01" class="h-50 w-full rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
                 <td data-ddt-money-field class="px-8 py-8 align-top"><input data-line-vat-rate name="items[${index}][vat_rate]" value="22" type="number" min="0" step="0.01" class="h-50 w-full rounded-10 border-gray-mid px-8 py-6 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"></td>
                 <td data-ddt-money-field class="px-12 py-10 text-right align-top text-14 font-black"><span class="flex h-50 items-center justify-end" data-line-total>€ 0,00</span></td>
                 <td class="px-8 py-8 align-top">
@@ -476,10 +492,20 @@
 
         const form = document.querySelector('[data-document-form]');
         const shippingSameAsCustomer = form?.querySelector('[data-shipping-same-as-customer]');
+        const pricesIncludeVat = form?.querySelector('[data-prices-include-vat]');
         const shippingFieldNames = ['name', 'phone', 'address', 'street_number', 'city', 'province', 'postal_code', 'country'];
         const statusesByType = @json(\App\Models\AdminDocument::STATUSES);
         const money = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' });
         let lastSyncedSinglePayment = null;
+
+        const updateUnitPriceMode = () => {
+            document.querySelectorAll('[data-unit-price-label]').forEach((label) => {
+                label.textContent = pricesIncludeVat?.checked ? 'Prezzo ivato' : 'Prezzo netto';
+            });
+            recalculateDocument();
+        };
+
+        pricesIncludeVat?.addEventListener('change', updateUnitPriceMode);
 
         const syncShippingFields = () => {
             const shouldSync = shippingSameAsCustomer?.checked ?? false;
@@ -530,17 +556,19 @@
 
         function recalculateDocument(event = null) {
             let subtotal = 0;
-            let vat = 0;
+            const taxableByVatRate = new Map();
 
             document.querySelectorAll('#items-rows tr').forEach((row) => {
                 const quantity = numberValue(row.querySelector('[data-line-quantity]'));
-                const unitPrice = numberValue(row.querySelector('[data-line-unit-price]'));
                 const vatRate = numberValue(row.querySelector('[data-line-vat-rate]'));
+                const enteredUnitPrice = roundMoney(numberValue(row.querySelector('[data-line-unit-price]')));
+                const unitPrice = pricesIncludeVat?.checked && vatRate !== -100
+                    ? roundMoney(enteredUnitPrice / (1 + vatRate / 100))
+                    : enteredUnitPrice;
                 const lineSubtotal = roundMoney(quantity * unitPrice);
-                const lineVat = roundMoney(lineSubtotal * vatRate / 100);
 
                 subtotal += lineSubtotal;
-                vat += lineVat;
+                taxableByVatRate.set(vatRate, roundMoney((taxableByVatRate.get(vatRate) || 0) + lineSubtotal));
 
                 const lineTotalElement = row.querySelector('[data-line-total]');
                 if (lineTotalElement) {
@@ -549,8 +577,12 @@
             });
 
             subtotal = roundMoney(subtotal);
-            vat = roundMoney(vat);
-            const total = roundMoney(subtotal + vat);
+            const vat = roundMoney([...taxableByVatRate.entries()].reduce(
+                (sum, [vatRate, taxableAmount]) => sum + roundMoney(taxableAmount * vatRate / 100),
+                0
+            ));
+            const roundingAdjustment = numberValue(form?.querySelector('[data-rounding-adjustment]'));
+            const total = roundMoney(subtotal + vat + roundingAdjustment);
             const paymentInputs = [...document.querySelectorAll('[data-payment-amount]')];
 
             if (paymentInputs.length === 1 && event?.target?.matches?.('[data-line-quantity], [data-line-unit-price], [data-line-vat-rate]')) {
@@ -668,6 +700,7 @@
         }
 
         toggleDeliveryNoteFields();
+        updateUnitPriceMode();
         recalculateDocument();
     </script>
 @endpush

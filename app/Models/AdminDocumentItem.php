@@ -24,7 +24,7 @@ class AdminDocumentItem extends Model
     {
         return [
             'quantity' => 'decimal:2',
-            'unit_price' => 'decimal:4',
+            'unit_price' => 'decimal:2',
             'vat_rate' => 'decimal:2',
             'line_subtotal' => 'decimal:2',
             'line_vat' => 'decimal:2',

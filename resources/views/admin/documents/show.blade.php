@@ -110,6 +110,9 @@
                             <tfoot class="border-t border-gray-mid bg-gray-light text-14 font-black">
                                 <tr><td colspan="5" class="px-12 py-10 text-right">Imponibile</td><td class="px-12 py-10 text-right">€ {{ number_format((float) $document->subtotal, 2, ',', '.') }}</td></tr>
                                 <tr><td colspan="5" class="px-12 py-10 text-right">IVA</td><td class="px-12 py-10 text-right">€ {{ number_format((float) $document->vat_total, 2, ',', '.') }}</td></tr>
+                                @if ((float) $document->rounding_adjustment !== 0.0)
+                                    <tr><td colspan="5" class="px-12 py-10 text-right">Arrotondamento</td><td class="px-12 py-10 text-right">€ {{ number_format((float) $document->rounding_adjustment, 2, ',', '.') }}</td></tr>
+                                @endif
                                 <tr><td colspan="5" class="px-12 py-10 text-right">Totale</td><td class="px-12 py-10 text-right">€ {{ number_format((float) $document->total, 2, ',', '.') }}</td></tr>
                             </tfoot>
                         @endunless

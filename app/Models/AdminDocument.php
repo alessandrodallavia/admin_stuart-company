@@ -114,6 +114,7 @@ class AdminDocument extends Model
         'notes',
         'subtotal',
         'vat_total',
+        'rounding_adjustment',
         'total',
     ];
 
@@ -124,6 +125,7 @@ class AdminDocument extends Model
             'transport_start_date' => 'date',
             'subtotal' => 'decimal:2',
             'vat_total' => 'decimal:2',
+            'rounding_adjustment' => 'decimal:2',
             'total' => 'decimal:2',
             'gross_weight_kg' => 'decimal:2',
             'net_weight_kg' => 'decimal:2',
@@ -364,13 +366,22 @@ class AdminDocument extends Model
 
     public function refreshTotals(): void
     {
-        $subtotal = round((float) $this->items()->sum('line_subtotal'), 2);
-        $vatTotal = round((float) $this->items()->sum('line_vat'), 2);
+        $items = $this->items()->get();
+        $subtotal = round((float) $items->sum('line_subtotal'), 2, PHP_ROUND_HALF_UP);
+        $vatTotal = $items
+            ->groupBy(fn (AdminDocumentItem $item) => (string) $item->vat_rate)
+            ->map(function ($items, $vatRate) {
+                $taxableAmount = round((float) $items->sum('line_subtotal'), 2, PHP_ROUND_HALF_UP);
+
+                return round($taxableAmount * (float) $vatRate / 100, 2, PHP_ROUND_HALF_UP);
+            })
+            ->sum();
+        $vatTotal = round((float) $vatTotal, 2, PHP_ROUND_HALF_UP);
 
         $this->forceFill([
             'subtotal' => $subtotal,
             'vat_total' => $vatTotal,
-            'total' => round($subtotal + $vatTotal, 2),
+            'total' => round($subtotal + $vatTotal + (float) $this->rounding_adjustment, 2, PHP_ROUND_HALF_UP),
         ])->save();
 
         $this->refreshPaymentStatus();

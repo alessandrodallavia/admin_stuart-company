@@ -395,11 +395,11 @@ class TcpdfDocumentoService extends TCPDF
             ];
         } else {
             $cols3 = [40, 38.5, 29, 41, 45.5];
-            $titles3 = ['Tot. Imponibile', 'Totale IVA', 'Spese Art. 15', 'Totale Fattura', 'Totale a pagare'];
+            $titles3 = ['Tot. Imponibile', 'Totale IVA', 'Arrotondamento', 'Totale Fattura', 'Totale a pagare'];
             $values3 = [
                 'EUR '.$this->footer_data['totale_imponibile'],
                 'EUR '.$this->footer_data['totale_iva'],
-                '',
+                $this->footer_data['arrotondamento'] !== '' ? 'EUR '.$this->footer_data['arrotondamento'] : '',
                 'EUR '.$this->footer_data['totale_fattura'],
                 'EUR '.$this->footer_data['totale_fattura'],
             ];

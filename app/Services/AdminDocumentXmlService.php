@@ -41,6 +41,9 @@ class AdminDocumentXmlService
         $this->append($xml, $documentData, 'Data', $document->document_date->format('Y-m-d'));
         $this->append($xml, $documentData, 'Numero', $document->display_code);
         $this->append($xml, $documentData, 'ImportoTotaleDocumento', $this->money($document->total));
+        if ((float) $document->rounding_adjustment !== 0.0) {
+            $this->append($xml, $documentData, 'Arrotondamento', $this->money($document->rounding_adjustment));
+        }
 
         $goods = $this->append($xml, $body, 'DatiBeniServizi');
         foreach ($document->items as $index => $item) {
@@ -59,10 +62,12 @@ class AdminDocumentXmlService
         }
 
         foreach ($document->items->groupBy(fn ($item) => (string) $item->vat_rate) as $vatRate => $items) {
+            $taxableAmount = round((float) $items->sum('line_subtotal'), 2, PHP_ROUND_HALF_UP);
+            $vatAmount = round($taxableAmount * (float) $vatRate / 100, 2, PHP_ROUND_HALF_UP);
             $summary = $this->append($xml, $goods, 'DatiRiepilogo');
             $this->append($xml, $summary, 'AliquotaIVA', $this->decimal($vatRate));
-            $this->append($xml, $summary, 'ImponibileImporto', $this->money($items->sum('line_subtotal')));
-            $this->append($xml, $summary, 'Imposta', $this->money($items->sum('line_vat')));
+            $this->append($xml, $summary, 'ImponibileImporto', $this->money($taxableAmount));
+            $this->append($xml, $summary, 'Imposta', $this->money($vatAmount));
             $this->append($xml, $summary, 'EsigibilitaIVA', 'I');
         }
 

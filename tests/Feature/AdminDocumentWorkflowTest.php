@@ -259,6 +259,74 @@ class AdminDocumentWorkflowTest extends TestCase
         $this->assertStringContainsString('<ImportoPagamento>122.00</ImportoPagamento>', $service->output($invoice));
     }
 
+    public function test_invoice_rounding_matches_sdi_precision_and_vat_summary_rules(): void
+    {
+        $invoice = app(AdminDocumentService::class)->create([
+            'type' => 'invoice',
+            'fiscal_type' => 'TD01',
+            'document_date' => '2026-07-15',
+            'status' => 'issued',
+            'currency' => 'EUR',
+            'customer_name' => 'Mario Rossi',
+            'customer_country' => 'IT',
+            'payment_conditions' => 'TP02',
+            'rounding_adjustment' => 0.01,
+            'items' => [
+                ['description' => 'Prezzo preciso', 'quantity' => 10, 'unit_price' => 8.1967, 'vat_rate' => 22],
+                ['description' => 'Micro riga 1', 'quantity' => 1, 'unit_price' => 0.03, 'vat_rate' => 22],
+                ['description' => 'Micro riga 2', 'quantity' => 1, 'unit_price' => 0.03, 'vat_rate' => 22],
+            ],
+            'payments' => [],
+        ]);
+
+        $this->assertEquals(82.06, (float) $invoice->subtotal);
+        $this->assertEquals(18.05, (float) $invoice->vat_total);
+        $this->assertEquals(100.12, (float) $invoice->total);
+
+        $xml = app(AdminDocumentXmlService::class)->output($invoice);
+
+        $this->assertStringContainsString('<PrezzoUnitario>8.20</PrezzoUnitario>', $xml);
+        $this->assertStringContainsString('<PrezzoTotale>82.00</PrezzoTotale>', $xml);
+        $this->assertStringContainsString('<ImponibileImporto>82.06</ImponibileImporto>', $xml);
+        $this->assertStringContainsString('<Imposta>18.05</Imposta>', $xml);
+        $this->assertStringContainsString('<Arrotondamento>0.01</Arrotondamento>', $xml);
+        $this->assertStringContainsString('<ImportoTotaleDocumento>100.12</ImportoTotaleDocumento>', $xml);
+
+        $footerMethod = new ReflectionMethod(AdminDocumentPdfService::class, 'footerData');
+        $footerMethod->setAccessible(true);
+        $footer = $footerMethod->invoke(app(AdminDocumentPdfService::class), $invoice);
+
+        $this->assertSame('0,01', $footer['arrotondamento']);
+    }
+
+    public function test_vat_included_unit_price_is_converted_and_saved_as_net(): void
+    {
+        $document = app(AdminDocumentService::class)->create([
+            'type' => 'quote',
+            'document_date' => '2026-07-15',
+            'status' => 'draft',
+            'currency' => 'EUR',
+            'customer_name' => 'Mario Rossi',
+            'customer_country' => 'IT',
+            'payment_conditions' => 'TP02',
+            'prices_include_vat' => true,
+            'items' => [[
+                'description' => 'Articolo con prezzo ivato',
+                'quantity' => 2,
+                'unit_price' => 122,
+                'vat_rate' => 22,
+            ]],
+            'payments' => [],
+        ]);
+
+        $item = $document->items->first();
+
+        $this->assertEquals(100.0, (float) $item->unit_price);
+        $this->assertEquals(200.0, (float) $item->line_subtotal);
+        $this->assertEquals(44.0, (float) $document->vat_total);
+        $this->assertEquals(244.0, (float) $document->total);
+    }
+
     public function test_export_marks_selected_invoices_as_sent(): void
     {
         $invoice = AdminDocument::create([

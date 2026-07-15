@@ -85,6 +85,9 @@ class AdminDocumentPdfService
             'totale_merci_netto' => number_format((float) $document->subtotal, 2, ',', '.'),
             'totale_imponibile' => number_format((float) $document->subtotal, 2, ',', '.'),
             'totale_iva' => number_format((float) $document->vat_total, 2, ',', '.'),
+            'arrotondamento' => (float) $document->rounding_adjustment !== 0.0
+                ? number_format((float) $document->rounding_adjustment, 2, ',', '.')
+                : '',
             'totale_fattura' => number_format((float) $document->total, 2, ',', '.'),
             'causale_trasporto' => $document->transport_reason ?: 'Vendita',
             'trasporto_cura' => $document->transport_care ?: '',
@@ -222,20 +225,21 @@ class AdminDocumentPdfService
     {
         return $document->items
             ->groupBy(fn ($item) => (string) $item->vat_rate)
-            ->map(fn ($items, $vatRate) => (object) [
-                'vat_rate' => (float) $vatRate,
-                'taxable_amount' => (float) $items->sum('line_subtotal'),
-                'vat_amount' => (float) $items->sum('line_vat'),
-            ])
+            ->map(function ($items, $vatRate) {
+                $taxableAmount = round((float) $items->sum('line_subtotal'), 2, PHP_ROUND_HALF_UP);
+
+                return (object) [
+                    'vat_rate' => (float) $vatRate,
+                    'taxable_amount' => $taxableAmount,
+                    'vat_amount' => round($taxableAmount * (float) $vatRate / 100, 2, PHP_ROUND_HALF_UP),
+                ];
+            })
             ->values();
     }
 
     private function formatUnitPrice(mixed $value): string
     {
-        $formatted = number_format((float) $value, 4, ',', '.');
-        $formatted = preg_replace('/0{1,2}$/', '', $formatted);
-
-        return rtrim($formatted, ',');
+        return number_format((float) $value, 2, ',', '.');
     }
 
     private function paymentDeadlines(AdminDocument $document): string
