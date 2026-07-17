@@ -36,6 +36,7 @@ class Lead extends Model
         'acquisition_country',
         'acquisition_region',
         'category',
+        'lead_category_id',
         'product',
         'quantity',
         'lead_quality',
@@ -176,5 +177,15 @@ class Lead extends Model
     public function quotePdfs(): HasMany
     {
         return $this->hasMany(LeadQuotePdf::class)->latest('uploaded_at')->latest();
+    }
+
+    public function categoryOption(): BelongsTo
+    {
+        return $this->belongsTo(LeadCategory::class, 'lead_category_id');
+    }
+
+    public function salesSheet(): HasOne
+    {
+        return $this->hasOne(LeadSalesSheet::class);
     }
 }

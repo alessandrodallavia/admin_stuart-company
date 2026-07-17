@@ -4,7 +4,12 @@ namespace Tests\Feature;
 
 use App\Models\AdminUser;
 use App\Models\Lead;
+use App\Models\LeadCategory;
+use App\Models\CrmProduct;
+use App\Models\CrmPrintType;
+use App\Livewire\Admin\LeadSalesSheet as LeadSalesSheetComponent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class AdminCrmDashboardTest extends TestCase
@@ -53,6 +58,7 @@ class AdminCrmDashboardTest extends TestCase
     public function test_crm_fields_can_be_updated_from_the_lead_page(): void
     {
         $lead = $this->lead();
+        $category = LeadCategory::create(['name' => 'Basket', 'sort_order' => 1, 'is_active' => true]);
 
         $this->actingAs($this->owner(), 'admin')
             ->patch("/leads/{$lead->id}", [
@@ -60,13 +66,10 @@ class AdminCrmDashboardTest extends TestCase
                 'email' => $lead->email,
                 'phone' => $lead->phone,
                 'status' => 'confirmed',
-                'category' => 'Basket',
-                'product' => 'Divisa gara',
-                'quantity' => 18,
+                'lead_category_id' => $category->id,
                 'lead_quality' => 'Alta',
                 'loss_reason' => null,
                 'crm_notes' => 'Consegna urgente',
-                'margin_amount' => 350.50,
                 'utm_campaign' => 'Kit Estate',
                 'ad_group' => 'Calcio Veneto',
                 'utm_term' => 'kit calcio',
@@ -80,14 +83,82 @@ class AdminCrmDashboardTest extends TestCase
         $this->assertDatabaseHas('leads', [
             'id' => $lead->id,
             'category' => 'Basket',
-            'product' => 'Divisa gara',
+            'lead_category_id' => $category->id,
             'lead_quality' => 'Alta',
             'crm_notes' => 'Consegna urgente',
-            'ad_group' => 'Calcio Veneto',
-            'search_term' => 'divise calcio personalizzate',
-            'acquisition_country' => 'IT',
-            'acquisition_region' => 'Veneto',
         ]);
+        $this->assertNull($lead->fresh()->ad_group);
+        $this->assertNull($lead->fresh()->search_term);
+        $this->assertNull($lead->fresh()->acquisition_country);
+        $this->assertNull($lead->fresh()->acquisition_region);
+    }
+
+    public function test_sales_sheet_calculates_product_print_and_margin(): void
+    {
+        $admin = $this->owner();
+        $lead = $this->lead();
+        $product = CrmProduct::create(['code'=>'TS01','name'=>'T-shirt','unit_cost'=>5,'is_active'=>true]);
+        $product->priceTiers()->create(['min_quantity'=>10,'max_quantity'=>19,'unit_price'=>12]);
+        $print = CrmPrintType::create(['code'=>'CUORE1','name'=>'Lato cuore 1 colore','is_active'=>true]);
+        $print->priceTiers()->create(['min_quantity'=>10,'max_quantity'=>19,'unit_cost'=>1,'unit_price'=>3]);
+
+        $this->actingAs($admin,'admin')->post("/leads/{$lead->id}/sales-sheet/items",['product_id'=>$product->id,'quantity'=>12])->assertSessionHasNoErrors();
+        $item=$lead->fresh()->salesSheet->items()->firstOrFail();
+        $this->actingAs($admin,'admin')->post("/leads/{$lead->id}/sales-sheet/items/{$item->id}/prints",['print_type_id'=>$print->id])->assertSessionHasNoErrors();
+
+        $sheet=$lead->fresh()->salesSheet;
+        $this->assertSame('180.00',$sheet->revenue_total);
+        $this->assertSame('72.00',$sheet->cost_total);
+        $this->assertSame('108.00',$sheet->margin_total);
+        $this->assertSame('108.00',$lead->fresh()->margin_amount);
+    }
+
+    public function test_sales_sheet_can_be_updated_with_livewire_without_reloading_the_lead_page(): void
+    {
+        $this->actingAs($this->owner(), 'admin');
+        $lead = $this->lead();
+        $product = CrmProduct::create(['code' => 'POLO01', 'name' => 'Polo', 'unit_cost' => 8, 'is_active' => true]);
+        $product->priceTiers()->create(['min_quantity' => 1, 'max_quantity' => 20, 'unit_price' => 18]);
+
+        Livewire::test(LeadSalesSheetComponent::class, ['leadId' => $lead->id])
+            ->set('productId', (string) $product->id)
+            ->set('configurationName', 'Polo staff evento')
+            ->set('quantity', '5')
+            ->call('addProduct')
+            ->assertHasNoErrors()
+            ->assertSee('Prodotto aggiunto alla scheda vendita.')
+            ->assertSee('90,00');
+
+        $this->assertDatabaseHas('lead_sales_items', [
+            'product_code' => 'POLO01',
+            'configuration_name' => 'Polo staff evento',
+            'quantity' => 5,
+            'revenue_total' => 90,
+        ]);
+        $this->assertSame('Polo staff evento', $lead->fresh()->product);
+    }
+
+    public function test_categories_can_be_disabled_and_only_unused_categories_can_be_deleted(): void
+    {
+        $admin = $this->owner();
+        $used = LeadCategory::create(['name' => 'Categoria usata', 'sort_order' => 10, 'is_active' => true]);
+        $unused = LeadCategory::create(['name' => 'Categoria libera', 'sort_order' => 20, 'is_active' => true]);
+        $this->lead(['lead_category_id' => $used->id, 'category' => $used->name]);
+
+        $this->actingAs($admin, 'admin')
+            ->patch("/settings/crm-catalog/categories/{$used->id}/toggle")
+            ->assertSessionHasNoErrors();
+        $this->assertFalse($used->fresh()->is_active);
+
+        $this->actingAs($admin, 'admin')
+            ->delete("/settings/crm-catalog/categories/{$used->id}")
+            ->assertSessionHasErrors('category');
+        $this->assertDatabaseHas('lead_categories', ['id' => $used->id]);
+
+        $this->actingAs($admin, 'admin')
+            ->delete("/settings/crm-catalog/categories/{$unused->id}")
+            ->assertSessionHasNoErrors();
+        $this->assertDatabaseMissing('lead_categories', ['id' => $unused->id]);
     }
 
     private function owner(): AdminUser

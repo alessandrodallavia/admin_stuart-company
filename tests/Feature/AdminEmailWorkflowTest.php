@@ -122,7 +122,8 @@ class AdminEmailWorkflowTest extends TestCase
             ->assertOk()
             ->assertSee('Proposte')
             ->assertSee('Invia via email')
-            ->assertSee('min-[1280px]:grid-cols-[minmax(0,1fr)_420px]', false);
+            ->assertSee('lg:grid-cols-2', false)
+            ->assertSee('Torna ai lead');
     }
 
     public function test_operator_can_upload_and_delete_multiple_proposals(): void

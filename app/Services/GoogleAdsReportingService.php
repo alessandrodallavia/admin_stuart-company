@@ -15,6 +15,10 @@ class GoogleAdsReportingService
 {
     public function performance(Carbon $dateFrom, Carbon $dateTo): array
     {
+        if (! app()->environment('production')) {
+            return ['available' => false, 'error' => 'Report Google Ads disponibili solo in produzione.'];
+        }
+
         if (! $this->isConfigured()) {
             return ['available' => false, 'error' => 'Configurazione Google Ads incompleta.'];
         }
@@ -56,6 +60,10 @@ class GoogleAdsReportingService
 
     public function enrichLeads(Carbon $dateFrom, Carbon $dateTo): int
     {
+        if (! app()->environment('production')) {
+            throw new RuntimeException('Sincronizzazione Google Ads consentita solo in produzione.');
+        }
+
         if (! $this->isConfigured()) {
             throw new RuntimeException('Configurazione Google Ads incompleta.');
         }

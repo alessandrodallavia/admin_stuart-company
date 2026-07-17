@@ -207,6 +207,38 @@ input[type="file"] {
     vertical-align: middle;
 }
 
+[data-crm-catalog] input,
+[data-crm-catalog] select {
+    height: 32px;
+    padding: 0 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    line-height: 16px;
+}
+
+[data-crm-catalog] button {
+    min-height: 32px;
+    padding-top: 0;
+    padding-bottom: 0;
+    line-height: 12px;
+}
+
+[data-crm-sales] input,
+[data-crm-sales] select {
+    height: 32px;
+    padding: 0 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    line-height: 16px;
+}
+
+[data-crm-sales] button {
+    height: 32px;
+    padding: 0 10px;
+    line-height: 12px;
+    white-space: nowrap;
+}
+
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';

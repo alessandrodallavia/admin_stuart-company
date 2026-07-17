@@ -8,6 +8,9 @@ use App\Models\EmailConversation;
 use App\Models\EmailMessage;
 use App\Models\Lead;
 use App\Models\LeadQuotePdf;
+use App\Models\LeadCategory;
+use App\Models\CrmProduct;
+use App\Models\CrmPrintType;
 use App\Models\WhatsappConversation;
 use App\Models\WhatsappMessage;
 use App\Services\EmailMailboxService;
@@ -77,9 +80,7 @@ class LeadController extends Controller
 
         $leads = $leadsQuery->paginate(14)->withQueryString();
 
-        $selectedLead = $lead
-            ? $lead->fresh()->load('quotePdfs')
-            : $leads->first()?->load('quotePdfs');
+        $selectedLead = $lead?->fresh()->load(['quotePdfs', 'salesSheet.items.prints']);
 
         $selectedConversation = $selectedLead
             ? WhatsappConversation::query()
@@ -102,6 +103,9 @@ class LeadController extends Controller
             'stats' => $this->stats($statuses),
             'currentStatus' => $status,
             'search' => $search,
+            'leadCategories' => LeadCategory::where('is_active', true)->orderBy('sort_order')->orderBy('name')->get(),
+            'crmProducts' => CrmProduct::where('is_active', true)->whereHas('priceTiers')->orderBy('name')->get(),
+            'crmPrintTypes' => CrmPrintType::where('is_active', true)->whereHas('priceTiers')->orderBy('name')->get(),
         ]);
     }
 
@@ -117,19 +121,10 @@ class LeadController extends Controller
             'status' => ['required', Rule::in($statuses)],
             'payment_link' => ['nullable', 'url', 'max:2048'],
             'payment_amount' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
-            'category' => ['nullable', 'string', 'max:255'],
-            'product' => ['nullable', 'string', 'max:255'],
-            'quantity' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+            'lead_category_id' => ['nullable', 'exists:lead_categories,id'],
             'lead_quality' => ['nullable', Rule::in(['Bassa', 'Media', 'Alta'])],
             'loss_reason' => ['nullable', 'string', 'max:255'],
             'crm_notes' => ['nullable', 'string', 'max:5000'],
-            'margin_amount' => ['nullable', 'numeric', 'min:-99999999.99', 'max:99999999.99'],
-            'utm_campaign' => ['nullable', 'string', 'max:255'],
-            'ad_group' => ['nullable', 'string', 'max:255'],
-            'utm_term' => ['nullable', 'string', 'max:255'],
-            'search_term' => ['nullable', 'string', 'max:255'],
-            'acquisition_country' => ['nullable', 'string', 'max:100'],
-            'acquisition_region' => ['nullable', 'string', 'max:150'],
         ]);
 
         if ($data['status'] === 'quote_sent' && ! $lead->quotePdfs()->exists()) {
@@ -151,19 +146,11 @@ class LeadController extends Controller
             'status' => $data['status'],
             'payment_link' => $data['payment_link'] ?? $lead->payment_link,
             'payment_amount' => $data['payment_amount'] ?? $lead->payment_amount,
-            'category' => $data['category'] ?? null,
-            'product' => $data['product'] ?? null,
-            'quantity' => $data['quantity'] ?? null,
+            'lead_category_id' => $data['lead_category_id'] ?? null,
+            'category' => isset($data['lead_category_id']) ? LeadCategory::find($data['lead_category_id'])?->name : null,
             'lead_quality' => $data['lead_quality'] ?? null,
             'loss_reason' => $data['loss_reason'] ?? null,
             'crm_notes' => $data['crm_notes'] ?? null,
-            'margin_amount' => $data['margin_amount'] ?? null,
-            'utm_campaign' => $data['utm_campaign'] ?? null,
-            'ad_group' => $data['ad_group'] ?? null,
-            'utm_term' => $data['utm_term'] ?? null,
-            'search_term' => $data['search_term'] ?? null,
-            'acquisition_country' => $data['acquisition_country'] ?? null,
-            'acquisition_region' => $data['acquisition_region'] ?? null,
         ];
 
         $lead->fill($attributes)->save();

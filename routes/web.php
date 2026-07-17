@@ -4,6 +4,8 @@ use App\Http\Controllers\Admin\AdminUserController as AdminAdminUserController;
 use App\Http\Controllers\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Admin\DocumentController as AdminDocumentController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\CrmCatalogController as AdminCrmCatalogController;
+use App\Http\Controllers\Admin\LeadSalesSheetController as AdminLeadSalesSheetController;
 use App\Http\Controllers\Admin\EmailController as AdminEmailController;
 use App\Http\Controllers\Admin\LeadController as AdminLeadController;
 use App\Http\Controllers\Admin\NotificationController as AdminNotificationController;
@@ -61,6 +63,10 @@ Route::name('admin.')->group(function () {
             Route::post('/leads/{lead}/quote-pdfs/{quotePdf}/whatsapp', [AdminLeadController::class, 'sendQuotePdfWhatsapp'])->name('leads.quote-pdfs.whatsapp');
             Route::post('/leads/{lead}/stripe-payment-link', [AdminLeadController::class, 'createStripePaymentLink'])->name('leads.stripe-payment-link');
             Route::post('/leads/{lead}/stripe-payment-link/whatsapp', [AdminLeadController::class, 'sendStripePaymentLinkWhatsapp'])->name('leads.stripe-payment-link.whatsapp');
+            Route::post('/leads/{lead}/sales-sheet/items', [AdminLeadSalesSheetController::class, 'storeItem'])->name('leads.sales-items.store');
+            Route::delete('/leads/{lead}/sales-sheet/items/{item}', [AdminLeadSalesSheetController::class, 'destroyItem'])->name('leads.sales-items.destroy');
+            Route::post('/leads/{lead}/sales-sheet/items/{item}/prints', [AdminLeadSalesSheetController::class, 'storePrint'])->name('leads.sales-items.prints.store');
+            Route::delete('/leads/{lead}/sales-sheet/items/{item}/prints/{print}', [AdminLeadSalesSheetController::class, 'destroyPrint'])->name('leads.sales-items.prints.destroy');
         });
 
         Route::middleware(['admin.permission:leads.manage', 'admin.permission:email.manage'])->group(function () {
@@ -120,6 +126,14 @@ Route::name('admin.')->group(function () {
         });
 
         Route::middleware(['admin.permission:admin_users.manage', 'admin.training.blocked'])->group(function () {
+            Route::get('/settings/crm-catalog', [AdminCrmCatalogController::class, 'index'])->name('crm-catalog.index');
+            Route::post('/settings/crm-catalog/categories', [AdminCrmCatalogController::class, 'storeCategory'])->name('crm-catalog.categories.store');
+            Route::patch('/settings/crm-catalog/categories/{category}/toggle', [AdminCrmCatalogController::class, 'toggleCategory'])->name('crm-catalog.categories.toggle');
+            Route::delete('/settings/crm-catalog/categories/{category}', [AdminCrmCatalogController::class, 'destroyCategory'])->name('crm-catalog.categories.destroy');
+            Route::post('/settings/crm-catalog/products', [AdminCrmCatalogController::class, 'storeProduct'])->name('crm-catalog.products.store');
+            Route::post('/settings/crm-catalog/products/{product}/tiers', [AdminCrmCatalogController::class, 'storeProductTier'])->name('crm-catalog.products.tiers.store');
+            Route::post('/settings/crm-catalog/prints', [AdminCrmCatalogController::class, 'storePrintType'])->name('crm-catalog.prints.store');
+            Route::post('/settings/crm-catalog/prints/{printType}/tiers', [AdminCrmCatalogController::class, 'storePrintTier'])->name('crm-catalog.prints.tiers.store');
             Route::get('/settings/users', [AdminAdminUserController::class, 'index'])->name('users.index');
             Route::post('/settings/users', [AdminAdminUserController::class, 'store'])->name('users.store');
             Route::patch('/settings/users/{adminUser}', [AdminAdminUserController::class, 'update'])->name('users.update');

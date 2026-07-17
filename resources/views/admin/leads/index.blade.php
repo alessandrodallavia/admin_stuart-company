@@ -5,6 +5,7 @@
 @section('active_nav', 'leads')
 
 @section('content')
+            @if (! $selectedLead)
             <div class="mb-16 flex flex-wrap items-center justify-end gap-8">
                 <a href="{{ route('admin.leads.index') }}" class="rounded-10 border border-bullstar bg-bullstar px-12 py-10 text-12 font-extrabold uppercase tracking-normal text-white">
                     Tabella
@@ -58,9 +59,10 @@
                     </div>
                 </form>
             </section>
+            @endif
 
-            <section class="grid min-h-[660px] flex-1 gap-16 min-[1280px]:grid-cols-[minmax(0,1fr)_420px]">
-                <section class="overflow-hidden rounded-10 border border-gray-mid bg-white">
+            <section class="min-h-[660px] flex-1">
+                <section class="{{ $selectedLead ? 'hidden' : '' }} overflow-hidden rounded-10 border border-gray-mid bg-white">
                     <div class="flex flex-col gap-12 border-b border-gray-mid px-16 py-12 md:flex-row md:items-center md:justify-between">
                         <div>
                             <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Pipeline</p>
@@ -181,7 +183,10 @@
                     </div>
                 </section>
 
-                <aside class="overflow-hidden rounded-10 border border-gray-mid bg-white">
+                <main
+                    class="{{ $selectedLead ? '' : 'hidden' }} overflow-hidden rounded-10 border border-gray-mid bg-white"
+                    x-data="{ tab: ['proposal', 'product', 'origin'].includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : 'main', selectTab(value) { this.tab = value; window.history.replaceState(null, '', '#'+value) } }"
+                >
                     @if ($selectedLead)
                         @php
                             $statusLabel = $statuses[$selectedLead->status] ?? ucfirst((string) $selectedLead->status ?: 'Senza stato');
@@ -198,14 +203,24 @@
                                 default => 'bg-black-nike text-white',
                             };
                         @endphp
-                        <div class="border-b border-gray-mid px-16 py-16">
-                            <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Scheda lead</p>
-                            <h2 class="mt-6 text-24 font-black leading-tight tracking-normal">{{ $selectedLead->name ?: 'Lead senza nome' }}</h2>
-                            <p class="mt-6 text-14 font-semibold text-gray">{{ $selectedLead->club ?: $selectedLead->city ?: 'Organizzazione non indicata' }}</p>
+                        <div class="flex flex-col gap-10 border-b border-gray-mid px-16 py-14 md:flex-row md:items-center md:justify-between">
+                            <div>
+                                <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Scheda lead</p>
+                                <h2 class="mt-5 text-24 font-black leading-tight tracking-normal">{{ $selectedLead->name ?: 'Lead senza nome' }}</h2>
+                                <p class="mt-5 text-14 font-semibold text-gray">{{ $selectedLead->club ?: $selectedLead->city ?: 'Organizzazione non indicata' }}</p>
+                            </div>
+                            <a href="{{ route('admin.leads.index', ['status' => $currentStatus ?: null, 'q' => $search ?: null]) }}" class="inline-flex h-32 w-fit items-center rounded-10 border border-gray-mid px-12 text-11 font-extrabold uppercase tracking-normal transition hover:border-bullstar hover:text-bullstar">← Torna ai lead</a>
                         </div>
 
-                        <div class="space-y-16 p-16">
-                            <section class="rounded-10 border border-gray-mid bg-gray-light p-12">
+                        <nav class="flex gap-4 overflow-x-auto border-b border-gray-mid bg-gray-light px-16 pt-10" aria-label="Sezioni del lead">
+                            <button type="button" @click="selectTab('main')" :class="tab === 'main' ? 'border-black-nike bg-white text-black-nike' : 'border-transparent text-gray hover:text-black-nike'" class="h-36 shrink-0 rounded-t-10 border border-b-0 px-12 text-11 font-extrabold uppercase tracking-normal transition">Principale</button>
+                            <button type="button" @click="selectTab('proposal')" :class="tab === 'proposal' ? 'border-black-nike bg-white text-black-nike' : 'border-transparent text-gray hover:text-black-nike'" class="h-36 shrink-0 rounded-t-10 border border-b-0 px-12 text-11 font-extrabold uppercase tracking-normal transition">Proposta</button>
+                            <button type="button" @click="selectTab('product')" :class="tab === 'product' ? 'border-black-nike bg-white text-black-nike' : 'border-transparent text-gray hover:text-black-nike'" class="h-36 shrink-0 rounded-t-10 border border-b-0 px-12 text-11 font-extrabold uppercase tracking-normal transition">Scheda prodotto</button>
+                            <button type="button" @click="selectTab('origin')" :class="tab === 'origin' ? 'border-black-nike bg-white text-black-nike' : 'border-transparent text-gray hover:text-black-nike'" class="h-36 shrink-0 rounded-t-10 border border-b-0 px-12 text-11 font-extrabold uppercase tracking-normal transition">Origine lead</button>
+                        </nav>
+
+                        <div class="grid gap-16 p-16 lg:grid-cols-2">
+                            <section x-show="tab === 'main'" x-cloak class="order-1 rounded-10 border border-gray-mid bg-gray-light p-12 lg:col-start-1 lg:row-span-2 lg:row-start-1">
                                 <div class="flex items-start justify-between gap-12">
                                     <div>
                                         <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Stato attuale</p>
@@ -261,15 +276,12 @@
                                     <div class="grid gap-10 md:grid-cols-2">
                                         <label class="block">
                                             <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Categoria</span>
-                                            <input name="category" value="{{ old('category', $selectedLead->category) }}" type="text" maxlength="255" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
-                                        </label>
-                                        <label class="block">
-                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Prodotto</span>
-                                            <input name="product" value="{{ old('product', $selectedLead->product) }}" type="text" maxlength="255" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
-                                        </label>
-                                        <label class="block">
-                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Quantità</span>
-                                            <input name="quantity" value="{{ old('quantity', $selectedLead->quantity) }}" type="number" min="0" step="0.01" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                            <select name="lead_category_id" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                                <option value="">Non indicata</option>
+                                                @foreach ($leadCategories as $category)
+                                                    <option value="{{ $category->id }}" @selected((string) old('lead_category_id', $selectedLead->lead_category_id) === (string) $category->id)>{{ $category->name }}</option>
+                                                @endforeach
+                                            </select>
                                         </label>
                                         <label class="block">
                                             <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Qualità lead</span>
@@ -279,10 +291,6 @@
                                                     <option value="{{ $quality }}" @selected(old('lead_quality', $selectedLead->lead_quality) === $quality)>{{ $quality }}</option>
                                                 @endforeach
                                             </select>
-                                        </label>
-                                        <label class="block">
-                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Margine €</span>
-                                            <input name="margin_amount" value="{{ old('margin_amount', $selectedLead->margin_amount) }}" type="number" step="0.01" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
                                         </label>
                                         <label class="block">
                                             <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Motivo perdita</span>
@@ -295,44 +303,17 @@
                                         <textarea name="crm_notes" rows="3" maxlength="5000" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">{{ old('crm_notes', $selectedLead->crm_notes) }}</textarea>
                                     </label>
 
-                                    <div class="border-t border-gray-mid pt-10">
-                                        <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Acquisizione Google Ads</p>
-                                    </div>
-
-                                    <div class="grid gap-10 md:grid-cols-2">
-                                        <label class="block">
-                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Campagna</span>
-                                            <input name="utm_campaign" value="{{ old('utm_campaign', $selectedLead->utm_campaign) }}" type="text" maxlength="255" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
-                                        </label>
-                                        <label class="block">
-                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Ad Group</span>
-                                            <input name="ad_group" value="{{ old('ad_group', $selectedLead->ad_group) }}" type="text" maxlength="255" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
-                                        </label>
-                                        <label class="block">
-                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Keyword</span>
-                                            <input name="utm_term" value="{{ old('utm_term', $selectedLead->utm_term) }}" type="text" maxlength="255" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
-                                        </label>
-                                        <label class="block">
-                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Search Term</span>
-                                            <input name="search_term" value="{{ old('search_term', $selectedLead->search_term) }}" type="text" maxlength="255" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
-                                        </label>
-                                        <label class="block">
-                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Paese acquisizione</span>
-                                            <input name="acquisition_country" value="{{ old('acquisition_country', $selectedLead->acquisition_country) }}" type="text" maxlength="100" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
-                                        </label>
-                                        <label class="block">
-                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Regione acquisizione</span>
-                                            <input name="acquisition_region" value="{{ old('acquisition_region', $selectedLead->acquisition_region) }}" type="text" maxlength="150" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
-                                        </label>
-                                    </div>
-
                                     <button type="submit" class="w-full rounded-10 bg-bullstar px-16 py-12 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">
                                         Aggiorna lead
                                     </button>
                                 </form>
                             </section>
 
-                            <section class="rounded-10 border border-gray-mid p-12">
+                            <section x-show="tab === 'product'" x-cloak class="order-5 lg:col-span-2 lg:row-start-1">
+                                <livewire:admin.lead-sales-sheet :lead-id="$selectedLead->id" :key="'lead-sales-sheet-'.$selectedLead->id" />
+                            </section>
+
+                            <section x-show="tab === 'proposal'" x-cloak class="order-2 rounded-10 border border-gray-mid p-12 lg:col-span-2 lg:col-start-1 lg:row-start-1">
                                 <div class="flex flex-wrap items-start justify-between gap-8">
                                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Proposte</p>
                                     <p class="text-12 font-bold text-gray">{{ $selectedLead->quotePdfs->count() }} {{ $selectedLead->quotePdfs->count() === 1 ? 'proposta caricata' : 'proposte caricate' }}</p>
@@ -419,7 +400,7 @@
                                 </div>
                             </section>
 
-                            <section class="grid gap-10">
+                            <section x-show="tab === 'main'" x-cloak class="order-3 grid gap-10 lg:col-start-2 lg:row-start-1">
                                 <div class="rounded-10 border border-gray-mid p-12">
                                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Pagamento</p>
                                     <p class="mt-8 text-18 font-black">{{ $selectedLead->payment_amount ? '€ ' . number_format((float) $selectedLead->payment_amount, 2, ',', '.') : '-' }}</p>
@@ -447,7 +428,7 @@
                                 </div>
                             </section>
 
-                            <section class="grid gap-10">
+                            <section x-show="tab === 'main'" x-cloak class="order-4 grid gap-10 lg:col-start-2 lg:row-start-2">
                                 <div class="rounded-10 border border-gray-mid p-12">
                                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Contatti</p>
                                     <p class="mt-8 text-14 font-bold">{{ $selectedLead->email ?: 'Email mancante' }}</p>
@@ -459,7 +440,7 @@
                                 </div>
                             </section>
 
-                            <section class="rounded-10 border border-gray-mid p-12">
+                            <section x-show="tab === 'origin'" x-cloak class="order-6 rounded-10 border border-gray-mid p-12 lg:col-span-2 lg:row-start-1">
                                 @php
                                     $landingUrl = $selectedLead->landing_page ?: $selectedLead->entry_page;
                                     $isLandingUrl = $landingUrl && \Illuminate\Support\Str::startsWith($landingUrl, ['http://', 'https://']);
@@ -511,12 +492,28 @@
                                         <dd class="mt-4 break-words font-bold">{{ $selectedLead->utm_medium ?: '-' }}</dd>
                                     </div>
                                     <div>
-                                        <dt class="font-extrabold uppercase tracking-normal text-gray">Campaign</dt>
+                                        <dt class="font-extrabold uppercase tracking-normal text-gray">Campagna</dt>
                                         <dd class="mt-4 break-words font-bold">{{ $selectedLead->utm_campaign ?: '-' }}</dd>
                                     </div>
                                     <div>
-                                        <dt class="font-extrabold uppercase tracking-normal text-gray">Term</dt>
+                                        <dt class="font-extrabold uppercase tracking-normal text-gray">Ad Group</dt>
+                                        <dd class="mt-4 break-words font-bold">{{ $selectedLead->ad_group ?: '-' }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="font-extrabold uppercase tracking-normal text-gray">Keyword</dt>
                                         <dd class="mt-4 break-words font-bold">{{ $selectedLead->utm_term ?: '-' }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="font-extrabold uppercase tracking-normal text-gray">Search Term</dt>
+                                        <dd class="mt-4 break-words font-bold">{{ $selectedLead->search_term ?: '-' }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="font-extrabold uppercase tracking-normal text-gray">Paese acquisizione</dt>
+                                        <dd class="mt-4 break-words font-bold">{{ $selectedLead->acquisition_country ?: '-' }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="font-extrabold uppercase tracking-normal text-gray">Regione acquisizione</dt>
+                                        <dd class="mt-4 break-words font-bold">{{ $selectedLead->acquisition_region ?: '-' }}</dd>
                                     </div>
                                     <div>
                                         <dt class="font-extrabold uppercase tracking-normal text-gray">Content</dt>
@@ -539,11 +536,11 @@
                             </section>
 
                             @if ($selectedConversation)
-                                <a href="{{ route('admin.conversations.show', $selectedConversation) }}" target="_blank" class="block rounded-10 border border-whatsapp bg-whatsapp px-12 py-12 text-center text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-whatsapp/90">
+                                <a x-show="tab === 'main'" x-cloak href="{{ route('admin.conversations.show', $selectedConversation) }}" target="_blank" class="order-7 block rounded-10 border border-whatsapp bg-whatsapp px-12 py-12 text-center text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-whatsapp/90 lg:col-span-2">
                                     Apri chat WhatsApp
                                 </a>
                             @else
-                                <div class="rounded-10 border border-dashed border-gray-mid bg-gray-light px-12 py-12 text-14 font-semibold text-gray">
+                                <div x-show="tab === 'main'" x-cloak class="order-7 rounded-10 border border-dashed border-gray-mid bg-gray-light px-12 py-12 text-14 font-semibold text-gray lg:col-span-2">
                                     Nessuna chat WhatsApp collegata a questo lead.
                                 </div>
                             @endif
@@ -556,6 +553,6 @@
                             </div>
                         </div>
                     @endif
-                </aside>
+                </main>
             </section>
 @endsection
