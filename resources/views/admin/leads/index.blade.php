@@ -254,6 +254,47 @@
                                         <input name="payment_link" value="{{ old('payment_link', $selectedLead->payment_link) }}" type="url" placeholder="https://..." class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
                                     </label>
 
+                                    <div class="border-t border-gray-mid pt-10">
+                                        <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Dati CRM</p>
+                                    </div>
+
+                                    <div class="grid gap-10 md:grid-cols-2">
+                                        <label class="block">
+                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Categoria</span>
+                                            <input name="category" value="{{ old('category', $selectedLead->category) }}" type="text" maxlength="255" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                        </label>
+                                        <label class="block">
+                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Prodotto</span>
+                                            <input name="product" value="{{ old('product', $selectedLead->product) }}" type="text" maxlength="255" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                        </label>
+                                        <label class="block">
+                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Quantità</span>
+                                            <input name="quantity" value="{{ old('quantity', $selectedLead->quantity) }}" type="number" min="0" step="0.01" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                        </label>
+                                        <label class="block">
+                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Qualità lead</span>
+                                            <select name="lead_quality" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                                <option value="">Non indicata</option>
+                                                @foreach (['Bassa', 'Media', 'Alta'] as $quality)
+                                                    <option value="{{ $quality }}" @selected(old('lead_quality', $selectedLead->lead_quality) === $quality)>{{ $quality }}</option>
+                                                @endforeach
+                                            </select>
+                                        </label>
+                                        <label class="block">
+                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Margine €</span>
+                                            <input name="margin_amount" value="{{ old('margin_amount', $selectedLead->margin_amount) }}" type="number" step="0.01" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                        </label>
+                                        <label class="block">
+                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Motivo perdita</span>
+                                            <input name="loss_reason" value="{{ old('loss_reason', $selectedLead->loss_reason) }}" type="text" maxlength="255" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                        </label>
+                                    </div>
+
+                                    <label class="block">
+                                        <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Note CRM</span>
+                                        <textarea name="crm_notes" rows="3" maxlength="5000" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">{{ old('crm_notes', $selectedLead->crm_notes) }}</textarea>
+                                    </label>
+
                                     <button type="submit" class="w-full rounded-10 bg-bullstar px-16 py-12 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">
                                         Aggiorna lead
                                     </button>

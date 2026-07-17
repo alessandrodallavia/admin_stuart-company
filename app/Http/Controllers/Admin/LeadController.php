@@ -117,6 +117,13 @@ class LeadController extends Controller
             'status' => ['required', Rule::in($statuses)],
             'payment_link' => ['nullable', 'url', 'max:2048'],
             'payment_amount' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+            'category' => ['nullable', 'string', 'max:255'],
+            'product' => ['nullable', 'string', 'max:255'],
+            'quantity' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+            'lead_quality' => ['nullable', Rule::in(['Bassa', 'Media', 'Alta'])],
+            'loss_reason' => ['nullable', 'string', 'max:255'],
+            'crm_notes' => ['nullable', 'string', 'max:5000'],
+            'margin_amount' => ['nullable', 'numeric', 'min:-99999999.99', 'max:99999999.99'],
         ]);
 
         if ($data['status'] === 'quote_sent' && ! $lead->quotePdfs()->exists()) {
@@ -138,6 +145,13 @@ class LeadController extends Controller
             'status' => $data['status'],
             'payment_link' => $data['payment_link'] ?? $lead->payment_link,
             'payment_amount' => $data['payment_amount'] ?? $lead->payment_amount,
+            'category' => $data['category'] ?? null,
+            'product' => $data['product'] ?? null,
+            'quantity' => $data['quantity'] ?? null,
+            'lead_quality' => $data['lead_quality'] ?? null,
+            'loss_reason' => $data['loss_reason'] ?? null,
+            'crm_notes' => $data['crm_notes'] ?? null,
+            'margin_amount' => $data['margin_amount'] ?? null,
         ];
 
         $lead->fill($attributes)->save();

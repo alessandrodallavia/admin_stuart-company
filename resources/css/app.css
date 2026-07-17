@@ -201,6 +201,12 @@ input[type="file"] {
     display: none;
 }
 
+.crm-leads-table th,
+.crm-leads-table td {
+    padding: 6px 8px;
+    vertical-align: middle;
+}
+
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';

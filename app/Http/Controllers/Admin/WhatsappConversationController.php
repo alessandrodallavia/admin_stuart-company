@@ -121,7 +121,7 @@ class WhatsappConversationController extends Controller
         ])->save();
 
         return redirect()
-            ->route('admin.dashboard')
+            ->route('admin.whatsapp.index')
             ->with('status', 'Conversazione segnata da leggere.');
     }
 

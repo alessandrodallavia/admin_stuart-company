@@ -44,7 +44,7 @@
                             <p id="inbox-count" class="mt-4 text-14 font-bold text-black-nike">{{ $conversations->count() }} chat</p>
                         </div>
                         <a
-                            href="{{ route('admin.dashboard') }}"
+                            href="{{ route('admin.whatsapp.index') }}"
                             class="rounded-10 border border-gray-mid px-12 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike"
                         >
                             Tutte
@@ -171,7 +171,7 @@
                                             </p>
                                         @endif
                                         <div class="mt-6 flex flex-wrap items-center gap-8">
-                                            <a href="{{ route('admin.dashboard') }}" class="inline-flex h-28 w-fit shrink-0 items-center gap-6 rounded-10 border border-gray-mid px-10 text-12 font-extrabold uppercase tracking-normal text-black-nike transition hover:border-black-nike">
+                                            <a href="{{ route('admin.whatsapp.index') }}" class="inline-flex h-28 w-fit shrink-0 items-center gap-6 rounded-10 border border-gray-mid px-10 text-12 font-extrabold uppercase tracking-normal text-black-nike transition hover:border-black-nike">
                                                 <svg class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 6l-6 6 6 6" />
                                                 </svg>

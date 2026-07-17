@@ -62,9 +62,14 @@
             [
                 'label' => null,
                 'items' => array_values(array_filter([
+                    $adminUser?->hasAdminPermission('leads.view') ? [
+                        'label' => 'Dashboard',
+                        'route' => route('admin.dashboard'),
+                        'active' => $activeNav === 'crm-dashboard',
+                    ] : null,
                     $adminUser?->hasAdminPermission('whatsapp.view') ? [
                         'label' => 'WhatsApp',
-                        'route' => route('admin.dashboard'),
+                        'route' => route('admin.whatsapp.index'),
                         'active' => $activeNav === 'whatsapp',
                         'badge' => $unreadWhatsappCount,
                     ] : null,

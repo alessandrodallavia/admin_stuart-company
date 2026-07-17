@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AdminUserController as AdminAdminUserController;
 use App\Http\Controllers\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Admin\DocumentController as AdminDocumentController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\EmailController as AdminEmailController;
 use App\Http\Controllers\Admin\LeadController as AdminLeadController;
 use App\Http\Controllers\Admin\NotificationController as AdminNotificationController;
@@ -30,8 +31,8 @@ Route::name('admin.')->group(function () {
         });
 
         Route::middleware('admin.permission:whatsapp.view')->group(function () {
-            Route::get('/', [AdminWhatsappConversationController::class, 'index'])->name('dashboard');
-            Route::get('/poll', [AdminWhatsappConversationController::class, 'pollIndex'])->name('dashboard.poll');
+            Route::get('/whatsapp', [AdminWhatsappConversationController::class, 'index'])->name('whatsapp.index');
+            Route::get('/whatsapp/poll', [AdminWhatsappConversationController::class, 'pollIndex'])->name('dashboard.poll');
             Route::get('/conversations/{conversation}', [AdminWhatsappConversationController::class, 'index'])->name('conversations.show');
             Route::get('/conversations/{conversation}/poll', [AdminWhatsappConversationController::class, 'poll'])->name('conversations.poll');
             Route::get('/messages/{message}/media', [AdminWhatsappConversationController::class, 'showMedia'])->name('messages.media');
@@ -47,6 +48,7 @@ Route::name('admin.')->group(function () {
         });
 
         Route::middleware('admin.permission:leads.view')->group(function () {
+            Route::get('/', AdminDashboardController::class)->name('dashboard');
             Route::get('/leads/board', [AdminLeadController::class, 'board'])->name('leads.board');
             Route::get('/leads/{lead?}', [AdminLeadController::class, 'index'])->name('leads.index');
             Route::get('/leads/{lead}/quote-pdfs/{quotePdf}', [AdminLeadController::class, 'showQuotePdf'])->name('leads.quote-pdfs.show');
