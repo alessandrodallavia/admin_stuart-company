@@ -62,7 +62,7 @@
                     <div class="flex items-center gap-5">
                         <p class="min-w-0 truncate text-11 font-extrabold uppercase tracking-normal text-gray">{{ $card['label'] }}</p>
                         <span class="group relative shrink-0">
-                            <button type="button" aria-label="Informazioni su {{ $card['label'] }}" class="inline-flex h-16 w-16 items-center justify-center rounded-full border border-gray-mid bg-gray-light text-10 font-black leading-none text-gray focus:border-bullstar focus:outline-none">?</button>
+                            <button type="button" aria-label="Informazioni su {{ $card['label'] }}" class="inline-flex h-16 w-16 -translate-y-px items-center justify-center rounded-full bg-black-nike text-10 font-black leading-none text-white focus:outline-none focus:ring-2 focus:ring-bullstar">?</button>
                             <span role="tooltip" class="pointer-events-none invisible absolute left-1/2 top-full z-50 mt-6 w-[220px] -translate-x-1/2 rounded-10 bg-black-nike px-10 py-8 text-left text-11 font-semibold normal-case leading-[16px] text-white opacity-0 shadow-lg transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">{{ $card['help'] }}</span>
                         </span>
                     </div>
@@ -226,7 +226,7 @@
                             <div class="flex items-center gap-5">
                                 <p class="min-w-0 truncate text-10 font-extrabold uppercase tracking-normal text-gray">{{ $metric['label'] }}</p>
                                 <span class="group relative shrink-0">
-                                    <button type="button" aria-label="Informazioni su {{ $metric['label'] }}" class="inline-flex h-16 w-16 items-center justify-center rounded-full border border-gray-mid bg-gray-light text-10 font-black leading-none text-gray focus:border-bullstar focus:outline-none">?</button>
+                                    <button type="button" aria-label="Informazioni su {{ $metric['label'] }}" class="inline-flex h-16 w-16 -translate-y-px items-center justify-center rounded-full bg-black-nike text-10 font-black leading-none text-white focus:outline-none focus:ring-2 focus:ring-bullstar">?</button>
                                     <span role="tooltip" class="pointer-events-none invisible absolute left-1/2 top-full z-50 mt-6 w-[220px] -translate-x-1/2 rounded-10 bg-black-nike px-10 py-8 text-left text-11 font-semibold normal-case leading-[16px] text-white opacity-0 shadow-lg transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">{{ $metric['help'] }}</span>
                                 </span>
                             </div>
