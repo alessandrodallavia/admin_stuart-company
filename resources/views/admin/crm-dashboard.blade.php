@@ -47,19 +47,25 @@
 
         <section class="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
             @foreach ([
-                ['label' => 'Lead', 'value' => $number($stats['leads'])],
-                ['label' => 'Preventivi', 'value' => $number($stats['quotes']), 'detail' => $money($stats['quote_value'])],
-                ['label' => 'Pagamenti', 'value' => $number($stats['payments']), 'detail' => $money($stats['payment_value'])],
-                ['label' => 'Margine', 'value' => $money($stats['margin'])],
-                ['label' => 'Valore medio preventivo', 'value' => $money($stats['average_quote'])],
-                ['label' => 'Valore medio pagamento', 'value' => $money($stats['average_payment'])],
-                ['label' => 'Quantità media / lead', 'value' => $number($stats['average_quantity'], 1)],
-                ['label' => 'Lead → Preventivo', 'value' => $number($stats['lead_to_quote'], 1) . '%'],
-                ['label' => 'Preventivo → Pagamento', 'value' => $number($stats['quote_to_payment'], 1) . '%'],
-                ['label' => 'Lead → Pagamento', 'value' => $number($stats['lead_to_payment'], 1) . '%'],
+                ['label' => 'Lead', 'value' => $number($stats['leads']), 'help' => 'Numero di lead acquisiti nel periodo e con i filtri selezionati.'],
+                ['label' => 'Preventivi', 'value' => $number($stats['quotes']), 'detail' => $money($stats['quote_value']), 'help' => 'Lead con almeno un preventivo. In blu è indicata la somma del valore preventivi.'],
+                ['label' => 'Pagamenti', 'value' => $number($stats['payments']), 'detail' => $money($stats['payment_value']), 'help' => 'Lead con stato Pagato. In blu è indicata la somma dei pagamenti.'],
+                ['label' => 'Margine', 'value' => $money($stats['margin']), 'help' => 'Somma del margine inserito sui lead pagati nel periodo.'],
+                ['label' => 'Valore medio preventivo', 'value' => $money($stats['average_quote']), 'help' => 'Valore totale dei preventivi diviso per il numero di lead con preventivo.'],
+                ['label' => 'Valore medio pagamento', 'value' => $money($stats['average_payment']), 'help' => 'Valore totale dei pagamenti diviso per il numero di lead pagati.'],
+                ['label' => 'Quantità media / lead', 'value' => $number($stats['average_quantity'], 1), 'help' => 'Somma delle quantità inserite divisa per il numero totale di lead.'],
+                ['label' => 'Lead → Preventivo', 'value' => $number($stats['lead_to_quote'], 1) . '%', 'help' => 'Percentuale di lead che hanno ricevuto almeno un preventivo.'],
+                ['label' => 'Preventivo → Pagamento', 'value' => $number($stats['quote_to_payment'], 1) . '%', 'help' => 'Percentuale dei lead con preventivo che risultano pagati.'],
+                ['label' => 'Lead → Pagamento', 'value' => $number($stats['lead_to_payment'], 1) . '%', 'help' => 'Percentuale di tutti i lead che risultano pagati.'],
             ] as $card)
                 <article class="min-w-0 rounded-10 border border-gray-mid bg-white p-10 md:p-12">
-                    <p class="text-11 font-extrabold uppercase tracking-normal text-gray">{{ $card['label'] }}</p>
+                    <div class="flex items-center gap-5">
+                        <p class="min-w-0 truncate text-11 font-extrabold uppercase tracking-normal text-gray">{{ $card['label'] }}</p>
+                        <span class="group relative shrink-0">
+                            <button type="button" aria-label="Informazioni su {{ $card['label'] }}" class="inline-flex h-16 w-16 items-center justify-center rounded-full border border-gray-mid bg-gray-light text-10 font-black leading-none text-gray focus:border-bullstar focus:outline-none">?</button>
+                            <span role="tooltip" class="pointer-events-none invisible absolute left-1/2 top-full z-50 mt-6 w-[220px] -translate-x-1/2 rounded-10 bg-black-nike px-10 py-8 text-left text-11 font-semibold normal-case leading-[16px] text-white opacity-0 shadow-lg transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">{{ $card['help'] }}</span>
+                        </span>
+                    </div>
                     <p class="mt-6 truncate text-20 font-black leading-none" title="{{ $card['value'] }}">{{ $card['value'] }}</p>
                     @isset($card['detail'])
                         <p class="mt-5 truncate text-12 font-bold text-bullstar" title="{{ $card['detail'] }}">{{ $card['detail'] }}</p>
@@ -151,7 +157,44 @@
             </div>
 
             @if ($leads->hasPages())
-                <div class="border-t border-gray-mid px-14 py-12">{{ $leads->links() }}</div>
+                <div class="flex flex-col gap-8 border-t border-gray-mid px-10 py-8 sm:flex-row sm:items-center sm:justify-between">
+                    <p class="text-11 font-semibold text-gray">
+                        Righe {{ $leads->firstItem() }}-{{ $leads->lastItem() }} di {{ $leads->total() }}
+                    </p>
+                    <nav aria-label="Paginazione lead" class="flex items-center gap-4">
+                        @if ($leads->onFirstPage())
+                            <span class="inline-flex h-28 items-center rounded-10 border border-gray-mid px-8 text-11 font-bold text-gray opacity-50">‹</span>
+                        @else
+                            <a href="{{ $leads->previousPageUrl() }}" rel="prev" class="inline-flex h-28 items-center rounded-10 border border-gray-mid px-8 text-11 font-bold transition hover:border-bullstar hover:text-bullstar">‹</a>
+                        @endif
+
+                        @php
+                            $firstVisiblePage = max(1, $leads->currentPage() - 1);
+                            $lastVisiblePage = min($leads->lastPage(), $leads->currentPage() + 1);
+                        @endphp
+                        @if ($firstVisiblePage > 1)
+                            <a href="{{ $leads->url(1) }}" class="inline-flex h-28 min-w-28 items-center justify-center rounded-10 border border-gray-mid px-6 text-11 font-bold transition hover:border-bullstar hover:text-bullstar">1</a>
+                            @if ($firstVisiblePage > 2)<span class="px-3 text-11 font-bold text-gray">…</span>@endif
+                        @endif
+                        @foreach (range($firstVisiblePage, $lastVisiblePage) as $page)
+                            @if ($page === $leads->currentPage())
+                                <span aria-current="page" class="inline-flex h-28 min-w-28 items-center justify-center rounded-10 border border-black-nike bg-black-nike px-6 text-11 font-bold text-white">{{ $page }}</span>
+                            @else
+                                <a href="{{ $leads->url($page) }}" class="inline-flex h-28 min-w-28 items-center justify-center rounded-10 border border-gray-mid px-6 text-11 font-bold transition hover:border-bullstar hover:text-bullstar">{{ $page }}</a>
+                            @endif
+                        @endforeach
+                        @if ($lastVisiblePage < $leads->lastPage())
+                            @if ($lastVisiblePage < $leads->lastPage() - 1)<span class="px-3 text-11 font-bold text-gray">…</span>@endif
+                            <a href="{{ $leads->url($leads->lastPage()) }}" class="inline-flex h-28 min-w-28 items-center justify-center rounded-10 border border-gray-mid px-6 text-11 font-bold transition hover:border-bullstar hover:text-bullstar">{{ $leads->lastPage() }}</a>
+                        @endif
+
+                        @if ($leads->hasMorePages())
+                            <a href="{{ $leads->nextPageUrl() }}" rel="next" class="inline-flex h-28 items-center rounded-10 border border-gray-mid px-8 text-11 font-bold transition hover:border-bullstar hover:text-bullstar">›</a>
+                        @else
+                            <span class="inline-flex h-28 items-center rounded-10 border border-gray-mid px-8 text-11 font-bold text-gray opacity-50">›</span>
+                        @endif
+                    </nav>
+                </div>
             @endif
         </section>
 
@@ -168,19 +211,25 @@
             @if ($ads['available'])
                 <div class="grid gap-px bg-gray-mid sm:grid-cols-2 lg:grid-cols-5">
                     @foreach ([
-                        ['label' => 'Spesa Ads', 'value' => $money($ads['spend'])],
-                        ['label' => 'CPL', 'value' => $money($ads['cpl'])],
-                        ['label' => 'CPA', 'value' => $money($ads['cpa'])],
-                        ['label' => 'ROAS', 'value' => $number($ads['roas'], 2) . 'x'],
-                        ['label' => 'ROMI', 'value' => $number($ads['romi'], 2) . 'x'],
-                        ['label' => 'CTR', 'value' => $number($ads['ctr'], 2) . '%'],
-                        ['label' => 'CPC medio', 'value' => $money($ads['average_cpc'])],
-                        ['label' => 'Quota impression', 'value' => $ads['impression_share'] !== null ? $number($ads['impression_share'], 1) . '%' : '-'],
-                        ['label' => 'QI persa ranking', 'value' => $ads['lost_rank_share'] !== null ? $number($ads['lost_rank_share'], 1) . '%' : '-'],
-                        ['label' => 'QI persa budget', 'value' => $ads['lost_budget_share'] !== null ? $number($ads['lost_budget_share'], 1) . '%' : '-'],
+                        ['label' => 'Spesa Ads', 'value' => $money($ads['spend']), 'help' => 'Costo totale Google Ads nel periodo selezionato.'],
+                        ['label' => 'CPL', 'value' => $money($ads['cpl']), 'help' => 'Costo per lead: spesa Ads divisa per il numero di lead.'],
+                        ['label' => 'CPA', 'value' => $money($ads['cpa']), 'help' => 'Costo per acquisizione: spesa Ads divisa per il numero di pagamenti.'],
+                        ['label' => 'ROAS', 'value' => $number($ads['roas'], 2) . 'x', 'help' => 'Ritorno sulla spesa pubblicitaria: valore pagamenti diviso per spesa Ads.'],
+                        ['label' => 'ROMI', 'value' => $number($ads['romi'], 2) . 'x', 'help' => 'Ritorno sul marketing: margine diviso per spesa Ads.'],
+                        ['label' => 'CTR', 'value' => $number($ads['ctr'], 2) . '%', 'help' => 'Percentuale di impression che hanno generato un clic.'],
+                        ['label' => 'CPC medio', 'value' => $money($ads['average_cpc']), 'help' => 'Costo medio sostenuto per ogni clic.'],
+                        ['label' => 'Quota impression', 'value' => $ads['impression_share'] !== null ? $number($ads['impression_share'], 1) . '%' : '-', 'help' => 'Percentuale delle impression ottenute rispetto a quelle per cui gli annunci erano idonei.'],
+                        ['label' => 'QI persa ranking', 'value' => $ads['lost_rank_share'] !== null ? $number($ads['lost_rank_share'], 1) . '%' : '-', 'help' => 'Quota impression persa a causa del ranking degli annunci.'],
+                        ['label' => 'QI persa budget', 'value' => $ads['lost_budget_share'] !== null ? $number($ads['lost_budget_share'], 1) . '%' : '-', 'help' => 'Quota impression persa perché il budget era insufficiente.'],
                     ] as $metric)
                         <article class="bg-white p-10">
-                            <p class="text-10 font-extrabold uppercase tracking-normal text-gray">{{ $metric['label'] }}</p>
+                            <div class="flex items-center gap-5">
+                                <p class="min-w-0 truncate text-10 font-extrabold uppercase tracking-normal text-gray">{{ $metric['label'] }}</p>
+                                <span class="group relative shrink-0">
+                                    <button type="button" aria-label="Informazioni su {{ $metric['label'] }}" class="inline-flex h-16 w-16 items-center justify-center rounded-full border border-gray-mid bg-gray-light text-10 font-black leading-none text-gray focus:border-bullstar focus:outline-none">?</button>
+                                    <span role="tooltip" class="pointer-events-none invisible absolute left-1/2 top-full z-50 mt-6 w-[220px] -translate-x-1/2 rounded-10 bg-black-nike px-10 py-8 text-left text-11 font-semibold normal-case leading-[16px] text-white opacity-0 shadow-lg transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">{{ $metric['help'] }}</span>
+                                </span>
+                            </div>
                             <p class="mt-5 text-18 font-black leading-none">{{ $metric['value'] }}</p>
                         </article>
                     @endforeach
