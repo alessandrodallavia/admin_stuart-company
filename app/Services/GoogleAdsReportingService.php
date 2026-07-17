@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Lead;
 use Google\Ads\GoogleAds\Lib\OAuth2TokenBuilder;
 use Google\Ads\GoogleAds\Lib\V24\GoogleAdsClientBuilder;
+use Google\Ads\GoogleAds\V24\Enums\DeviceEnum\Device;
 use Google\Ads\GoogleAds\V24\Services\SearchGoogleAdsRequest;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -69,7 +70,10 @@ class GoogleAdsReportingService
             ->where(fn ($query) => $query
                 ->whereNull('ad_group')
                 ->orWhereNull('utm_campaign')
-                ->orWhereNull('utm_term'))
+                ->orWhereNull('utm_term')
+                ->orWhereNull('acquisition_country')
+                ->orWhereNull('acquisition_region')
+                ->orWhereNull('device'))
             ->orderBy('id')
             ->get()
             ->groupBy(fn (Lead $lead) => $lead->created_at->toDateString())
@@ -84,22 +88,37 @@ class GoogleAdsReportingService
                     }
 
                     $quotedGclids = $byGclid->keys()->map(fn (string $gclid) => "'{$gclid}'")->implode(', ');
-                    $query = "SELECT click_view.gclid, click_view.keyword_info.text, campaign.name, ad_group.name FROM click_view WHERE segments.date = '{$date}' AND click_view.gclid IN ({$quotedGclids})";
+                    $query = "SELECT click_view.gclid, click_view.keyword_info.text, click_view.location_of_presence.country, click_view.location_of_presence.region, campaign.name, ad_group.name, segments.device FROM click_view WHERE segments.date = '{$date}' AND click_view.gclid IN ({$quotedGclids})";
                     $response = $this->client()->getGoogleAdsServiceClient()->search(
                         SearchGoogleAdsRequest::build($this->customerId(), $query)
                     );
+                    $rows = collect($response->iterateAllElements());
+                    $geoNames = $this->geoNames(
+                        $rows->flatMap(function ($row) {
+                            $location = $row->getClickView()?->getLocationOfPresence();
 
-                    foreach ($response->iterateAllElements() as $row) {
+                            return [$location?->getCountry(), $location?->getRegion()];
+                        })->filter()->unique()->values()->all()
+                    );
+
+                    foreach ($rows as $row) {
                         $lead = $byGclid->get($row->getClickView()?->getGclid());
 
                         if (! $lead) {
                             continue;
                         }
 
+                        $location = $row->getClickView()?->getLocationOfPresence();
+                        $country = $geoNames[$location?->getCountry()] ?? null;
+                        $region = $geoNames[$location?->getRegion()] ?? null;
+
                         $lead->forceFill([
                             'utm_campaign' => $lead->utm_campaign ?: $row->getCampaign()?->getName(),
                             'ad_group' => $lead->ad_group ?: $row->getAdGroup()?->getName(),
                             'utm_term' => $lead->utm_term ?: $row->getClickView()?->getKeywordInfo()?->getText(),
+                            'acquisition_country' => $lead->acquisition_country ?: ($country['country_code'] ?? $country['name'] ?? null),
+                            'acquisition_region' => $lead->acquisition_region ?: ($region['name'] ?? null),
+                            'device' => $lead->device ?: $this->deviceName($row->getSegments()?->getDevice()),
                         ])->save();
                         $updated++;
                     }
@@ -107,6 +126,41 @@ class GoogleAdsReportingService
             });
 
         return $updated;
+    }
+
+    private function geoNames(array $resourceNames): array
+    {
+        $locations = [];
+
+        foreach (array_chunk($resourceNames, 200) as $chunk) {
+            $quotedNames = collect($chunk)->map(fn (string $name) => "'{$name}'")->implode(', ');
+            $query = "SELECT geo_target_constant.resource_name, geo_target_constant.name, geo_target_constant.country_code FROM geo_target_constant WHERE geo_target_constant.resource_name IN ({$quotedNames})";
+            $response = $this->client()->getGoogleAdsServiceClient()->search(
+                SearchGoogleAdsRequest::build($this->customerId(), $query)
+            );
+
+            foreach ($response->iterateAllElements() as $row) {
+                $geo = $row->getGeoTargetConstant();
+                $locations[$geo->getResourceName()] = [
+                    'name' => $geo->getName(),
+                    'country_code' => $geo->getCountryCode(),
+                ];
+            }
+        }
+
+        return $locations;
+    }
+
+    private function deviceName(?int $device): ?string
+    {
+        return match ($device) {
+            Device::MOBILE => 'Mobile',
+            Device::TABLET => 'Tablet',
+            Device::DESKTOP => 'Desktop',
+            Device::CONNECTED_TV => 'TV connessa',
+            Device::OTHER => 'Altro',
+            default => null,
+        };
     }
 
     private function emptyPerformance(): array

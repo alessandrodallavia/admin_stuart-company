@@ -33,6 +33,8 @@ class Lead extends Model
         'utm_content',
         'ad_group',
         'search_term',
+        'acquisition_country',
+        'acquisition_region',
         'category',
         'product',
         'quantity',

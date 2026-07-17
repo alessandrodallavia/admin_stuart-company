@@ -9,7 +9,7 @@ class SyncGoogleAdsLeadData extends Command
 {
     protected $signature = 'crm:sync-google-ads {--days=30 : Numero di giorni da sincronizzare, massimo 90}';
 
-    protected $description = 'Arricchisce i lead con campagna, Ad Group e keyword associati al GCLID';
+    protected $description = 'Arricchisce i lead con campagna, Ad Group, keyword, località e dispositivo associati al GCLID';
 
     public function handle(GoogleAdsReportingService $reporting): int
     {

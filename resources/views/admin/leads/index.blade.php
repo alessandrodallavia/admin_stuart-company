@@ -316,6 +316,14 @@
                                             <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Search Term</span>
                                             <input name="search_term" value="{{ old('search_term', $selectedLead->search_term) }}" type="text" maxlength="255" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
                                         </label>
+                                        <label class="block">
+                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Paese acquisizione</span>
+                                            <input name="acquisition_country" value="{{ old('acquisition_country', $selectedLead->acquisition_country) }}" type="text" maxlength="100" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                        </label>
+                                        <label class="block">
+                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Regione acquisizione</span>
+                                            <input name="acquisition_region" value="{{ old('acquisition_region', $selectedLead->acquisition_region) }}" type="text" maxlength="150" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                        </label>
                                     </div>
 
                                     <button type="submit" class="w-full rounded-10 bg-bullstar px-16 py-12 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">

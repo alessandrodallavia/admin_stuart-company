@@ -128,6 +128,8 @@ class LeadController extends Controller
             'ad_group' => ['nullable', 'string', 'max:255'],
             'utm_term' => ['nullable', 'string', 'max:255'],
             'search_term' => ['nullable', 'string', 'max:255'],
+            'acquisition_country' => ['nullable', 'string', 'max:100'],
+            'acquisition_region' => ['nullable', 'string', 'max:150'],
         ]);
 
         if ($data['status'] === 'quote_sent' && ! $lead->quotePdfs()->exists()) {
@@ -160,6 +162,8 @@ class LeadController extends Controller
             'ad_group' => $data['ad_group'] ?? null,
             'utm_term' => $data['utm_term'] ?? null,
             'search_term' => $data['search_term'] ?? null,
+            'acquisition_country' => $data['acquisition_country'] ?? null,
+            'acquisition_region' => $data['acquisition_region'] ?? null,
         ];
 
         $lead->fill($attributes)->save();

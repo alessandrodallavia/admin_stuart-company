@@ -71,6 +71,8 @@ class AdminCrmDashboardTest extends TestCase
                 'ad_group' => 'Calcio Veneto',
                 'utm_term' => 'kit calcio',
                 'search_term' => 'divise calcio personalizzate',
+                'acquisition_country' => 'IT',
+                'acquisition_region' => 'Veneto',
             ])
             ->assertSessionHasNoErrors()
             ->assertRedirect();
@@ -83,6 +85,8 @@ class AdminCrmDashboardTest extends TestCase
             'crm_notes' => 'Consegna urgente',
             'ad_group' => 'Calcio Veneto',
             'search_term' => 'divise calcio personalizzate',
+            'acquisition_country' => 'IT',
+            'acquisition_region' => 'Veneto',
         ]);
     }
 

@@ -84,15 +84,21 @@
             </div>
 
             <div class="overflow-x-auto">
-                <table class="crm-leads-table min-w-[1900px] w-full text-left">
+                <table class="crm-leads-table min-w-[2350px] w-full text-left">
                     <thead class="border-b border-gray-mid bg-gray-light text-11 font-extrabold uppercase tracking-normal text-gray">
                         <tr>
+                            <th class="px-8 py-7">ID</th>
                             <th class="px-8 py-7">Data lead</th>
                             <th class="px-8 py-7">Lead</th>
+                            <th class="px-8 py-7">GCLID</th>
                             <th class="px-8 py-7">Campagna</th>
                             <th class="px-8 py-7">Ad Group</th>
                             <th class="px-8 py-7">Keyword</th>
                             <th class="px-8 py-7">Search Term</th>
+                            <th class="px-8 py-7">Landing Page</th>
+                            <th class="px-8 py-7">Dispositivo</th>
+                            <th class="px-8 py-7">Paese</th>
+                            <th class="px-8 py-7">Regione</th>
                             <th class="px-8 py-7">Categoria</th>
                             <th class="px-8 py-7">Prodotto</th>
                             <th class="px-8 py-7">Q.tà</th>
@@ -125,15 +131,21 @@
                                 };
                             @endphp
                             <tr class="align-middle transition hover:bg-gray-light/60">
+                                <td class="whitespace-nowrap px-10 py-11">{{ $lead->id }}</td>
                                 <td class="whitespace-nowrap px-10 py-11">{{ $lead->created_at?->timezone(config('app.display_timezone'))->format('d/m/Y') }}</td>
                                 <td class="px-10 py-11">
                                     <p class="max-w-[180px] truncate font-black">{{ $lead->name ?: 'Senza nome' }}</p>
                                     <p class="mt-3 max-w-[180px] truncate text-11 text-gray">{{ $lead->email ?: $lead->phone }}</p>
                                 </td>
+                                <td class="max-w-[150px] truncate px-10 py-11 font-mono text-11" title="{{ $lead->gclid }}">{{ $lead->gclid ?: '-' }}</td>
                                 <td class="max-w-[160px] truncate px-10 py-11">{{ $lead->utm_campaign ?: '-' }}</td>
                                 <td class="max-w-[150px] truncate px-10 py-11">{{ $lead->ad_group ?: '-' }}</td>
                                 <td class="max-w-[150px] truncate px-10 py-11">{{ $lead->utm_term ?: '-' }}</td>
                                 <td class="max-w-[180px] truncate px-10 py-11">{{ $lead->search_term ?: '-' }}</td>
+                                <td class="max-w-[180px] truncate px-10 py-11" title="{{ $lead->landing_page }}">{{ $lead->landing_page ?: '-' }}</td>
+                                <td class="px-10 py-11">{{ $lead->device ?: '-' }}</td>
+                                <td class="px-10 py-11">{{ $lead->acquisition_country ?: '-' }}</td>
+                                <td class="px-10 py-11">{{ $lead->acquisition_region ?: '-' }}</td>
                                 <td class="px-10 py-11">{{ $lead->category ?: '-' }}</td>
                                 <td class="px-10 py-11">{{ $lead->product ?: '-' }}</td>
                                 <td class="px-10 py-11">{{ $quantity !== null ? $number($quantity, $quantity == floor($quantity) ? 0 : 2) : '-' }}</td>
@@ -150,7 +162,7 @@
                                 <td class="px-10 py-11"><a href="{{ route('admin.leads.index', $lead) }}" class="text-11 font-extrabold uppercase text-bullstar hover:underline">Apri</a></td>
                             </tr>
                         @empty
-                            <tr><td colspan="20" class="px-16 py-24 text-center text-14 font-semibold text-gray">Nessun lead nel periodo selezionato.</td></tr>
+                            <tr><td colspan="26" class="px-16 py-24 text-center text-14 font-semibold text-gray">Nessun lead nel periodo selezionato.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
