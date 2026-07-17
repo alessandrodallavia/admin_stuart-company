@@ -67,6 +67,10 @@ class AdminCrmDashboardTest extends TestCase
                 'loss_reason' => null,
                 'crm_notes' => 'Consegna urgente',
                 'margin_amount' => 350.50,
+                'utm_campaign' => 'Kit Estate',
+                'ad_group' => 'Calcio Veneto',
+                'utm_term' => 'kit calcio',
+                'search_term' => 'divise calcio personalizzate',
             ])
             ->assertSessionHasNoErrors()
             ->assertRedirect();
@@ -77,6 +81,8 @@ class AdminCrmDashboardTest extends TestCase
             'product' => 'Divisa gara',
             'lead_quality' => 'Alta',
             'crm_notes' => 'Consegna urgente',
+            'ad_group' => 'Calcio Veneto',
+            'search_term' => 'divise calcio personalizzate',
         ]);
     }
 

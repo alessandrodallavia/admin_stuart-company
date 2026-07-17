@@ -124,6 +124,10 @@ class LeadController extends Controller
             'loss_reason' => ['nullable', 'string', 'max:255'],
             'crm_notes' => ['nullable', 'string', 'max:5000'],
             'margin_amount' => ['nullable', 'numeric', 'min:-99999999.99', 'max:99999999.99'],
+            'utm_campaign' => ['nullable', 'string', 'max:255'],
+            'ad_group' => ['nullable', 'string', 'max:255'],
+            'utm_term' => ['nullable', 'string', 'max:255'],
+            'search_term' => ['nullable', 'string', 'max:255'],
         ]);
 
         if ($data['status'] === 'quote_sent' && ! $lead->quotePdfs()->exists()) {
@@ -152,6 +156,10 @@ class LeadController extends Controller
             'loss_reason' => $data['loss_reason'] ?? null,
             'crm_notes' => $data['crm_notes'] ?? null,
             'margin_amount' => $data['margin_amount'] ?? null,
+            'utm_campaign' => $data['utm_campaign'] ?? null,
+            'ad_group' => $data['ad_group'] ?? null,
+            'utm_term' => $data['utm_term'] ?? null,
+            'search_term' => $data['search_term'] ?? null,
         ];
 
         $lead->fill($attributes)->save();

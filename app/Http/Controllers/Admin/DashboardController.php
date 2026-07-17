@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Lead;
+use App\Services\GoogleAdsReportingService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -11,7 +12,7 @@ use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request): View
+    public function __invoke(Request $request, GoogleAdsReportingService $googleAds): View
     {
         $dateFrom = $this->date($request->string('date_from')->toString(), now()->startOfMonth());
         $dateTo = $this->date($request->string('date_to')->toString(), now());
@@ -58,6 +59,21 @@ class DashboardController extends Controller
             'margin' => $marginValue,
         ];
 
+        try {
+            $ads = $googleAds->performance($dateFrom, $dateTo);
+        } catch (\Throwable $exception) {
+            report($exception);
+            $ads = ['available' => false, 'error' => 'Google Ads non raggiungibile. Riprova più tardi.'];
+        }
+
+        $spend = (float) ($ads['spend'] ?? 0);
+        $ads += [
+            'cpl' => $leadsCount > 0 ? $spend / $leadsCount : 0,
+            'cpa' => $paymentsCount > 0 ? $spend / $paymentsCount : 0,
+            'roas' => $spend > 0 ? $paymentValue / $spend : 0,
+            'romi' => $spend > 0 ? $marginValue / $spend : 0,
+        ];
+
         $leads = (clone $baseQuery)
             ->with('quotePdfs')
             ->latest()
@@ -72,6 +88,7 @@ class DashboardController extends Controller
             'search' => $search,
             'currentStatus' => $status,
             'statuses' => $this->statuses(),
+            'ads' => $ads,
         ]);
     }
 

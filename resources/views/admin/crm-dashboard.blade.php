@@ -155,9 +155,37 @@
             @endif
         </section>
 
-        <section class="rounded-10 border border-dashed border-gray-mid bg-white p-14">
-            <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Google Ads</p>
-            <p class="mt-6 text-14 font-semibold">Spesa Ads, CPL, CPA, ROAS, ROMI, CTR, CPC e quote impression saranno disponibili quando verrà attivata la lettura dei report Google Ads. Le conversioni in uscita già esistenti non espongono queste metriche.</p>
+        <section class="rounded-10 border border-gray-mid bg-white">
+            <div class="border-b border-gray-mid px-10 py-10">
+                <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Google Ads</p>
+                @if (! $ads['available'])
+                    <p class="mt-4 text-12 font-semibold text-gray">{{ $ads['error'] }}</p>
+                @else
+                    <p class="mt-4 text-12 font-semibold text-gray">Dati aggiornati ogni 30 minuti per il periodo selezionato.</p>
+                @endif
+            </div>
+
+            @if ($ads['available'])
+                <div class="grid gap-px bg-gray-mid sm:grid-cols-2 lg:grid-cols-5">
+                    @foreach ([
+                        ['label' => 'Spesa Ads', 'value' => $money($ads['spend'])],
+                        ['label' => 'CPL', 'value' => $money($ads['cpl'])],
+                        ['label' => 'CPA', 'value' => $money($ads['cpa'])],
+                        ['label' => 'ROAS', 'value' => $number($ads['roas'], 2) . 'x'],
+                        ['label' => 'ROMI', 'value' => $number($ads['romi'], 2) . 'x'],
+                        ['label' => 'CTR', 'value' => $number($ads['ctr'], 2) . '%'],
+                        ['label' => 'CPC medio', 'value' => $money($ads['average_cpc'])],
+                        ['label' => 'Quota impression', 'value' => $ads['impression_share'] !== null ? $number($ads['impression_share'], 1) . '%' : '-'],
+                        ['label' => 'QI persa ranking', 'value' => $ads['lost_rank_share'] !== null ? $number($ads['lost_rank_share'], 1) . '%' : '-'],
+                        ['label' => 'QI persa budget', 'value' => $ads['lost_budget_share'] !== null ? $number($ads['lost_budget_share'], 1) . '%' : '-'],
+                    ] as $metric)
+                        <article class="bg-white p-10">
+                            <p class="text-10 font-extrabold uppercase tracking-normal text-gray">{{ $metric['label'] }}</p>
+                            <p class="mt-5 text-18 font-black leading-none">{{ $metric['value'] }}</p>
+                        </article>
+                    @endforeach
+                </div>
+            @endif
         </section>
     </div>
 @endsection

@@ -1,6 +1,7 @@
 <?php
 
 use App\Console\Commands\SendWhatsappFollowUps;
+use App\Console\Commands\SyncGoogleAdsLeadData;
 use App\Http\Middleware\AuthenticateAdmin;
 use App\Http\Middleware\CheckAdminPermission;
 use App\Http\Middleware\BlockRealAreasDuringTraining;
@@ -18,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withCommands([
         SendWhatsappFollowUps::class,
+        SyncGoogleAdsLeadData::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(NoIndexAdmin::class);

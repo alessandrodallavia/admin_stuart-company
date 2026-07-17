@@ -295,6 +295,29 @@
                                         <textarea name="crm_notes" rows="3" maxlength="5000" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">{{ old('crm_notes', $selectedLead->crm_notes) }}</textarea>
                                     </label>
 
+                                    <div class="border-t border-gray-mid pt-10">
+                                        <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Acquisizione Google Ads</p>
+                                    </div>
+
+                                    <div class="grid gap-10 md:grid-cols-2">
+                                        <label class="block">
+                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Campagna</span>
+                                            <input name="utm_campaign" value="{{ old('utm_campaign', $selectedLead->utm_campaign) }}" type="text" maxlength="255" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                        </label>
+                                        <label class="block">
+                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Ad Group</span>
+                                            <input name="ad_group" value="{{ old('ad_group', $selectedLead->ad_group) }}" type="text" maxlength="255" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                        </label>
+                                        <label class="block">
+                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Keyword</span>
+                                            <input name="utm_term" value="{{ old('utm_term', $selectedLead->utm_term) }}" type="text" maxlength="255" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                        </label>
+                                        <label class="block">
+                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Search Term</span>
+                                            <input name="search_term" value="{{ old('search_term', $selectedLead->search_term) }}" type="text" maxlength="255" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                        </label>
+                                    </div>
+
                                     <button type="submit" class="w-full rounded-10 bg-bullstar px-16 py-12 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">
                                         Aggiorna lead
                                     </button>
