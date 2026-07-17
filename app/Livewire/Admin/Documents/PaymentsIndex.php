@@ -11,6 +11,11 @@ class PaymentsIndex extends Component
 {
     use WithPagination;
 
+    public function paginationView(): string
+    {
+        return 'vendor.pagination.livewire-tailwind';
+    }
+
     #[Url(as: 'status', except: '')]
     public string $status = '';
 

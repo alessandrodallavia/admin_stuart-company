@@ -12,6 +12,11 @@ class Index extends Component
 {
     use WithPagination;
 
+    public function paginationView(): string
+    {
+        return 'vendor.pagination.livewire-tailwind';
+    }
+
     public function render()
     {
         $type = request()->string('type')->toString() ?: 'offline_order';
