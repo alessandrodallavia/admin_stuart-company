@@ -23,7 +23,7 @@ class AdminUserController extends Controller
             'roles' => config('admin_permissions.roles'),
             'permissions' => config('admin_permissions.permissions'),
             'permissionsByGroup' => collect(config('admin_permissions.permissions'))
-                ->groupBy(fn ($permission) => $permission['group'])
+                ->groupBy(fn ($permission) => $permission['group'], preserveKeys: true)
                 ->all(),
         ]);
     }

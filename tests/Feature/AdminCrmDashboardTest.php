@@ -218,6 +218,18 @@ class AdminCrmDashboardTest extends TestCase
         $this->assertSame(['crm_catalog.view', 'crm_catalog.manage'], $operator->permissions);
     }
 
+    public function test_admin_user_form_submits_permission_keys_instead_of_numeric_indexes(): void
+    {
+        $operator = $this->operator();
+
+        $this->actingAs($this->owner(), 'admin')
+            ->get("/settings/users?edit={$operator->id}")
+            ->assertOk()
+            ->assertSee('value="crm_catalog.view"', escape: false)
+            ->assertSee('value="crm_catalog.manage"', escape: false)
+            ->assertDontSee('name="permissions[]" value="0"', escape: false);
+    }
+
     public function test_obsolete_permissions_do_not_block_updating_an_operator(): void
     {
         $operator = $this->operator(['legacy.permission']);
