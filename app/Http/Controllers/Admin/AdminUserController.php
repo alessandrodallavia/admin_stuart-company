@@ -137,7 +137,6 @@ class AdminUserController extends Controller
     private function validateUser(Request $request, ?AdminUser $adminUser = null): array
     {
         $roles = array_keys(config('admin_permissions.roles'));
-        $permissions = array_keys(config('admin_permissions.permissions'));
         $passwordRules = $adminUser
             ? ['nullable', 'string', 'min:10', 'confirmed']
             : ['required', 'string', 'min:10', 'confirmed'];
@@ -148,7 +147,7 @@ class AdminUserController extends Controller
             'password' => $passwordRules,
             'role' => ['required', Rule::in($roles)],
             'permissions' => ['array'],
-            'permissions.*' => [Rule::in($permissions)],
+            'permissions.*' => ['string', 'max:100'],
             'is_active' => ['nullable', 'boolean'],
             'training_mode_enabled' => ['nullable', 'boolean'],
         ]);

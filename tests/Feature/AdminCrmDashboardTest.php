@@ -218,6 +218,26 @@ class AdminCrmDashboardTest extends TestCase
         $this->assertSame(['crm_catalog.view', 'crm_catalog.manage'], $operator->permissions);
     }
 
+    public function test_obsolete_permissions_do_not_block_updating_an_operator(): void
+    {
+        $operator = $this->operator(['legacy.permission']);
+
+        $this->actingAs($this->owner(), 'admin')
+            ->patch("/settings/users/{$operator->id}", [
+                'name' => $operator->name,
+                'email' => $operator->email,
+                'role' => 'operator',
+                'permissions' => ['legacy.permission', 'crm_catalog.view', 'crm_catalog.manage'],
+                'is_active' => '1',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(
+            ['crm_catalog.view', 'crm_catalog.manage'],
+            $operator->fresh()->permissions,
+        );
+    }
+
     private function owner(): AdminUser
     {
         return AdminUser::create([
