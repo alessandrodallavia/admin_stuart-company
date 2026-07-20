@@ -4,6 +4,7 @@
 @section('active_nav', 'crm-catalog')
 
 @section('content')
+@php($canManageCatalog = auth('admin')->user()?->hasAdminPermission('crm_catalog.manage'))
 <div data-crm-catalog class="space-y-12">
     <section class="rounded-10 border border-gray-mid bg-white">
         <div class="border-b border-gray-mid px-12 py-10">
@@ -11,6 +12,7 @@
             <h2 class="mt-4 text-18 font-black">Categorie</h2>
         </div>
         <div class="grid gap-12 p-12 lg:grid-cols-[420px_minmax(0,1fr)] lg:items-start">
+            @if ($canManageCatalog)
             <form method="POST" action="{{ route('admin.crm-catalog.categories.store') }}" class="grid gap-8 rounded-10 border border-gray-mid bg-gray-light p-10">@csrf
                 <label><span class="text-10 font-extrabold uppercase text-gray">Nome categoria</span><input name="name" required placeholder="Es. Squadre sportive" class="mt-4 w-full bg-white"></label>
                 <label>
@@ -20,6 +22,7 @@
                 </label>
                 <button class="rounded-10 bg-black-nike px-12 text-10 font-extrabold uppercase text-white">Aggiungi categoria</button>
             </form>
+            @endif
             <div class="grid gap-6">
                 @error('category')<div class="rounded-10 border border-red-200 bg-red-50 px-10 py-8 text-11 font-bold text-red-700">{{ $message }}</div>@enderror
                 @forelse($categories as $category)
@@ -28,6 +31,7 @@
                             <p class="truncate text-12 font-bold">{{ $category->name }}</p>
                             <p class="mt-3 text-10 font-semibold text-gray">Ordine: {{ $category->sort_order }} · {{ $category->is_active ? 'Attiva' : 'Disattivata' }}</p>
                         </div>
+                        @if ($canManageCatalog)
                         <div class="flex items-center gap-5">
                             <form method="POST" action="{{ route('admin.crm-catalog.categories.toggle', $category) }}">@csrf @method('PATCH')
                                 <button class="rounded-10 border border-black-nike px-8 text-10 font-extrabold uppercase">{{ $category->is_active ? 'Disattiva' : 'Riattiva' }}</button>
@@ -36,6 +40,7 @@
                                 <button class="rounded-10 border border-red-600 px-8 text-10 font-extrabold uppercase text-red-600">Elimina</button>
                             </form>
                         </div>
+                        @endif
                     </div>
                 @empty
                     <p class="text-12 font-semibold text-gray">Nessuna categoria configurata.</p>
@@ -50,14 +55,16 @@
             <h2 class="mt-4 text-18 font-black">Prodotti</h2>
         </div>
         <div class="p-12">
+            @if ($canManageCatalog)
             <form method="POST" action="{{ route('admin.crm-catalog.products.store') }}" class="grid gap-6 rounded-10 border border-gray-mid bg-gray-light p-10 md:grid-cols-[150px_minmax(220px,1fr)_150px_auto] md:items-end">@csrf
                 <label><span class="text-10 font-extrabold uppercase text-gray">Codice</span><input name="code" required placeholder="TS01" class="mt-4 w-full bg-white"></label>
                 <label><span class="text-10 font-extrabold uppercase text-gray">Nome prodotto</span><input name="name" required placeholder="T-shirt Premium" class="mt-4 w-full bg-white"></label>
                 <label><span class="text-10 font-extrabold uppercase text-gray">Costo unitario</span><input name="unit_cost" required type="number" min="0" step="0.01" placeholder="0,00" class="mt-4 w-full bg-white"></label>
                 <button class="rounded-10 bg-black-nike px-12 text-10 font-extrabold uppercase text-white">Salva prodotto</button>
             </form>
+            @endif
 
-            <div class="mt-12 grid gap-10 lg:grid-cols-2">
+            <div class="{{ $canManageCatalog ? 'mt-12' : '' }} grid gap-10 lg:grid-cols-2">
                 @forelse($products as $product)
                     <article class="rounded-10 border border-gray-mid p-10">
                         <div class="flex flex-wrap items-start justify-between gap-8">
@@ -69,9 +76,11 @@
                                 <div class="flex items-center justify-between border-b border-gray-mid px-8 py-6 text-11 font-bold last:border-b-0"><span>{{ number_format((float)$tier->min_quantity, 2, ',', '.') }} – {{ $tier->max_quantity !== null ? number_format((float)$tier->max_quantity, 2, ',', '.') : '∞' }}</span><span>€ {{ number_format((float)$tier->unit_price, 2, ',', '.') }}</span></div>
                             @empty <p class="px-8 py-6 text-11 font-semibold text-gray">Nessuna fascia prezzo.</p>@endforelse
                         </div>
+                        @if ($canManageCatalog)
                         <form method="POST" action="{{ route('admin.crm-catalog.products.tiers.store', $product) }}" class="mt-8 grid grid-cols-3 gap-5">@csrf
                             <input name="min_quantity" required type="number" min="0.01" step="0.01" placeholder="Quantità da"><input name="max_quantity" type="number" step="0.01" placeholder="Quantità a"><input name="unit_price" required type="number" min="0" step="0.01" placeholder="Prezzo €"><button class="col-span-3 rounded-10 border border-black-nike px-10 text-10 font-extrabold uppercase">Aggiungi fascia prezzo</button>
                         </form>
+                        @endif
                     </article>
                 @empty
                     <p class="text-12 font-semibold text-gray">Nessun prodotto configurato.</p>
@@ -86,13 +95,15 @@
             <h2 class="mt-4 text-18 font-black">Stampe</h2>
         </div>
         <div class="p-12">
+            @if ($canManageCatalog)
             <form method="POST" action="{{ route('admin.crm-catalog.prints.store') }}" class="grid gap-6 rounded-10 border border-gray-mid bg-gray-light p-10 md:grid-cols-[150px_minmax(220px,1fr)_auto] md:items-end">@csrf
                 <label><span class="text-10 font-extrabold uppercase text-gray">Codice</span><input name="code" required placeholder="CUORE1" class="mt-4 w-full bg-white"></label>
                 <label><span class="text-10 font-extrabold uppercase text-gray">Descrizione stampa</span><input name="name" required placeholder="Lato cuore 1 colore" class="mt-4 w-full bg-white"></label>
                 <button class="rounded-10 bg-black-nike px-12 text-10 font-extrabold uppercase text-white">Salva stampa</button>
             </form>
+            @endif
 
-            <div class="mt-12 space-y-10">
+            <div class="{{ $canManageCatalog ? 'mt-12' : '' }} space-y-10">
                 @forelse($printTypes as $printType)
                     <article class="overflow-hidden rounded-10 border border-gray-mid">
                         <div class="flex flex-wrap items-center justify-between gap-8 border-b border-gray-mid bg-gray-light px-10 py-8">
@@ -103,7 +114,7 @@
                             <span class="text-10 font-extrabold uppercase text-gray">{{ $printType->priceTiers->count() }} {{ $printType->priceTiers->count() === 1 ? 'fascia' : 'fasce' }}</span>
                         </div>
 
-                        <div class="grid lg:grid-cols-[minmax(0,3fr)_minmax(340px,2fr)]">
+                        <div class="grid {{ $canManageCatalog ? 'lg:grid-cols-[minmax(0,3fr)_minmax(340px,2fr)]' : '' }}">
                             <div class="p-10 lg:order-2 lg:border-l lg:border-gray-mid">
                                 <p class="mb-6 text-10 font-extrabold uppercase text-gray">Fasce configurate</p>
                                 <div class="overflow-hidden rounded-10 border border-gray-mid">
@@ -122,6 +133,7 @@
                                 </div>
                             </div>
 
+                            @if ($canManageCatalog)
                             <form method="POST" action="{{ route('admin.crm-catalog.prints.tiers.store', $printType) }}" class="border-t border-gray-mid bg-gray-light p-10 lg:order-1 lg:border-t-0">@csrf
                                 <p class="mb-6 text-10 font-extrabold uppercase text-gray">Nuova fascia</p>
                                 <div class="grid grid-cols-2 gap-6">
@@ -132,6 +144,7 @@
                                 </div>
                                 <button class="mt-8 w-full rounded-10 bg-black-nike px-10 text-10 font-extrabold uppercase text-white">Aggiungi fascia</button>
                             </form>
+                            @endif
                         </div>
                     </article>
                 @empty

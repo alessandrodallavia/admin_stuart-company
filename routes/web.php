@@ -125,8 +125,11 @@ Route::name('admin.')->group(function () {
             Route::get('/shipments/{shipment}', [AdminShipmentController::class, 'show'])->name('shipments.show');
         });
 
-        Route::middleware(['admin.permission:admin_users.manage', 'admin.training.blocked'])->group(function () {
+        Route::middleware(['admin.permission:crm_catalog.view', 'admin.training.blocked'])->group(function () {
             Route::get('/settings/crm-catalog', [AdminCrmCatalogController::class, 'index'])->name('crm-catalog.index');
+        });
+
+        Route::middleware(['admin.permission:crm_catalog.manage', 'admin.training.blocked'])->group(function () {
             Route::post('/settings/crm-catalog/categories', [AdminCrmCatalogController::class, 'storeCategory'])->name('crm-catalog.categories.store');
             Route::patch('/settings/crm-catalog/categories/{category}/toggle', [AdminCrmCatalogController::class, 'toggleCategory'])->name('crm-catalog.categories.toggle');
             Route::delete('/settings/crm-catalog/categories/{category}', [AdminCrmCatalogController::class, 'destroyCategory'])->name('crm-catalog.categories.destroy');
@@ -134,6 +137,9 @@ Route::name('admin.')->group(function () {
             Route::post('/settings/crm-catalog/products/{product}/tiers', [AdminCrmCatalogController::class, 'storeProductTier'])->name('crm-catalog.products.tiers.store');
             Route::post('/settings/crm-catalog/prints', [AdminCrmCatalogController::class, 'storePrintType'])->name('crm-catalog.prints.store');
             Route::post('/settings/crm-catalog/prints/{printType}/tiers', [AdminCrmCatalogController::class, 'storePrintTier'])->name('crm-catalog.prints.tiers.store');
+        });
+
+        Route::middleware(['admin.permission:admin_users.manage', 'admin.training.blocked'])->group(function () {
             Route::get('/settings/users', [AdminAdminUserController::class, 'index'])->name('users.index');
             Route::post('/settings/users', [AdminAdminUserController::class, 'store'])->name('users.store');
             Route::patch('/settings/users/{adminUser}', [AdminAdminUserController::class, 'update'])->name('users.update');

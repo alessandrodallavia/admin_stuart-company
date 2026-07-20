@@ -48,6 +48,14 @@ return [
             'label' => 'Creare e gestire spedizioni',
             'group' => 'Spedizioni',
         ],
+        'crm_catalog.view' => [
+            'label' => 'Vedere il catalogo CRM',
+            'group' => 'Catalogo CRM',
+        ],
+        'crm_catalog.manage' => [
+            'label' => 'Gestire categorie, prodotti, stampe e fasce prezzo',
+            'group' => 'Catalogo CRM',
+        ],
         'admin_users.manage' => [
             'label' => 'Gestire utenti admin e permessi',
             'group' => 'Impostazioni',

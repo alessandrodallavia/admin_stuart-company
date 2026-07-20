@@ -161,6 +161,44 @@ class AdminCrmDashboardTest extends TestCase
         $this->assertDatabaseMissing('lead_categories', ['id' => $unused->id]);
     }
 
+    public function test_operator_can_be_given_read_only_access_to_the_crm_catalog(): void
+    {
+        $operator = $this->operator(['crm_catalog.view']);
+
+        $this->actingAs($operator, 'admin')
+            ->get('/settings/crm-catalog')
+            ->assertOk()
+            ->assertSee('Catalogo CRM')
+            ->assertDontSee('Aggiungi categoria');
+
+        $this->actingAs($operator, 'admin')
+            ->post('/settings/crm-catalog/categories', ['name' => 'Non autorizzata'])
+            ->assertForbidden();
+    }
+
+    public function test_operator_can_be_given_management_access_to_the_crm_catalog(): void
+    {
+        $operator = $this->operator(['crm_catalog.view', 'crm_catalog.manage']);
+
+        $this->actingAs($operator, 'admin')
+            ->get('/settings/crm-catalog')
+            ->assertOk()
+            ->assertSee('Aggiungi categoria');
+
+        $this->actingAs($operator, 'admin')
+            ->post('/settings/crm-catalog/categories', ['name' => 'Merchandising', 'sort_order' => 5])
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('lead_categories', ['name' => 'Merchandising']);
+    }
+
+    public function test_operator_without_catalog_permissions_cannot_access_it(): void
+    {
+        $this->actingAs($this->operator(), 'admin')
+            ->get('/settings/crm-catalog')
+            ->assertForbidden();
+    }
+
     private function owner(): AdminUser
     {
         return AdminUser::create([
@@ -168,6 +206,18 @@ class AdminCrmDashboardTest extends TestCase
             'email' => fake()->unique()->safeEmail(),
             'password' => 'password',
             'role' => 'owner',
+            'is_active' => true,
+        ]);
+    }
+
+    private function operator(array $permissions = []): AdminUser
+    {
+        return AdminUser::create([
+            'name' => 'Operatore CRM',
+            'email' => fake()->unique()->safeEmail(),
+            'password' => 'password',
+            'role' => 'operator',
+            'permissions' => $permissions,
             'is_active' => true,
         ]);
     }

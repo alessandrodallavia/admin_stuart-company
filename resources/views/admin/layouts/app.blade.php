@@ -115,7 +115,7 @@
                         'route' => route('admin.users.index'),
                         'active' => $activeNav === 'settings',
                     ] : null,
-                    $adminUser?->hasAdminPermission('admin_users.manage') && ! $adminUser->training_mode_active ? [
+                    $adminUser?->hasAdminPermission('crm_catalog.view') && ! $adminUser->training_mode_active ? [
                         'label' => 'Catalogo CRM',
                         'route' => route('admin.crm-catalog.index'),
                         'active' => $activeNav === 'crm-catalog',
