@@ -134,9 +134,17 @@ Route::name('admin.')->group(function () {
             Route::patch('/settings/crm-catalog/categories/{category}/toggle', [AdminCrmCatalogController::class, 'toggleCategory'])->name('crm-catalog.categories.toggle');
             Route::delete('/settings/crm-catalog/categories/{category}', [AdminCrmCatalogController::class, 'destroyCategory'])->name('crm-catalog.categories.destroy');
             Route::post('/settings/crm-catalog/products', [AdminCrmCatalogController::class, 'storeProduct'])->name('crm-catalog.products.store');
+            Route::patch('/settings/crm-catalog/products/{product}', [AdminCrmCatalogController::class, 'updateProduct'])->name('crm-catalog.products.update');
+            Route::delete('/settings/crm-catalog/products/{product}', [AdminCrmCatalogController::class, 'destroyProduct'])->name('crm-catalog.products.destroy');
             Route::post('/settings/crm-catalog/products/{product}/tiers', [AdminCrmCatalogController::class, 'storeProductTier'])->name('crm-catalog.products.tiers.store');
+            Route::patch('/settings/crm-catalog/product-tiers/{tier}', [AdminCrmCatalogController::class, 'updateProductTier'])->name('crm-catalog.products.tiers.update');
+            Route::delete('/settings/crm-catalog/product-tiers/{tier}', [AdminCrmCatalogController::class, 'destroyProductTier'])->name('crm-catalog.products.tiers.destroy');
             Route::post('/settings/crm-catalog/prints', [AdminCrmCatalogController::class, 'storePrintType'])->name('crm-catalog.prints.store');
+            Route::patch('/settings/crm-catalog/prints/{printType}', [AdminCrmCatalogController::class, 'updatePrintType'])->name('crm-catalog.prints.update');
+            Route::delete('/settings/crm-catalog/prints/{printType}', [AdminCrmCatalogController::class, 'destroyPrintType'])->name('crm-catalog.prints.destroy');
             Route::post('/settings/crm-catalog/prints/{printType}/tiers', [AdminCrmCatalogController::class, 'storePrintTier'])->name('crm-catalog.prints.tiers.store');
+            Route::patch('/settings/crm-catalog/print-tiers/{tier}', [AdminCrmCatalogController::class, 'updatePrintTier'])->name('crm-catalog.prints.tiers.update');
+            Route::delete('/settings/crm-catalog/print-tiers/{tier}', [AdminCrmCatalogController::class, 'destroyPrintTier'])->name('crm-catalog.prints.tiers.destroy');
         });
 
         Route::middleware(['admin.permission:admin_users.manage', 'admin.training.blocked'])->group(function () {

@@ -161,6 +161,43 @@ class AdminCrmDashboardTest extends TestCase
         $this->assertDatabaseMissing('lead_categories', ['id' => $unused->id]);
     }
 
+    public function test_products_prints_and_their_price_tiers_can_be_modified_and_deleted(): void
+    {
+        $admin = $this->owner();
+        $product = CrmProduct::create(['code' => 'TS01', 'name' => 'T-shirt', 'unit_cost' => 4, 'is_active' => true]);
+        $productTier = $product->priceTiers()->create(['min_quantity' => 1, 'max_quantity' => 9, 'unit_price' => 12]);
+        $print = CrmPrintType::create(['code' => 'CUORE', 'name' => 'Lato cuore', 'is_active' => true]);
+        $printTier = $print->priceTiers()->create(['min_quantity' => 1, 'max_quantity' => 9, 'unit_cost' => 1, 'unit_price' => 3]);
+
+        $this->actingAs($admin, 'admin')->patch("/settings/crm-catalog/products/{$product->id}", [
+            'code' => 'TS02', 'name' => 'T-shirt Premium', 'unit_cost' => 5.5,
+        ])->assertSessionHasNoErrors();
+        $this->actingAs($admin, 'admin')->patch("/settings/crm-catalog/product-tiers/{$productTier->id}", [
+            'min_quantity' => 10, 'max_quantity' => 19, 'unit_price' => 10.5,
+        ])->assertSessionHasNoErrors();
+        $this->actingAs($admin, 'admin')->patch("/settings/crm-catalog/prints/{$print->id}", [
+            'code' => 'CUORE2', 'name' => 'Lato cuore due colori',
+        ])->assertSessionHasNoErrors();
+        $this->actingAs($admin, 'admin')->patch("/settings/crm-catalog/print-tiers/{$printTier->id}", [
+            'min_quantity' => 10, 'max_quantity' => 19, 'unit_cost' => 1.5, 'unit_price' => 4,
+        ])->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('crm_products', ['id' => $product->id, 'code' => 'TS02', 'name' => 'T-shirt Premium', 'unit_cost' => 5.5]);
+        $this->assertDatabaseHas('crm_product_price_tiers', ['id' => $productTier->id, 'min_quantity' => 10, 'unit_price' => 10.5]);
+        $this->assertDatabaseHas('crm_print_types', ['id' => $print->id, 'code' => 'CUORE2', 'name' => 'Lato cuore due colori']);
+        $this->assertDatabaseHas('crm_print_price_tiers', ['id' => $printTier->id, 'min_quantity' => 10, 'unit_cost' => 1.5, 'unit_price' => 4]);
+
+        $this->actingAs($admin, 'admin')->delete("/settings/crm-catalog/product-tiers/{$productTier->id}")->assertSessionHasNoErrors();
+        $this->actingAs($admin, 'admin')->delete("/settings/crm-catalog/print-tiers/{$printTier->id}")->assertSessionHasNoErrors();
+        $this->assertDatabaseMissing('crm_product_price_tiers', ['id' => $productTier->id]);
+        $this->assertDatabaseMissing('crm_print_price_tiers', ['id' => $printTier->id]);
+
+        $this->actingAs($admin, 'admin')->delete("/settings/crm-catalog/products/{$product->id}")->assertSessionHasNoErrors();
+        $this->actingAs($admin, 'admin')->delete("/settings/crm-catalog/prints/{$print->id}")->assertSessionHasNoErrors();
+        $this->assertDatabaseMissing('crm_products', ['id' => $product->id]);
+        $this->assertDatabaseMissing('crm_print_types', ['id' => $print->id]);
+    }
+
     public function test_operator_can_be_given_read_only_access_to_the_crm_catalog(): void
     {
         $operator = $this->operator(['crm_catalog.view']);
