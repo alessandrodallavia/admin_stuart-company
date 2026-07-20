@@ -199,6 +199,25 @@ class AdminCrmDashboardTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_catalog_permissions_can_be_assigned_from_the_admin_user_form(): void
+    {
+        $this->actingAs($this->owner(), 'admin')
+            ->post('/settings/users', [
+                'name' => 'Operatore Catalogo',
+                'email' => 'catalogo@example.com',
+                'password' => 'password-sicura',
+                'password_confirmation' => 'password-sicura',
+                'role' => 'operator',
+                'permissions' => ['crm_catalog.view', 'crm_catalog.manage'],
+                'is_active' => '1',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $operator = AdminUser::where('email', 'catalogo@example.com')->firstOrFail();
+
+        $this->assertSame(['crm_catalog.view', 'crm_catalog.manage'], $operator->permissions);
+    }
+
     private function owner(): AdminUser
     {
         return AdminUser::create([
