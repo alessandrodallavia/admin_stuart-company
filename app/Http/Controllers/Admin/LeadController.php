@@ -369,7 +369,7 @@ class LeadController extends Controller
         }
 
         $amount = number_format((float) $lead->payment_amount, 2, ',', '.');
-        $body = "Importo proposta: € {$amount}\n\nScegli come preferisci procedere:\n\n- Paga ora: carta di credito/debito, Amazon Pay, Google Pay, Apple Pay, PayPal, Satispay o addebito SEPA.\n- Bonifico bancario: ti invio la proforma con tutti i dati bancari.";
+        $body = "Importo proposta: € {$amount}\n\Può scegliere la modalità di pagamento che preferisce:\n\n- Pagamento online: carta di credito/debito, Amazon Pay, Google Pay, Apple Pay, PayPal, Satispay o addebito SEPA.\n- Bonifico bancario: le invierò la fattura proforma con tutti i dati necessari.";
 
         $payload = [
             'messaging_product' => 'whatsapp',

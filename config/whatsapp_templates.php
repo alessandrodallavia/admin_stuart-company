@@ -32,6 +32,13 @@ return [
             'body' => "Buongiorno!\nLe scrivo perché il suo progetto è pronto per essere confermato.\nSe desidera procedere, il link di pagamento che le ho inviato è ancora valido.\nPer qualsiasi domanda o chiarimento resto a sua disposizione.",
             'parameters' => [],
         ],
+        'recensione' => [
+            'label' => 'Recensione',
+            'name' => 'recensione',
+            'language' => env('WHATSAPP_TEMPLATE_RECENSIONE_LANGUAGE', env('WHATSAPP_TEMPLATE_DEFAULT_LANGUAGE', 'it')),
+            'body' => "Buongiorno!\n\nSpero che i prodotti siano arrivati correttamente e che siano di suo gradimento.\n\nSe ha qualche minuto, mi farebbe molto piacere ricevere una sua recensione. Per noi è un aiuto prezioso per far conoscere Stuart a nuovi clienti.\n\nPuò lasciare la sua recensione qui:\nhttps://g.page/r/CRZHVSzVcctEEAE/review\n\nLa ringrazio davvero per la fiducia e spero di poter collaborare nuovamente con lei.",
+            'parameters' => [],
+        ],
     ],
 ];
  

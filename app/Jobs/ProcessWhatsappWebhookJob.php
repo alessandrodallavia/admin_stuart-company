@@ -232,8 +232,8 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
 
         $amount = $lead->payment_amount ? number_format((float) $lead->payment_amount, 2, ',', '.') : null;
         $body = $amount
-            ? "Clicca sul pulsante \"Paga ora\" per procedere al pagamento.\n\nImporto: € {$amount}"
-            : 'Clicca sul pulsante "Paga ora" per procedere al pagamento.';
+            ? "Per procedere al pagamento, clicchi sul pulsante \"Paga ora\".\n\nImporto: € {$amount}"
+            : 'Per procedere al pagamento, clicchi sul pulsante "Paga ora".';
 
         if ($this->sendCtaUrl($from, $body, 'Paga ora', $lead->payment_link, $conversation)) {
             $metaConversions->trackInitiateCheckout($lead->fresh());
