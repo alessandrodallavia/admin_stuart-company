@@ -11,6 +11,7 @@ use App\Models\EmailAccount;
 use App\Models\Lead;
 use App\Models\LeadCategory;
 use App\Models\WhatsappConversation;
+use App\Models\WhatsappMessage;
 use App\Services\LeadOrderPackageService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -51,7 +52,137 @@ class AdminCrmDashboardTest extends TestCase
             ->assertSee('Cliente Pagato')
             ->assertSee('Kit calcio')
             ->assertSee('€ 240,00')
-            ->assertSee('50,0%');
+            ->assertSee('100,0%');
+    }
+
+    public function test_dashboard_excludes_pre_leads_from_commercial_metrics_and_counts_real_chats(): void
+    {
+        $admin = $this->owner();
+        $preLead = $this->lead([
+            'name' => 'Pre lead con dati da ignorare',
+            'status' => 'pre',
+            'quantity' => 500,
+            'quote_amount' => 900,
+        ]);
+        $preLead->quotePdfs()->create([
+            'proposal_number' => 'PRE-001',
+            'amount' => 900,
+            'uploaded_at' => now(),
+        ]);
+        $worked = $this->lead(['status' => 'confirmed', 'quantity' => 10]);
+        $paid = $this->lead([
+            'status' => 'order_completed',
+            'quantity' => 30,
+            'quote_amount' => 300,
+            'payment_amount' => 300,
+            'margin_amount' => null,
+        ]);
+        $paid->quotePdfs()->create([
+            'proposal_number' => 'PAG-001',
+            'amount' => 300,
+            'uploaded_at' => now(),
+        ]);
+
+        $conversation = WhatsappConversation::create([
+            'lead_id' => $preLead->id,
+            'contact_phone' => '390000000099',
+            'business_phone' => '390000000000',
+            'mode' => 'auto',
+            'status' => 'open',
+            'last_message_at' => now(),
+        ]);
+        WhatsappMessage::create([
+            'whatsapp_conversation_id' => $conversation->id,
+            'provider_message_id' => 'inbound-dashboard-test',
+            'direction' => 'inbound',
+            'type' => 'text',
+            'from_phone' => '390000000099',
+            'to_phone' => '390000000000',
+            'body' => 'Vorrei informazioni',
+            'received_at' => now(),
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/')
+            ->assertOk()
+            ->assertViewHas('stats', function (array $stats) {
+                return $stats['records'] === 3
+                    && $stats['pre_leads'] === 1
+                    && $stats['worked_leads'] === 2
+                    && $stats['chat_started'] === 1
+                    && $stats['quotes'] === 1
+                    && $stats['payments'] === 1
+                    && $stats['average_quantity'] === 20.0
+                    && $stats['quantity_coverage'] === 2
+                    && $stats['margin'] === null
+                    && $stats['margin_coverage'] === 0;
+            })
+            ->assertSee('Pre-lead fermi')
+            ->assertSee('Chat avviate')
+            ->assertSee('Lavorati → Proposta')
+            ->assertSee('N.D.');
+
+        $this->assertSame('confirmed', $worked->fresh()->status);
+    }
+
+    public function test_dashboard_splits_open_won_and_lost_proposal_pipeline(): void
+    {
+        $admin = $this->owner();
+
+        foreach ([
+            ['status' => 'quote_sent', 'number' => 'OPEN-1', 'amount' => 100],
+            ['status' => 'order_completed', 'number' => 'WON-1', 'amount' => 200],
+            ['status' => 'lost', 'number' => 'LOST-1', 'amount' => 300],
+        ] as $proposal) {
+            $lead = $this->lead([
+                'status' => $proposal['status'],
+                'quote_amount' => $proposal['amount'],
+                'payment_amount' => $proposal['status'] === 'order_completed' ? $proposal['amount'] : null,
+            ]);
+            $lead->quotePdfs()->create([
+                'proposal_number' => $proposal['number'],
+                'amount' => $proposal['amount'],
+                'uploaded_at' => now(),
+            ]);
+        }
+
+        $this->actingAs($admin, 'admin')
+            ->get('/')
+            ->assertOk()
+            ->assertViewHas('stats', fn (array $stats) => $stats['pipeline_open_count'] === 1
+                && $stats['pipeline_open_value'] === 100.0
+                && $stats['pipeline_won_count'] === 1
+                && $stats['pipeline_won_value'] === 200.0
+                && $stats['pipeline_lost_count'] === 1
+                && $stats['pipeline_lost_value'] === 300.0)
+            ->assertSee('Pipeline proposte')
+            ->assertSeeInOrder(['Aperta', 'Vinta', 'Persa']);
+    }
+
+    public function test_dashboard_table_excludes_pre_leads_by_default_and_accepts_multiple_statuses(): void
+    {
+        $admin = $this->owner();
+        $this->lead(['name' => 'Pre lead dashboard nascosto', 'status' => 'pre']);
+        $this->lead(['name' => 'Lead confermato dashboard', 'status' => 'confirmed']);
+        $this->lead(['name' => 'Lead perso dashboard', 'status' => 'lost']);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/')
+            ->assertOk()
+            ->assertDontSee('Pre lead dashboard nascosto')
+            ->assertSee('Lead confermato dashboard')
+            ->assertSee('Lead perso dashboard')
+            ->assertSee('Pre-lead esclusi')
+            ->assertSee('name="statuses[]"', false);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/?statuses[]=pre&statuses[]=confirmed')
+            ->assertOk()
+            ->assertSee('2 selezionati')
+            ->assertSee('Pre lead dashboard nascosto')
+            ->assertSee('Lead confermato dashboard')
+            ->assertDontSee('Lead perso dashboard')
+            ->assertDontSee('Pre-lead esclusi');
     }
 
     public function test_whatsapp_has_its_own_route(): void
@@ -135,6 +266,84 @@ class AdminCrmDashboardTest extends TestCase
             ->get('/leads?status=pre')
             ->assertOk()
             ->assertSee('Pre Lead Nascosto');
+    }
+
+    public function test_admin_can_create_a_manual_phone_lead_with_attribution(): void
+    {
+        $admin = $this->owner();
+        $category = LeadCategory::create(['name' => 'Aziendale', 'sort_order' => 1, 'is_active' => true]);
+
+        $response = $this->actingAs($admin, 'admin')
+            ->post('/leads', [
+                'name' => 'Mario da chiamata',
+                'club' => 'Mario SRL',
+                'phone' => '+39 333 1234567',
+                'email' => 'mario@example.test',
+                'city' => 'Vicenza',
+                'lead_category_id' => $category->id,
+                'product' => 'Polo aziendale',
+                'quantity' => 25,
+                'crm_notes' => 'Richiamare nel pomeriggio',
+                'acquisition_channel' => 'telefono',
+                'attribution_confidence' => 'confirmed',
+                'attribution_note' => 'Chiamata ricevuta in ufficio',
+            ]);
+
+        $lead = Lead::where('email', 'mario@example.test')->firstOrFail();
+
+        $response
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('admin.leads.index', ['lead' => $lead]));
+
+        $this->assertDatabaseHas('leads', [
+            'id' => $lead->id,
+            'status' => 'confirmed',
+            'category' => 'Aziendale',
+            'acquisition_channel' => 'telefono',
+            'attribution_confidence' => 'confirmed',
+            'created_by_admin_user_id' => $admin->id,
+            'utm_source' => 'manuale',
+            'utm_medium' => 'telefono',
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->get(route('admin.leads.index', ['lead' => $lead]))
+            ->assertOk()
+            ->assertSee('Chiamata telefonica')
+            ->assertSee('Confermata')
+            ->assertSee($admin->name)
+            ->assertSee('Chiamata ricevuta in ufficio');
+    }
+
+    public function test_manual_lead_requires_confirmation_when_phone_or_email_already_exists(): void
+    {
+        $admin = $this->owner();
+        $this->lead([
+            'name' => 'Lead esistente',
+            'phone' => '+39 333 7654321',
+            'email' => 'duplicato@example.test',
+        ]);
+
+        $payload = [
+            'name' => 'Possibile duplicato',
+            'phone' => '393337654321',
+            'email' => 'nuova@example.test',
+            'acquisition_channel' => 'telefono',
+            'attribution_confidence' => 'unknown',
+        ];
+
+        $this->actingAs($admin, 'admin')
+            ->post('/leads', $payload)
+            ->assertSessionHasErrors('duplicate');
+
+        $this->assertDatabaseMissing('leads', ['name' => 'Possibile duplicato']);
+
+        $this->actingAs($admin, 'admin')
+            ->post('/leads', $payload + ['confirm_duplicate' => '1'])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('leads', ['name' => 'Possibile duplicato']);
     }
 
     public function test_crm_fields_can_be_updated_from_the_lead_page(): void

@@ -57,6 +57,7 @@ Route::name('admin.')->group(function () {
         });
 
         Route::middleware('admin.permission:leads.manage')->group(function () {
+            Route::post('/leads', [AdminLeadController::class, 'store'])->name('leads.store');
             Route::patch('/leads/{lead}', [AdminLeadController::class, 'update'])->name('leads.update');
             Route::post('/leads/{lead}/quote-pdfs', [AdminLeadController::class, 'storeQuotePdfs'])->name('leads.quote-pdfs.store');
             Route::delete('/leads/{lead}/quote-pdfs/{quotePdf}', [AdminLeadController::class, 'destroyQuotePdf'])->name('leads.quote-pdfs.destroy');

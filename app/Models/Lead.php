@@ -35,6 +35,10 @@ class Lead extends Model
         'search_term',
         'acquisition_country',
         'acquisition_region',
+        'acquisition_channel',
+        'attribution_confidence',
+        'attribution_note',
+        'created_by_admin_user_id',
         'category',
         'lead_category_id',
         'product',
@@ -182,6 +186,11 @@ class Lead extends Model
     public function categoryOption(): BelongsTo
     {
         return $this->belongsTo(LeadCategory::class, 'lead_category_id');
+    }
+
+    public function createdByAdmin(): BelongsTo
+    {
+        return $this->belongsTo(AdminUser::class, 'created_by_admin_user_id');
     }
 
     public function salesSheet(): HasOne

@@ -82,7 +82,7 @@ class LeadController extends Controller
 
         $leads = $leadsQuery->paginate(14)->withQueryString();
 
-        $selectedLead = $lead?->fresh()->load(['quotePdfs', 'salesSheet.items.prints']);
+        $selectedLead = $lead?->fresh()->load(['quotePdfs', 'salesSheet.items.prints', 'createdByAdmin']);
 
         $selectedConversation = $selectedLead
             ? WhatsappConversation::query()
@@ -102,6 +102,8 @@ class LeadController extends Controller
             'selectedLead' => $selectedLead,
             'selectedConversation' => $selectedConversation,
             'statuses' => $statuses,
+            'manualChannels' => $this->manualChannels(),
+            'attributionConfidences' => $this->attributionConfidences(),
             'stats' => $this->stats($statuses),
             'currentStatus' => $status,
             'search' => $search,
@@ -110,6 +112,75 @@ class LeadController extends Controller
             'crmProducts' => CrmProduct::where('is_active', true)->whereHas('priceTiers')->orderBy('name')->get(),
             'crmPrintTypes' => CrmPrintType::where('is_active', true)->whereHas('priceTiers')->orderBy('name')->get(),
         ]);
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'club' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'required_without:email', 'string', 'max:30'],
+            'email' => ['nullable', 'required_without:phone', 'email:rfc', 'max:255'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'lead_category_id' => ['nullable', 'exists:lead_categories,id'],
+            'product' => ['nullable', 'string', 'max:255'],
+            'quantity' => ['nullable', 'numeric', 'min:0.01', 'max:99999999.99'],
+            'crm_notes' => ['nullable', 'string', 'max:5000'],
+            'acquisition_channel' => ['required', Rule::in(array_keys($this->manualChannels()))],
+            'attribution_confidence' => ['required', Rule::in(array_keys($this->attributionConfidences()))],
+            'attribution_note' => ['nullable', 'string', 'max:255'],
+            'confirm_duplicate' => ['nullable', 'boolean'],
+        ]);
+
+        $duplicate = ! empty($data['email'])
+            ? Lead::query()->whereRaw('LOWER(email) = ?', [Str::lower($data['email'])])->latest()->first()
+            : null;
+
+        if (! $duplicate && ! empty($data['phone'])) {
+            $phone = preg_replace('/\D+/', '', $data['phone']);
+            $duplicate = Lead::query()
+                ->whereNotNull('phone')
+                ->latest()
+                ->get(['id', 'phone'])
+                ->first(fn (Lead $lead) => preg_replace('/\D+/', '', (string) $lead->phone) === $phone);
+        }
+
+        if ($duplicate && ! $request->boolean('confirm_duplicate')) {
+            return back()
+                ->withErrors(['duplicate' => "Esiste già il lead #{$duplicate->id} con lo stesso telefono o indirizzo email. Verificalo oppure seleziona la conferma per creare comunque il nuovo lead."])
+                ->withInput();
+        }
+
+        $category = ! empty($data['lead_category_id'])
+            ? LeadCategory::find($data['lead_category_id'])
+            : null;
+
+        $lead = Lead::create([
+            'uuid' => (string) Str::uuid(),
+            'status' => 'confirmed',
+            'name' => $data['name'],
+            'club' => $data['club'] ?? null,
+            'phone' => $data['phone'] ?? null,
+            'email' => $data['email'] ?? null,
+            'city' => $data['city'] ?? null,
+            'lead_category_id' => $category?->id,
+            'category' => $category?->name,
+            'product' => $data['product'] ?? null,
+            'quantity' => $data['quantity'] ?? null,
+            'crm_notes' => $data['crm_notes'] ?? null,
+            'acquisition_channel' => $data['acquisition_channel'],
+            'attribution_confidence' => $data['attribution_confidence'],
+            'attribution_note' => $data['attribution_note'] ?? null,
+            'created_by_admin_user_id' => Auth::guard('admin')->id(),
+            'utm_source' => 'manuale',
+            'utm_medium' => $data['acquisition_channel'],
+            'privacy_consent' => false,
+            'marketing_consent' => false,
+        ]);
+
+        return redirect()
+            ->route('admin.leads.index', ['lead' => $lead])
+            ->with('status', 'Lead manuale creato.');
     }
 
     public function update(Request $request, Lead $lead, LeadConversionTrackingService $tracking): RedirectResponse
@@ -885,6 +956,29 @@ class LeadController extends Controller
             'payment_pending' => 'Pag. in attesa',
             'order_completed' => 'Completato',
             'lost' => 'Perso',
+        ];
+    }
+
+    private function manualChannels(): array
+    {
+        return [
+            'telefono' => 'Chiamata telefonica',
+            'whatsapp_diretto' => 'WhatsApp diretto',
+            'email' => 'E-mail',
+            'referral' => 'Referral / passaparola',
+            'cliente_esistente' => 'Cliente esistente',
+            'organico' => 'Organico',
+            'google_ads' => 'Google Ads',
+            'altro' => 'Altro',
+        ];
+    }
+
+    private function attributionConfidences(): array
+    {
+        return [
+            'confirmed' => 'Confermata',
+            'probable' => 'Probabile',
+            'unknown' => 'Sconosciuta',
         ];
     }
 

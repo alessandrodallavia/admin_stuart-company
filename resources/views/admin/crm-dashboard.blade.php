@@ -8,6 +8,10 @@
     @php
         $money = fn ($value) => '€ ' . number_format((float) $value, 2, ',', '.');
         $number = fn ($value, $decimals = 0) => number_format((float) $value, $decimals, ',', '.');
+        $moneyOrNd = fn ($value) => $value === null ? 'N.D.' : $money($value);
+        $numberOrNd = fn ($value, $decimals = 0) => $value === null ? 'N.D.' : $number($value, $decimals);
+        $percentOrNd = fn ($value) => $value === null ? 'N.D.' : $number($value, 1) . '%';
+        $currentFilters = array_filter(['q' => $search, 'statuses' => $selectedStatuses]);
     @endphp
 
     <div class="space-y-16">
@@ -16,9 +20,14 @@
                 <div>
                     <p class="text-10 font-extrabold uppercase tracking-normal text-gray">Andamento commerciale</p>
                     <h2 class="mt-3 text-20 font-black leading-tight">CRM Dashboard</h2>
+                    <p class="mt-5 text-12 font-semibold text-gray">Il periodo è applicato alla data di acquisizione del lead.</p>
+                    <div class="mt-6 flex flex-wrap gap-5">
+                        <a href="{{ route('admin.dashboard', $currentFilters + ['date_from' => now()->startOfMonth()->toDateString(), 'date_to' => now()->toDateString()]) }}" class="rounded-full border border-gray-mid bg-white px-8 py-5 text-10 font-extrabold uppercase tracking-normal transition hover:border-black-nike">Questo mese</a>
+                        <a href="{{ route('admin.dashboard', $currentFilters + ['date_from' => '2026-07-06', 'date_to' => now()->toDateString()]) }}" class="rounded-full border border-gray-mid bg-white px-8 py-5 text-10 font-extrabold uppercase tracking-normal transition hover:border-black-nike">Dal 6 luglio</a>
+                    </div>
                 </div>
 
-                <form method="GET" action="{{ route('admin.dashboard') }}" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-[125px_125px_minmax(170px,210px)_155px_auto]">
+                <form method="GET" action="{{ route('admin.dashboard') }}" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-[125px_125px_minmax(170px,210px)_minmax(180px,230px)_auto]">
                     <label class="block">
                         <span class="text-10 font-extrabold uppercase tracking-normal text-gray">Dal</span>
                         <input name="date_from" value="{{ $dateFrom }}" type="date" class="mt-3 h-32 w-full rounded-10 border-gray-mid px-8 py-0 text-12 font-semibold focus:border-bullstar focus:ring-bullstar">
@@ -31,32 +40,43 @@
                         <span class="text-10 font-extrabold uppercase tracking-normal text-gray">Cerca</span>
                         <input name="q" value="{{ $search }}" type="search" placeholder="Lead, campagna, prodotto..." class="mt-3 h-32 w-full rounded-10 border-gray-mid px-8 py-0 text-12 font-semibold focus:border-bullstar focus:ring-bullstar">
                     </label>
-                    <label class="block">
+                    <div class="block">
                         <span class="text-10 font-extrabold uppercase tracking-normal text-gray">Stato</span>
-                        <select name="status" class="mt-3 h-32 w-full rounded-10 border-gray-mid px-8 py-0 text-12 font-semibold focus:border-bullstar focus:ring-bullstar">
-                            <option value="">Tutti gli stati</option>
-                            @foreach ($statuses as $value => $label)
-                                <option value="{{ $value }}" @selected($currentStatus === $value)>{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </label>
+                        <details class="group relative mt-3">
+                            <summary class="flex h-32 cursor-pointer list-none items-center justify-between rounded-10 border border-gray-mid bg-white px-8 text-12 font-semibold focus:outline-none focus:ring-2 focus:ring-bullstar">
+                                <span>{{ $selectedStatuses === [] ? 'Tutti gli stati' : count($selectedStatuses) . ' selezionati' }}</span>
+                                <span class="text-10 transition group-open:rotate-180">▼</span>
+                            </summary>
+                            <div class="absolute right-0 top-full z-50 mt-4 max-h-300 w-full min-w-[220px] overflow-y-auto rounded-10 border border-gray-mid bg-white p-6 shadow-lg">
+                                @foreach ($statuses as $value => $label)
+                                    <label class="flex cursor-pointer items-center gap-8 rounded-10 px-6 py-6 text-12 font-semibold transition hover:bg-gray-light">
+                                        <input type="checkbox" name="statuses[]" value="{{ $value }}" @checked(in_array($value, $selectedStatuses, true)) class="h-16 w-16 rounded border-gray-mid text-bullstar focus:ring-bullstar">
+                                        <span>{{ $label }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                        </details>
+                    </div>
                     <button type="submit" class="inline-flex h-32 w-fit items-center justify-center self-end justify-self-start rounded-10 bg-black-nike px-10 text-10 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar">Applica</button>
                 </form>
             </div>
         </section>
 
-        <section class="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
+        <section class="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             @foreach ([
-                ['label' => 'Lead', 'value' => $number($stats['leads']), 'help' => 'Numero di lead acquisiti nel periodo e con i filtri selezionati.'],
-                ['label' => 'Preventivi', 'value' => $number($stats['quotes']), 'detail' => $money($stats['quote_value']), 'help' => 'Lead con almeno un preventivo. In blu è indicata la somma del valore preventivi.'],
-                ['label' => 'Pagamenti', 'value' => $number($stats['payments']), 'detail' => $money($stats['payment_value']), 'help' => 'Lead con stato Pagato. In blu è indicata la somma dei pagamenti.'],
-                ['label' => 'Margine', 'value' => $money($stats['margin']), 'help' => 'Somma del margine inserito sui lead pagati nel periodo.'],
-                ['label' => 'Valore medio preventivo', 'value' => $money($stats['average_quote']), 'help' => 'Valore totale dei preventivi diviso per il numero di lead con preventivo.'],
-                ['label' => 'Valore medio pagamento', 'value' => $money($stats['average_payment']), 'help' => 'Valore totale dei pagamenti diviso per il numero di lead pagati.'],
-                ['label' => 'Quantità media / lead', 'value' => $number($stats['average_quantity'], 1), 'help' => 'Somma delle quantità inserite divisa per il numero totale di lead.'],
-                ['label' => 'Lead → Preventivo', 'value' => $number($stats['lead_to_quote'], 1) . '%', 'help' => 'Percentuale di lead che hanno ricevuto almeno un preventivo.'],
-                ['label' => 'Preventivo → Pagamento', 'value' => $number($stats['quote_to_payment'], 1) . '%', 'help' => 'Percentuale dei lead con preventivo che risultano pagati.'],
-                ['label' => 'Lead → Pagamento', 'value' => $number($stats['lead_to_payment'], 1) . '%', 'help' => 'Percentuale di tutti i lead che risultano pagati.'],
+                ['label' => 'Record acquisiti', 'value' => $number($stats['records']), 'help' => 'Tutti i record creati nel periodo, inclusi i pre-lead che non hanno ancora proseguito.'],
+                ['label' => 'Pre-lead fermi', 'value' => $number($stats['pre_leads']), 'help' => 'Record che risultano ancora nello stato Pre lead. Sono esclusi dai KPI commerciali.'],
+                ['label' => 'Chat avviate', 'value' => $number($stats['chat_started']), 'detail' => $percentOrNd($stats['prelead_to_chat']) . ' dei record', 'help' => 'Lead collegati a una conversazione con almeno un messaggio reale ricevuto dal cliente. I messaggi automatici in uscita non contano.'],
+                ['label' => 'Lead lavorati', 'value' => $number($stats['worked_leads']), 'help' => 'Record con stato diverso da Pre lead. Sono il denominatore dei KPI commerciali.'],
+                ['label' => 'Proposte', 'value' => $number($stats['quotes']), 'detail' => $money($stats['quote_value']), 'help' => 'Lead lavorati con almeno una proposta salvata. In evidenza è indicata la somma dei valori.'],
+                ['label' => 'Lead pagati', 'value' => $number($stats['payments']), 'detail' => $money($stats['payment_value']), 'help' => 'Lead lavorati con stato Pagato. Non rappresenta ancora il numero delle singole transazioni.'],
+                ['label' => 'Margine conosciuto', 'value' => $moneyOrNd($stats['margin']), 'detail' => $stats['payments'] > 0 ? $number($stats['margin_coverage']) . ' di ' . $number($stats['payments']) . ' pagati' : null, 'help' => 'Somma dei soli margini valorizzati sui lead pagati. La copertura indica per quanti lead il dato è disponibile.'],
+                ['label' => 'Valore medio proposta', 'value' => $moneyOrNd($stats['average_quote']), 'help' => 'Valore delle proposte dei lead lavorati diviso per il numero di lead con proposta.'],
+                ['label' => 'Valore medio pagato', 'value' => $moneyOrNd($stats['average_payment']), 'help' => 'Valore pagato registrato diviso per il numero di lead pagati.'],
+                ['label' => 'Quantità media', 'value' => $numberOrNd($stats['average_quantity'], 1), 'detail' => $number($stats['quantity_coverage']) . ' di ' . $number($stats['worked_leads']) . ' lead', 'help' => 'Media calcolata esclusivamente sui lead lavorati con quantità valorizzata. La copertura mostra quanti record concorrono al calcolo.'],
+                ['label' => 'Lavorati → Proposta', 'value' => $percentOrNd($stats['worked_to_quote']), 'help' => 'Lead lavorati con almeno una proposta diviso per tutti i lead con stato diverso da Pre lead.'],
+                ['label' => 'Proposta → Pagamento', 'value' => $percentOrNd($stats['quote_to_payment']), 'help' => 'Lead pagati diviso per lead lavorati con almeno una proposta.'],
+                ['label' => 'Lavorati → Pagamento', 'value' => $percentOrNd($stats['worked_to_payment']), 'help' => 'Lead pagati diviso per tutti i lead con stato diverso da Pre lead.'],
             ] as $card)
                 <article class="min-w-0 rounded-10 border border-gray-mid bg-white p-10 md:p-12">
                     <div class="flex items-center gap-5">
@@ -67,11 +87,33 @@
                         </span>
                     </div>
                     <p class="mt-6 truncate text-20 font-black leading-none" title="{{ $card['value'] }}">{{ $card['value'] }}</p>
-                    @isset($card['detail'])
+                    @if (($card['detail'] ?? null) !== null)
                         <p class="mt-5 truncate text-12 font-bold text-bullstar" title="{{ $card['detail'] }}">{{ $card['detail'] }}</p>
-                    @endisset
+                    @endif
                 </article>
             @endforeach
+        </section>
+
+        <section class="rounded-10 border border-gray-mid bg-white">
+            <div class="border-b border-gray-mid px-10 py-10">
+                <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Pipeline proposte</p>
+                <p class="mt-4 text-12 font-semibold text-gray">Lettura sintetica delle proposte dei soli lead lavorati.</p>
+            </div>
+            <div class="grid gap-px bg-gray-mid sm:grid-cols-3">
+                @foreach ([
+                    ['label' => 'Aperta', 'count' => $stats['pipeline_open_count'], 'value' => $stats['pipeline_open_value'], 'help' => 'Proposte collegate a lead non pagati e non persi.'],
+                    ['label' => 'Vinta', 'count' => $stats['pipeline_won_count'], 'value' => $stats['pipeline_won_value'], 'help' => 'Proposte collegate a lead con stato Pagato.'],
+                    ['label' => 'Persa', 'count' => $stats['pipeline_lost_count'], 'value' => $stats['pipeline_lost_value'], 'help' => 'Proposte collegate a lead con stato Perso.'],
+                ] as $pipeline)
+                    <article class="bg-white p-10 md:p-12" title="{{ $pipeline['help'] }}">
+                        <p class="text-10 font-extrabold uppercase tracking-normal text-gray">{{ $pipeline['label'] }}</p>
+                        <div class="mt-6 flex items-end justify-between gap-8">
+                            <p class="text-20 font-black leading-none">{{ $number($pipeline['count']) }}</p>
+                            <p class="text-12 font-bold text-bullstar">{{ $money($pipeline['value']) }}</p>
+                        </div>
+                    </article>
+                @endforeach
+            </div>
         </section>
 
         <section class="rounded-10 border border-gray-mid bg-white">
@@ -79,6 +121,9 @@
                 <div>
                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Database lead</p>
                     <p class="mt-4 text-14 font-bold">{{ $leads->total() }} righe con i filtri correnti</p>
+                    @if ($excludePreLeadsFromTable)
+                        <span class="mt-5 inline-flex rounded-full bg-gray-light px-8 py-5 text-10 font-extrabold uppercase tracking-normal text-gray">Pre-lead esclusi</span>
+                    @endif
                 </div>
                 <p class="text-12 font-semibold text-gray">I campi commerciali si modificano dalla scheda Lead.</p>
             </div>
@@ -148,13 +193,13 @@
                                 <td class="px-10 py-11">{{ $lead->acquisition_region ?: '-' }}</td>
                                 <td class="px-10 py-11">{{ $lead->category ?: '-' }}</td>
                                 <td class="px-10 py-11">{{ $lead->product ?: '-' }}</td>
-                                <td class="px-10 py-11">{{ $quantity !== null ? $number($quantity, $quantity == floor($quantity) ? 0 : 2) : '-' }}</td>
-                                <td class="px-10 py-11">{{ $quantityBand }}</td>
+                                <td class="px-10 py-11">{{ $quantity !== null ? $number($quantity, $quantity == floor($quantity) ? 0 : 2) : 'N.D.' }}</td>
+                                <td class="px-10 py-11">{{ $quantity !== null ? $quantityBand : 'N.D.' }}</td>
                                 <td class="px-10 py-11">{{ $latestQuote ? 'Sì' : 'No' }}</td>
                                 <td class="whitespace-nowrap px-10 py-11">{{ $latestQuote ? $money($latestQuote->amount) : '-' }}</td>
                                 <td class="px-10 py-11">{{ $isPaid ? 'Sì' : 'No' }}</td>
                                 <td class="whitespace-nowrap px-10 py-11">{{ $isPaid && $lead->payment_amount ? $money($lead->payment_amount) : '-' }}</td>
-                                <td class="whitespace-nowrap px-10 py-11">{{ $lead->margin_amount !== null ? $money($lead->margin_amount) : '-' }}</td>
+                                <td class="whitespace-nowrap px-10 py-11">{{ $lead->margin_amount !== null ? $money($lead->margin_amount) : 'N.D.' }}</td>
                                 <td class="px-10 py-11"><span class="inline-flex whitespace-nowrap rounded-full bg-gray-light px-8 py-5 text-10 font-extrabold uppercase">{{ $statuses[$lead->status] ?? $lead->status }}</span></td>
                                 <td class="px-10 py-11">{{ $lead->lead_quality ?: '-' }}</td>
                                 <td class="max-w-[180px] truncate px-10 py-11">{{ $lead->loss_reason ?: '-' }}</td>
@@ -224,10 +269,11 @@
                 <div class="grid gap-px bg-gray-mid sm:grid-cols-2 lg:grid-cols-5">
                     @foreach ([
                         ['label' => 'Spesa Ads', 'value' => $money($ads['spend']), 'help' => 'Costo totale Google Ads nel periodo selezionato.'],
-                        ['label' => 'CPL', 'value' => $money($ads['cpl']), 'help' => 'Costo per lead: spesa Ads divisa per il numero di lead.'],
-                        ['label' => 'CPA', 'value' => $money($ads['cpa']), 'help' => 'Costo per acquisizione: spesa Ads divisa per il numero di pagamenti.'],
-                        ['label' => 'ROAS', 'value' => $number($ads['roas'], 2) . 'x', 'help' => 'Ritorno sulla spesa pubblicitaria: valore pagamenti diviso per spesa Ads.'],
-                        ['label' => 'ROMI', 'value' => $number($ads['romi'], 2) . 'x', 'help' => 'Ritorno sul marketing: margine diviso per spesa Ads.'],
+                        ['label' => 'Costo per record', 'value' => $moneyOrNd($ads['cost_per_record']), 'help' => 'Spesa Ads divisa per tutti i record acquisiti nel periodo, inclusi quelli ancora Pre lead.'],
+                        ['label' => 'Costo per chat', 'value' => $moneyOrNd($ads['cost_per_chat']), 'help' => 'Spesa Ads divisa per le conversazioni con almeno un messaggio reale ricevuto.'],
+                        ['label' => 'CAC lead pagato', 'value' => $moneyOrNd($ads['cac']), 'help' => 'Spesa Ads divisa per il numero di lead con stato Pagato.'],
+                        ['label' => 'ROAS', 'value' => $ads['roas'] === null ? 'N.D.' : $number($ads['roas'], 2) . 'x', 'help' => 'Valore pagato registrato diviso per spesa Ads. Il periodo è riferito alla data di acquisizione del lead.'],
+                        ['label' => 'ROMI', 'value' => $ads['romi'] === null ? 'N.D.' : $number($ads['romi'], 2) . 'x', 'help' => 'Margine diviso per spesa Ads. È mostrato solo quando tutti i lead pagati hanno un margine valorizzato.'],
                         ['label' => 'CTR', 'value' => $number($ads['ctr'], 2) . '%', 'help' => 'Percentuale di impression che hanno generato un clic.'],
                         ['label' => 'CPC medio', 'value' => $money($ads['average_cpc']), 'help' => 'Costo medio sostenuto per ogni clic.'],
                         ['label' => 'Quota impression', 'value' => $ads['impression_share'] !== null ? $number($ads['impression_share'], 1) . '%' : '-', 'help' => 'Percentuale delle impression ottenute rispetto a quelle per cui gli annunci erano idonei.'],

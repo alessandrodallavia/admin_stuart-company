@@ -22,6 +22,105 @@
                 </div>
             </div>
 
+            @if (Auth::guard('admin')->user()?->hasAdminPermission('leads.manage'))
+                <details class="group mb-12 overflow-hidden rounded-10 border border-gray-mid bg-white" @if($errors->hasAny(['name', 'phone', 'email', 'acquisition_channel', 'attribution_confidence', 'duplicate'])) open @endif>
+                    <summary class="flex cursor-pointer list-none items-center justify-between gap-12 bg-gray-light px-16 py-12 transition hover:bg-white">
+                        <div>
+                            <p class="text-12 font-extrabold uppercase tracking-normal text-black-nike">Nuovo lead manuale</p>
+                            <p class="mt-4 text-11 font-semibold text-gray">Registra chiamate, contatti diretti, referral o clienti esistenti.</p>
+                        </div>
+                        <span class="rounded-10 bg-black-nike px-12 py-8 text-11 font-extrabold uppercase tracking-normal text-white group-open:hidden">Aggiungi</span>
+                        <span class="hidden rounded-10 border border-gray-mid bg-white px-12 py-8 text-11 font-extrabold uppercase tracking-normal group-open:inline-flex">Chiudi</span>
+                    </summary>
+
+                    <form method="POST" action="{{ route('admin.leads.store') }}" class="border-t border-gray-mid p-16">
+                        @csrf
+
+                        @error('duplicate')
+                            <div class="mb-12 rounded-10 border border-red-200 bg-red-50 px-12 py-10 text-12 font-bold text-red-700">{{ $message }}</div>
+                        @enderror
+
+                        <div class="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
+                            <label class="block lg:col-span-2">
+                                <span class="text-11 font-extrabold uppercase tracking-normal text-gray">Nome e cognome *</span>
+                                <input name="name" value="{{ old('name') }}" required class="mt-5 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                @error('name')<span class="mt-4 block text-11 font-bold text-red-700">{{ $message }}</span>@enderror
+                            </label>
+                            <label class="block lg:col-span-2">
+                                <span class="text-11 font-extrabold uppercase tracking-normal text-gray">Azienda</span>
+                                <input name="club" value="{{ old('club') }}" class="mt-5 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                            </label>
+                            <label class="block">
+                                <span class="text-11 font-extrabold uppercase tracking-normal text-gray">Telefono</span>
+                                <input name="phone" value="{{ old('phone') }}" inputmode="tel" class="mt-5 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                @error('phone')<span class="mt-4 block text-11 font-bold text-red-700">{{ $message }}</span>@enderror
+                            </label>
+                            <label class="block">
+                                <span class="text-11 font-extrabold uppercase tracking-normal text-gray">E-mail</span>
+                                <input name="email" value="{{ old('email') }}" type="email" class="mt-5 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                @error('email')<span class="mt-4 block text-11 font-bold text-red-700">{{ $message }}</span>@enderror
+                            </label>
+                            <label class="block">
+                                <span class="text-11 font-extrabold uppercase tracking-normal text-gray">Città</span>
+                                <input name="city" value="{{ old('city') }}" class="mt-5 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                            </label>
+                            <label class="block">
+                                <span class="text-11 font-extrabold uppercase tracking-normal text-gray">Categoria</span>
+                                <select name="lead_category_id" class="mt-5 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                    <option value="">Non indicata</option>
+                                    @foreach ($leadCategories as $category)
+                                        <option value="{{ $category->id }}" @selected((string) old('lead_category_id') === (string) $category->id)>{{ $category->name }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+                            <label class="block">
+                                <span class="text-11 font-extrabold uppercase tracking-normal text-gray">Canale *</span>
+                                <select name="acquisition_channel" required class="mt-5 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                    @foreach ($manualChannels as $value => $label)
+                                        <option value="{{ $value }}" @selected(old('acquisition_channel', 'telefono') === $value)>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+                            <label class="block">
+                                <span class="text-11 font-extrabold uppercase tracking-normal text-gray">Affidabilità origine *</span>
+                                <select name="attribution_confidence" required class="mt-5 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                    @foreach ($attributionConfidences as $value => $label)
+                                        <option value="{{ $value }}" @selected(old('attribution_confidence', 'unknown') === $value)>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+                            <label class="block lg:col-span-2">
+                                <span class="text-11 font-extrabold uppercase tracking-normal text-gray">Prodotto richiesto</span>
+                                <input name="product" value="{{ old('product') }}" list="manual-lead-products" class="mt-5 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                <datalist id="manual-lead-products">
+                                    @foreach ($crmProducts as $product)<option value="{{ $product->name }}"></option>@endforeach
+                                </datalist>
+                            </label>
+                            <label class="block">
+                                <span class="text-11 font-extrabold uppercase tracking-normal text-gray">Quantità</span>
+                                <input name="quantity" value="{{ old('quantity') }}" type="number" min="0.01" step="0.01" class="mt-5 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                            </label>
+                            <label class="block">
+                                <span class="text-11 font-extrabold uppercase tracking-normal text-gray">Nota attribuzione</span>
+                                <input name="attribution_note" value="{{ old('attribution_note') }}" placeholder="Es. dichiara di averci trovato su Google" class="mt-5 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                            </label>
+                            <label class="block md:col-span-2 lg:col-span-4">
+                                <span class="text-11 font-extrabold uppercase tracking-normal text-gray">Note commerciali</span>
+                                <textarea name="crm_notes" rows="3" class="mt-5 w-full rounded-10 border-gray-mid px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">{{ old('crm_notes') }}</textarea>
+                            </label>
+                        </div>
+
+                        <div class="mt-12 flex flex-col gap-10 border-t border-gray-mid pt-12 md:flex-row md:items-center md:justify-between">
+                            <label class="flex items-start gap-8 text-11 font-semibold text-gray">
+                                <input type="checkbox" name="confirm_duplicate" value="1" @checked(old('confirm_duplicate')) class="mt-2 h-16 w-16 rounded border-gray-mid text-bullstar focus:ring-bullstar">
+                                <span>Crea comunque se telefono o e-mail risultano già presenti.</span>
+                            </label>
+                            <button type="submit" class="rounded-10 bg-bullstar px-16 py-10 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">Crea lead e apri scheda</button>
+                        </div>
+                    </form>
+                </details>
+            @endif
+
             <section class="mb-12 grid grid-cols-2 gap-8 lg:grid-cols-4">
                 <article class="rounded-10 border border-gray-mid bg-white p-12">
                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Lead totali</p>
@@ -555,6 +654,22 @@
                                     <p class="mt-3 text-10 font-semibold text-gray">Dati registrati al momento dell'ingresso.</p>
                                 </div>
                                 <dl class="mt-8 grid gap-6 text-12 sm:grid-cols-2 lg:grid-cols-4">
+                                    <div class="rounded-10 border border-gray-mid bg-white p-8">
+                                        <dt class="font-extrabold uppercase tracking-normal text-gray">Canale acquisizione</dt>
+                                        <dd class="mt-4 break-words font-bold">{{ $manualChannels[$selectedLead->acquisition_channel] ?? ($selectedLead->acquisition_channel ?: '-') }}</dd>
+                                    </div>
+                                    <div class="rounded-10 border border-gray-mid bg-white p-8">
+                                        <dt class="font-extrabold uppercase tracking-normal text-gray">Affidabilità origine</dt>
+                                        <dd class="mt-4 break-words font-bold">{{ $attributionConfidences[$selectedLead->attribution_confidence] ?? ($selectedLead->attribution_confidence ?: '-') }}</dd>
+                                    </div>
+                                    <div class="rounded-10 border border-gray-mid bg-white p-8">
+                                        <dt class="font-extrabold uppercase tracking-normal text-gray">Inserito da</dt>
+                                        <dd class="mt-4 break-words font-bold">{{ $selectedLead->createdByAdmin?->name ?: 'Automazione' }}</dd>
+                                    </div>
+                                    <div class="rounded-10 border border-gray-mid bg-white p-8">
+                                        <dt class="font-extrabold uppercase tracking-normal text-gray">Nota attribuzione</dt>
+                                        <dd class="mt-4 break-words font-bold">{{ $selectedLead->attribution_note ?: '-' }}</dd>
+                                    </div>
                                     <div class="rounded-10 border border-gray-mid bg-white p-8">
                                         <dt class="font-extrabold uppercase tracking-normal text-gray">Ingresso</dt>
                                         <dd class="mt-4 font-bold">{{ optional($selectedLead->created_at)?->timezone(config('app.display_timezone'))->format('d/m/Y H:i') ?: '-' }}</dd>
