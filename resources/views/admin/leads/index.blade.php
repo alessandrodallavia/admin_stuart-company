@@ -220,19 +220,24 @@
                         </nav>
 
                         <div class="grid gap-16 p-16 lg:grid-cols-2">
-                            <section x-show="tab === 'main'" x-cloak class="order-1 rounded-10 border border-gray-mid bg-gray-light p-12 lg:col-start-1 lg:row-span-2 lg:row-start-1">
-                                <div class="flex items-start justify-between gap-12">
+                            <section x-show="tab === 'main'" x-cloak class="order-1 overflow-hidden rounded-10 border border-gray-mid bg-white shadow-sm lg:col-start-1 lg:row-span-2 lg:row-start-1">
+                                <div class="flex items-start justify-between gap-12 bg-black-nike px-12 py-10 text-white">
                                     <div>
-                                        <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Stato attuale</p>
-                                        <p class="mt-6 text-18 font-black leading-tight">{{ $statusLabel }}</p>
+                                        <p class="text-10 font-extrabold uppercase tracking-wider text-white/60">Scheda principale</p>
+                                        <p class="mt-4 text-18 font-black leading-tight">Dati e avanzamento lead</p>
                                     </div>
                                     <span class="rounded-full px-10 py-6 text-11 font-extrabold uppercase tracking-normal {{ $statusBadgeClass }}">
                                         {{ $statusLabel }}
                                     </span>
                                 </div>
-                                <form method="POST" action="{{ route('admin.leads.update', $selectedLead) }}" enctype="multipart/form-data" class="mt-12 space-y-10">
+                                <form method="POST" action="{{ route('admin.leads.update', $selectedLead) }}" enctype="multipart/form-data" class="space-y-10 p-12">
                                     @csrf
                                     @method('PATCH')
+
+                                    <div>
+                                        <p class="text-11 font-black uppercase">Anagrafica e contatti</p>
+                                        <p class="mt-3 text-10 font-semibold text-gray">Informazioni principali del referente.</p>
+                                    </div>
 
                                     <div class="grid gap-10 md:grid-cols-2">
                                         <label class="block">
@@ -245,32 +250,37 @@
                                         </label>
                                     </div>
 
-                                    <label class="block">
-                                        <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Email</span>
-                                        <input name="email" value="{{ old('email', $selectedLead->email) }}" type="email" maxlength="255" placeholder="cliente@email.it" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
-                                    </label>
+                                    <div class="grid gap-10 md:grid-cols-2">
+                                        <label class="block">
+                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Email</span>
+                                            <input name="email" value="{{ old('email', $selectedLead->email) }}" type="email" maxlength="255" placeholder="cliente@email.it" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
+                                        </label>
 
-                                    <label class="block">
-                                        <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Nuovo stato</span>
-                                        <select name="status" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
-                                            @foreach ($statuses as $value => $label)
-                                                <option value="{{ $value }}" @selected(old('status', $selectedLead->status) === $value)>{{ $label }}</option>
-                                            @endforeach
-                                        </select>
-                                    </label>
+                                        <label class="block">
+                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Nuovo stato</span>
+                                            <select name="status" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
+                                                @foreach ($statuses as $value => $label)
+                                                    <option value="{{ $value }}" @selected(old('status', $selectedLead->status) === $value)>{{ $label }}</option>
+                                                @endforeach
+                                            </select>
+                                        </label>
+                                    </div>
 
-                                    <label class="block">
-                                        <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Importo pagamento</span>
-                                        <input name="payment_amount" value="{{ old('payment_amount', $selectedLead->payment_amount) }}" type="number" min="0" step="0.01" placeholder="0,00" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
-                                    </label>
+                                    <div class="grid gap-10 rounded-10 border border-gray-mid bg-gray-light p-10 md:grid-cols-2">
+                                        <label class="block">
+                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Importo pagamento</span>
+                                            <input name="payment_amount" value="{{ old('payment_amount', $selectedLead->payment_amount) }}" type="number" min="0" step="0.01" placeholder="0,00" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
+                                        </label>
 
-                                    <label class="block">
-                                        <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Link pagamento</span>
-                                        <input name="payment_link" value="{{ old('payment_link', $selectedLead->payment_link) }}" type="url" placeholder="https://..." class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
-                                    </label>
+                                        <label class="block">
+                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Link pagamento</span>
+                                            <input name="payment_link" value="{{ old('payment_link', $selectedLead->payment_link) }}" type="url" placeholder="https://..." class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
+                                        </label>
+                                    </div>
 
                                     <div class="border-t border-gray-mid pt-10">
-                                        <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Dati CRM</p>
+                                        <p class="text-11 font-black uppercase">Qualificazione CRM</p>
+                                        <p class="mt-3 text-10 font-semibold text-gray">Classificazione commerciale e note interne.</p>
                                     </div>
 
                                     <div class="grid gap-10 md:grid-cols-2">
@@ -303,7 +313,7 @@
                                         <textarea name="crm_notes" rows="3" maxlength="5000" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">{{ old('crm_notes', $selectedLead->crm_notes) }}</textarea>
                                     </label>
 
-                                    <button type="submit" class="w-full rounded-10 bg-bullstar px-16 py-12 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">
+                                    <button type="submit" class="ml-auto block w-full rounded-10 bg-bullstar px-16 py-12 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover md:w-auto">
                                         Aggiorna lead
                                     </button>
                                 </form>
@@ -313,13 +323,17 @@
                                 <livewire:admin.lead-sales-sheet :lead-id="$selectedLead->id" :key="'lead-sales-sheet-'.$selectedLead->id" />
                             </section>
 
-                            <section x-show="tab === 'proposal'" x-cloak class="order-2 rounded-10 border border-gray-mid p-12 lg:col-span-2 lg:col-start-1 lg:row-start-1">
-                                <div class="flex flex-wrap items-start justify-between gap-8">
-                                    <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Proposte</p>
-                                    <p class="text-12 font-bold text-gray">{{ $selectedLead->quotePdfs->count() }} {{ $selectedLead->quotePdfs->count() === 1 ? 'proposta caricata' : 'proposte caricate' }}</p>
+                            <section x-show="tab === 'proposal'" x-cloak class="order-2 overflow-hidden rounded-10 border border-gray-mid bg-white shadow-sm lg:col-span-2 lg:col-start-1 lg:row-start-1">
+                                <div class="flex flex-wrap items-center justify-between gap-8 bg-black-nike px-12 py-12 text-white">
+                                    <div>
+                                        <p class="text-10 font-extrabold uppercase tracking-wider text-white/60">Scheda proposta</p>
+                                        <h3 class="mt-4 text-18 font-black">Preventivi e invii al cliente</h3>
+                                        <p class="mt-3 text-10 font-semibold text-white/60">Crea, archivia e condividi le proposte commerciali.</p>
+                                    </div>
+                                    <span class="rounded-full bg-white/10 px-10 py-6 text-10 font-extrabold">{{ $selectedLead->quotePdfs->count() }} {{ $selectedLead->quotePdfs->count() === 1 ? 'proposta' : 'proposte' }}</span>
                                 </div>
 
-                                <form method="POST" action="{{ route('admin.leads.quote-pdfs.store', $selectedLead) }}" enctype="multipart/form-data" class="mt-12 grid min-w-0 gap-10 rounded-10 border border-gray-mid bg-gray-light p-10">
+                                <form method="POST" action="{{ route('admin.leads.quote-pdfs.store', $selectedLead) }}" enctype="multipart/form-data" class="m-12 grid min-w-0 gap-10 rounded-10 border border-gray-mid bg-gray-light p-10 md:grid-cols-2">
                                     @csrf
                                     <label class="block min-w-0">
                                         <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Numero proposta</span>
@@ -329,10 +343,10 @@
                                         <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Importo proposta</span>
                                         <input name="proposal_amount" value="{{ old('proposal_amount') }}" type="number" min="0.50" step="0.01" required placeholder="0,00" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
                                     </label>
-                                    <label class="block min-w-0">
+                                    <label class="block min-w-0 md:col-span-2">
                                         <span class="text-12 font-extrabold uppercase tracking-normal text-gray">PDF proposta</span>
-                                        <input name="proposal_pdf" type="file" accept="application/pdf,.pdf" class="mt-6 block w-full min-w-0 overflow-hidden rounded-10 border border-gray-mid bg-white px-8 py-8 text-12 font-semibold text-black-nike file:mr-8 file:rounded-10 file:border-0 file:bg-black-nike file:px-10 file:py-8 file:text-11 file:font-extrabold file:uppercase file:tracking-normal file:text-white focus:border-bullstar focus:ring-bullstar">
-                                        <span class="mt-6 block text-11 font-semibold text-gray">PDF facoltativo, massimo 20 MB.</span>
+                                        <input name="proposal_pdf" type="file" accept="application/pdf,.pdf" class="mt-6 block w-full min-w-0 overflow-hidden rounded-10 border border-dashed border-gray-mid bg-white px-8 py-8 text-12 font-semibold text-black-nike file:mr-8 file:rounded-10 file:border-0 file:bg-black-nike file:px-10 file:py-8 file:text-11 file:font-extrabold file:uppercase file:tracking-normal file:text-white focus:border-bullstar focus:ring-bullstar">
+                                        <span class="mt-4 block text-10 font-semibold text-gray">Facoltativo · PDF fino a 20 MB.</span>
                                     </label>
                                     <label class="flex items-start gap-8 rounded-10 border border-gray-mid bg-white px-10 py-8">
                                         <input name="send_google_event" value="1" type="checkbox" class="mt-1 rounded border-gray-mid text-bullstar focus:ring-bullstar">
@@ -345,15 +359,23 @@
                                     </button>
                                 </form>
 
-                                <div class="mt-12 grid gap-8">
+                                <div class="border-t border-gray-mid bg-gray-light/50 px-12 py-12">
+                                    <div class="mb-8 flex items-center justify-between gap-6">
+                                        <div>
+                                            <p class="text-11 font-black uppercase">Proposte salvate</p>
+                                            <p class="mt-3 text-10 font-semibold text-gray">Apri il PDF o scegli il canale di invio.</p>
+                                        </div>
+                                    </div>
+                                    <div class="grid gap-8 lg:grid-cols-2">
                                     @forelse ($selectedLead->quotePdfs as $quotePdf)
                                         @php
                                             $hasProposalPdf = $quotePdf->disk && $quotePdf->path;
                                         @endphp
-                                        <div class="rounded-10 border border-gray-mid bg-gray-light p-10">
+                                        <article class="flex flex-col rounded-10 border border-gray-mid bg-white p-10">
                                             <div class="flex flex-wrap items-center justify-between gap-6">
                                                 <div class="min-w-0">
-                                                    <p class="text-13 font-black text-black-nike">{{ $quotePdf->proposal_number }} · € {{ number_format((float) $quotePdf->amount, 2, ',', '.') }}</p>
+                                                    <p class="text-10 font-extrabold uppercase text-gray">{{ $quotePdf->proposal_number }}</p>
+                                                    <p class="mt-3 text-18 font-black text-black-nike">€ {{ number_format((float) $quotePdf->amount, 2, ',', '.') }}</p>
                                                     @if ($hasProposalPdf)
                                                         <a href="{{ route('admin.leads.quote-pdfs.show', [$selectedLead, $quotePdf]) }}" target="_blank" class="mt-2 block truncate text-12 font-bold text-bullstar underline-offset-4 hover:underline">{{ $quotePdf->filename }}</a>
                                                     @else
@@ -364,60 +386,76 @@
                                                     {{ $quotePdf->uploaded_at?->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}
                                                 </p>
                                             </div>
-                                            <div class="mt-8 grid gap-6 min-[700px]:grid-cols-3 min-[1280px]:grid-cols-1">
-                                                <form method="POST" action="{{ route('admin.leads.quote-pdfs.whatsapp', [$selectedLead, $quotePdf]) }}">
+                                            <div class="mt-auto grid gap-6 pt-10 sm:grid-cols-3">
+                                                <form method="POST" action="{{ route('admin.leads.quote-pdfs.whatsapp', [$selectedLead, $quotePdf]) }}" class="flex h-full flex-col rounded-10 border border-gray-mid bg-gray-light p-8">
                                                     @csrf
-                                                    <label class="mb-6 flex items-center gap-6 text-11 font-bold text-gray">
+                                                    <p class="text-10 font-extrabold uppercase text-black-nike">WhatsApp</p>
+                                                    <label class="mt-6 flex flex-1 items-start gap-6 text-10 font-semibold leading-[16px] text-gray">
                                                         <input name="send_google_event" value="1" type="checkbox" class="rounded border-gray-mid text-bullstar focus:ring-bullstar">
-                                                        Google
+                                                        <span>Registra anche l'evento proposta su Google</span>
                                                     </label>
-                                                    <button type="submit" @disabled(! $hasProposalPdf) class="w-full rounded-10 border border-whatsapp bg-whatsapp px-10 py-8 text-11 font-extrabold uppercase leading-none tracking-normal text-white transition hover:bg-whatsapp/90 disabled:cursor-not-allowed disabled:border-gray-mid disabled:bg-gray">
-                                                        Invia su WhatsApp
+                                                    <button type="submit" @disabled(! $hasProposalPdf) class="mt-8 w-full rounded-10 border border-whatsapp bg-whatsapp px-10 py-8 text-11 font-extrabold uppercase leading-none tracking-normal text-white transition hover:bg-whatsapp/90 disabled:cursor-not-allowed disabled:border-gray-mid disabled:bg-gray">
+                                                        Invia
                                                     </button>
                                                 </form>
-                                                <form method="POST" action="{{ route('admin.leads.quote-pdfs.email', [$selectedLead, $quotePdf]) }}">
+                                                <form method="POST" action="{{ route('admin.leads.quote-pdfs.email', [$selectedLead, $quotePdf]) }}" class="flex h-full flex-col rounded-10 border border-gray-mid bg-gray-light p-8">
                                                     @csrf
-                                                    <label class="mb-6 flex items-center gap-6 text-11 font-bold text-gray">
+                                                    <p class="text-10 font-extrabold uppercase text-black-nike">Email</p>
+                                                    <label class="mt-6 flex flex-1 items-start gap-6 text-10 font-semibold leading-[16px] text-gray">
                                                         <input name="send_google_event" value="1" type="checkbox" class="rounded border-gray-mid text-bullstar focus:ring-bullstar">
-                                                        Google
+                                                        <span>Registra anche l'evento proposta su Google</span>
                                                     </label>
-                                                    <button type="submit" @disabled(! $selectedLead->email || ! $hasProposalPdf) class="w-full rounded-10 border border-bullstar bg-bullstar px-10 py-8 text-11 font-extrabold uppercase leading-none tracking-normal text-white transition hover:bg-bullstar-hover disabled:cursor-not-allowed disabled:border-gray-mid disabled:bg-gray">
-                                                        Invia via email
+                                                    <button type="submit" @disabled(! $selectedLead->email || ! $hasProposalPdf) class="mt-8 w-full rounded-10 border border-bullstar bg-bullstar px-10 py-8 text-11 font-extrabold uppercase leading-none tracking-normal text-white transition hover:bg-bullstar-hover disabled:cursor-not-allowed disabled:border-gray-mid disabled:bg-gray">
+                                                        Invia
                                                     </button>
                                                 </form>
-                                                <form method="POST" action="{{ route('admin.leads.quote-pdfs.destroy', [$selectedLead, $quotePdf]) }}" onsubmit="return confirm('Eliminare questa proposta?')">
+                                                <form method="POST" action="{{ route('admin.leads.quote-pdfs.destroy', [$selectedLead, $quotePdf]) }}" onsubmit="return confirm('Eliminare questa proposta?')" class="flex h-full flex-col rounded-10 border border-gray-mid bg-gray-light p-8">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" class="w-full rounded-10 border border-red-600 bg-white px-10 py-8 text-11 font-extrabold uppercase leading-none tracking-normal text-red-600 transition hover:bg-red-50">
-                                                        Elimina
+                                                    <p class="text-10 font-extrabold uppercase text-black-nike">Gestione</p>
+                                                    <p class="mt-6 flex-1 text-10 font-semibold leading-[16px] text-gray">Rimuovi definitivamente questa proposta e il relativo PDF.</p>
+                                                    <button type="submit" class="mt-8 w-full rounded-10 border border-red-600 bg-white px-10 py-8 text-11 font-extrabold uppercase leading-none tracking-normal text-red-600 transition hover:bg-red-50">
+                                                        Elimina proposta
                                                     </button>
                                                 </form>
                                             </div>
-                                        </div>
+                                        </article>
                                     @empty
-                                        <p class="text-12 font-semibold text-gray">Nessuna proposta caricata.</p>
+                                        <div class="rounded-10 border border-dashed border-gray-mid bg-white px-12 py-20 text-center lg:col-span-2">
+                                            <p class="text-13 font-black">Nessuna proposta salvata</p>
+                                            <p class="mt-3 text-10 font-semibold text-gray">Compila il modulo per creare la prima proposta.</p>
+                                        </div>
                                     @endforelse
+                                    </div>
                                 </div>
                             </section>
 
                             <section x-show="tab === 'main'" x-cloak class="order-3 grid gap-10 lg:col-start-2 lg:row-start-1">
-                                <div class="rounded-10 border border-gray-mid p-12">
-                                    <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Pagamento</p>
-                                    <p class="mt-8 text-18 font-black">{{ $selectedLead->payment_amount ? '€ ' . number_format((float) $selectedLead->payment_amount, 2, ',', '.') : '-' }}</p>
+                                <div class="overflow-hidden rounded-10 border border-gray-mid bg-white shadow-sm">
+                                    <div class="flex items-center justify-between gap-6 border-b border-gray-mid bg-gray-light px-12 py-8">
+                                        <div>
+                                            <p class="text-11 font-black uppercase">Pagamento</p>
+                                            <p class="mt-3 text-10 font-semibold text-gray">Link e azioni di incasso.</p>
+                                        </div>
+                                        <p class="text-18 font-black">{{ $selectedLead->payment_amount ? '€ ' . number_format((float) $selectedLead->payment_amount, 2, ',', '.') : '-' }}</p>
+                                    </div>
+                                    <div class="p-12">
                                     @if ($selectedLead->payment_link)
-                                        <a href="{{ $selectedLead->payment_link }}" target="_blank" class="mt-8 block truncate text-12 font-bold text-bullstar underline-offset-4 hover:underline">Apri link</a>
-                                        <form method="POST" action="{{ route('admin.leads.stripe-payment-link.whatsapp', $selectedLead) }}" class="mt-8">
+                                        <a href="{{ $selectedLead->payment_link }}" target="_blank" class="block truncate rounded-10 border border-gray-mid bg-gray-light px-8 py-6 text-10 font-bold text-bullstar underline-offset-4 hover:underline">Apri link di pagamento ↗</a>
+                                        <div class="mt-8 grid gap-6 sm:grid-cols-2">
+                                        <form method="POST" action="{{ route('admin.leads.stripe-payment-link.whatsapp', $selectedLead) }}">
                                             @csrf
                                             <button type="submit" class="w-full rounded-10 border border-whatsapp bg-whatsapp px-10 py-8 text-11 font-extrabold uppercase leading-none tracking-normal text-white transition hover:bg-whatsapp/90">
                                                 Invia su WhatsApp
                                             </button>
                                         </form>
-                                        <form method="POST" action="{{ route('admin.leads.stripe-payment-link.email', $selectedLead) }}" class="mt-8">
+                                        <form method="POST" action="{{ route('admin.leads.stripe-payment-link.email', $selectedLead) }}">
                                             @csrf
                                             <button type="submit" @disabled(! $selectedLead->email) class="w-full rounded-10 border border-bullstar bg-bullstar px-10 py-8 text-11 font-extrabold uppercase leading-none tracking-normal text-white transition hover:bg-bullstar-hover disabled:cursor-not-allowed disabled:border-gray-mid disabled:bg-gray">
                                                 Invia via email
                                             </button>
                                         </form>
+                                        </div>
                                     @endif
                                     <form method="POST" action="{{ route('admin.leads.stripe-payment-link', $selectedLead) }}" class="mt-10">
                                         @csrf
@@ -425,30 +463,39 @@
                                             Crea link Stripe per ultima proposta
                                         </button>
                                     </form>
+                                    </div>
                                 </div>
                             </section>
 
                             <section x-show="tab === 'main'" x-cloak class="order-4 grid gap-10 lg:col-start-2 lg:row-start-2">
-                                <div class="rounded-10 border border-gray-mid p-12">
-                                    <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Contatti</p>
-                                    <p class="mt-8 text-14 font-bold">{{ $selectedLead->email ?: 'Email mancante' }}</p>
-                                    <p class="mt-4 text-14 font-bold">{{ $selectedLead->phone ?: 'Telefono mancante' }}</p>
+                                <div class="rounded-10 border border-gray-mid bg-white p-12 shadow-sm">
+                                    <p class="text-11 font-black uppercase">Contatti</p>
+                                    <div class="mt-8 grid gap-5">
+                                        <div class="rounded-10 border border-gray-mid bg-gray-light px-8 py-6"><p class="text-10 font-extrabold uppercase text-gray">Email</p><p class="mt-3 break-all text-12 font-bold">{{ $selectedLead->email ?: 'Email mancante' }}</p></div>
+                                        <div class="rounded-10 border border-gray-mid bg-gray-light px-8 py-6"><p class="text-10 font-extrabold uppercase text-gray">Telefono</p><p class="mt-3 text-12 font-bold">{{ $selectedLead->phone ?: 'Telefono mancante' }}</p></div>
+                                    </div>
                                 </div>
-                                <div class="rounded-10 border border-gray-mid p-12">
-                                    <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Richiesta</p>
-                                    <p class="mt-8 whitespace-pre-line text-14 font-semibold leading-[20px] text-black-nike">{{ $selectedLead->message ?: 'Nessun messaggio salvato.' }}</p>
+                                <div class="rounded-10 border border-gray-mid bg-white p-12 shadow-sm">
+                                    <p class="text-11 font-black uppercase">Richiesta iniziale</p>
+                                    <p class="mt-8 whitespace-pre-line rounded-10 border border-gray-mid bg-gray-light p-10 text-13 font-semibold leading-[20px] text-black-nike">{{ $selectedLead->message ?: 'Nessun messaggio salvato.' }}</p>
                                 </div>
                             </section>
 
-                            <section x-show="tab === 'origin'" x-cloak class="order-6 rounded-10 border border-gray-mid p-12 lg:col-span-2 lg:row-start-1">
+                            <section x-show="tab === 'origin'" x-cloak class="order-6 overflow-hidden rounded-10 border border-gray-mid bg-gray-light shadow-sm lg:col-span-2 lg:row-start-1">
                                 @php
                                     $landingUrl = $selectedLead->landing_page ?: $selectedLead->entry_page;
                                     $isLandingUrl = $landingUrl && \Illuminate\Support\Str::startsWith($landingUrl, ['http://', 'https://']);
                                     $isReferrerUrl = $selectedLead->referrer && \Illuminate\Support\Str::startsWith($selectedLead->referrer, ['http://', 'https://']);
                                 @endphp
-                                <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Origine lead</p>
-                                <dl class="mt-10 grid gap-10 text-12">
-                                    <div>
+                                <div class="bg-black-nike px-12 py-12 text-white">
+                                    <p class="text-10 font-extrabold uppercase tracking-wider text-white/60">Origine lead</p>
+                                    <h3 class="mt-4 text-18 font-black">Acquisizione e tracciamento</h3>
+                                    <p class="mt-3 text-10 font-semibold text-white/60">Percorso di ingresso, attribuzione pubblicitaria e dati tecnici.</p>
+                                </div>
+
+                                <div class="p-12">
+                                <dl class="grid gap-8 text-12 md:grid-cols-2">
+                                    <div class="rounded-10 border border-gray-mid bg-white p-10">
                                         <dt class="font-extrabold uppercase tracking-normal text-gray">Pagina di arrivo</dt>
                                         <dd class="mt-4 break-words font-bold">
                                             @if ($landingUrl && $isLandingUrl)
@@ -458,7 +505,7 @@
                                             @endif
                                         </dd>
                                     </div>
-                                    <div>
+                                    <div class="rounded-10 border border-gray-mid bg-white p-10">
                                         <dt class="font-extrabold uppercase tracking-normal text-gray">Referrer</dt>
                                         <dd class="mt-4 break-words font-bold">
                                             @if ($selectedLead->referrer && $isReferrerUrl)
@@ -470,68 +517,73 @@
                                     </div>
                                 </dl>
 
-                                <dl class="mt-12 grid grid-cols-2 gap-10 text-12">
-                                    <div>
+                                <div class="mt-10">
+                                    <p class="text-11 font-black uppercase">Dettagli acquisizione</p>
+                                    <p class="mt-3 text-10 font-semibold text-gray">Dati registrati al momento dell'ingresso.</p>
+                                </div>
+                                <dl class="mt-8 grid gap-6 text-12 sm:grid-cols-2 lg:grid-cols-4">
+                                    <div class="rounded-10 border border-gray-mid bg-white p-8">
                                         <dt class="font-extrabold uppercase tracking-normal text-gray">Ingresso</dt>
                                         <dd class="mt-4 font-bold">{{ optional($selectedLead->created_at)?->timezone(config('app.display_timezone'))->format('d/m/Y H:i') ?: '-' }}</dd>
                                     </div>
-                                    <div>
+                                    <div class="rounded-10 border border-gray-mid bg-white p-8">
                                         <dt class="font-extrabold uppercase tracking-normal text-gray">IP</dt>
                                         <dd class="mt-4 break-all font-bold">{{ $selectedLead->ip ?: '-' }}</dd>
                                     </div>
-                                    <div>
+                                    <div class="rounded-10 border border-gray-mid bg-white p-8">
                                         <dt class="font-extrabold uppercase tracking-normal text-gray">Device</dt>
                                         <dd class="mt-4 break-words font-bold">{{ $selectedLead->device ?: '-' }}</dd>
                                     </div>
-                                    <div>
+                                    <div class="rounded-10 border border-gray-mid bg-white p-8">
                                         <dt class="font-extrabold uppercase tracking-normal text-gray">UTM source</dt>
                                         <dd class="mt-4 break-words font-bold">{{ $selectedLead->utm_source ?: '-' }}</dd>
                                     </div>
-                                    <div>
+                                    <div class="rounded-10 border border-gray-mid bg-white p-8">
                                         <dt class="font-extrabold uppercase tracking-normal text-gray">UTM medium</dt>
                                         <dd class="mt-4 break-words font-bold">{{ $selectedLead->utm_medium ?: '-' }}</dd>
                                     </div>
-                                    <div>
+                                    <div class="rounded-10 border border-gray-mid bg-white p-8">
                                         <dt class="font-extrabold uppercase tracking-normal text-gray">Campagna</dt>
                                         <dd class="mt-4 break-words font-bold">{{ $selectedLead->utm_campaign ?: '-' }}</dd>
                                     </div>
-                                    <div>
+                                    <div class="rounded-10 border border-gray-mid bg-white p-8">
                                         <dt class="font-extrabold uppercase tracking-normal text-gray">Ad Group</dt>
                                         <dd class="mt-4 break-words font-bold">{{ $selectedLead->ad_group ?: '-' }}</dd>
                                     </div>
-                                    <div>
+                                    <div class="rounded-10 border border-gray-mid bg-white p-8">
                                         <dt class="font-extrabold uppercase tracking-normal text-gray">Keyword</dt>
                                         <dd class="mt-4 break-words font-bold">{{ $selectedLead->utm_term ?: '-' }}</dd>
                                     </div>
-                                    <div>
+                                    <div class="rounded-10 border border-gray-mid bg-white p-8">
                                         <dt class="font-extrabold uppercase tracking-normal text-gray">Search Term</dt>
                                         <dd class="mt-4 break-words font-bold">{{ $selectedLead->search_term ?: '-' }}</dd>
                                     </div>
-                                    <div>
+                                    <div class="rounded-10 border border-gray-mid bg-white p-8">
                                         <dt class="font-extrabold uppercase tracking-normal text-gray">Paese acquisizione</dt>
                                         <dd class="mt-4 break-words font-bold">{{ $selectedLead->acquisition_country ?: '-' }}</dd>
                                     </div>
-                                    <div>
+                                    <div class="rounded-10 border border-gray-mid bg-white p-8">
                                         <dt class="font-extrabold uppercase tracking-normal text-gray">Regione acquisizione</dt>
                                         <dd class="mt-4 break-words font-bold">{{ $selectedLead->acquisition_region ?: '-' }}</dd>
                                     </div>
-                                    <div>
+                                    <div class="rounded-10 border border-gray-mid bg-white p-8">
                                         <dt class="font-extrabold uppercase tracking-normal text-gray">Content</dt>
                                         <dd class="mt-4 break-words font-bold">{{ $selectedLead->utm_content ?: '-' }}</dd>
                                     </div>
-                                    <div>
+                                    <div class="rounded-10 border border-gray-mid bg-white p-8">
                                         <dt class="font-extrabold uppercase tracking-normal text-gray">GCLID</dt>
                                         <dd class="mt-4 break-all font-bold">{{ $selectedLead->gclid ?: '-' }}</dd>
                                     </div>
-                                    <div>
+                                    <div class="rounded-10 border border-gray-mid bg-white p-8">
                                         <dt class="font-extrabold uppercase tracking-normal text-gray">FBCLID</dt>
                                         <dd class="mt-4 break-all font-bold">{{ $selectedLead->fbclid ?: '-' }}</dd>
                                     </div>
                                 </dl>
 
-                                <div class="mt-12">
+                                <div class="mt-10 rounded-10 border border-gray-mid bg-white p-10">
                                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">User agent</p>
                                     <p class="mt-4 break-words text-12 font-semibold leading-[18px] text-black-nike">{{ $selectedLead->user_agent ?: '-' }}</p>
+                                </div>
                                 </div>
                             </section>
 

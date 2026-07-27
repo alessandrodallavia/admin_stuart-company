@@ -2,13 +2,19 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\SendLeadOrder;
+use App\Livewire\Admin\LeadSalesSheet as LeadSalesSheetComponent;
 use App\Models\AdminUser;
+use App\Models\CrmPrintType;
+use App\Models\CrmProduct;
+use App\Models\EmailAccount;
 use App\Models\Lead;
 use App\Models\LeadCategory;
-use App\Models\CrmProduct;
-use App\Models\CrmPrintType;
-use App\Livewire\Admin\LeadSalesSheet as LeadSalesSheetComponent;
+use App\Services\LeadOrderPackageService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -97,20 +103,20 @@ class AdminCrmDashboardTest extends TestCase
     {
         $admin = $this->owner();
         $lead = $this->lead();
-        $product = CrmProduct::create(['code'=>'TS01','name'=>'T-shirt','unit_cost'=>5,'is_active'=>true]);
-        $product->priceTiers()->create(['min_quantity'=>10,'max_quantity'=>19,'unit_price'=>12]);
-        $print = CrmPrintType::create(['code'=>'CUORE1','name'=>'Lato cuore 1 colore','is_active'=>true]);
-        $print->priceTiers()->create(['min_quantity'=>10,'max_quantity'=>19,'unit_cost'=>1,'unit_price'=>3]);
+        $product = CrmProduct::create(['code' => 'TS01', 'name' => 'T-shirt', 'unit_cost' => 5, 'is_active' => true]);
+        $product->priceTiers()->create(['min_quantity' => 10, 'max_quantity' => 19, 'unit_price' => 12]);
+        $print = CrmPrintType::create(['code' => 'CUORE1', 'name' => 'Lato cuore 1 colore', 'is_active' => true]);
+        $print->priceTiers()->create(['min_quantity' => 10, 'max_quantity' => 19, 'unit_cost' => 1, 'unit_price' => 3]);
 
-        $this->actingAs($admin,'admin')->post("/leads/{$lead->id}/sales-sheet/items",['product_id'=>$product->id,'quantity'=>12])->assertSessionHasNoErrors();
-        $item=$lead->fresh()->salesSheet->items()->firstOrFail();
-        $this->actingAs($admin,'admin')->post("/leads/{$lead->id}/sales-sheet/items/{$item->id}/prints",['print_type_id'=>$print->id])->assertSessionHasNoErrors();
+        $this->actingAs($admin, 'admin')->post("/leads/{$lead->id}/sales-sheet/items", ['product_id' => $product->id, 'quantity' => 12])->assertSessionHasNoErrors();
+        $item = $lead->fresh()->salesSheet->items()->firstOrFail();
+        $this->actingAs($admin, 'admin')->post("/leads/{$lead->id}/sales-sheet/items/{$item->id}/prints", ['print_type_id' => $print->id])->assertSessionHasNoErrors();
 
-        $sheet=$lead->fresh()->salesSheet;
-        $this->assertSame('180.00',$sheet->revenue_total);
-        $this->assertSame('72.00',$sheet->cost_total);
-        $this->assertSame('108.00',$sheet->margin_total);
-        $this->assertSame('108.00',$lead->fresh()->margin_amount);
+        $sheet = $lead->fresh()->salesSheet;
+        $this->assertSame('180.00', $sheet->revenue_total);
+        $this->assertSame('72.00', $sheet->cost_total);
+        $this->assertSame('108.00', $sheet->margin_total);
+        $this->assertSame('108.00', $lead->fresh()->margin_amount);
     }
 
     public function test_sales_sheet_can_be_updated_with_livewire_without_reloading_the_lead_page(): void
@@ -136,6 +142,95 @@ class AdminCrmDashboardTest extends TestCase
             'revenue_total' => 90,
         ]);
         $this->assertSame('Polo staff evento', $lead->fresh()->product);
+    }
+
+    public function test_final_price_includes_prints_and_can_be_overridden(): void
+    {
+        $this->actingAs($this->owner(), 'admin');
+        $lead = $this->lead();
+        $product = CrmProduct::create(['code' => 'TS10', 'name' => 'T-shirt', 'unit_cost' => 5, 'is_active' => true]);
+        $product->priceTiers()->create(['min_quantity' => 1, 'max_quantity' => 20, 'unit_price' => 12]);
+        $print = CrmPrintType::create(['code' => 'FRONTE', 'name' => 'Stampa fronte', 'is_active' => true]);
+        $print->priceTiers()->create(['min_quantity' => 1, 'max_quantity' => 20, 'unit_cost' => 1, 'unit_price' => 3]);
+
+        Livewire::test(LeadSalesSheetComponent::class, ['leadId' => $lead->id])
+            ->set('productId', (string) $product->id)
+            ->set('quantity', '10')
+            ->assertSet('finalUnitPrice', '12.00')
+            ->call('addProduct')
+            ->assertHasNoErrors();
+
+        $item = $lead->fresh()->salesSheet->items()->firstOrFail();
+
+        Livewire::test(LeadSalesSheetComponent::class, ['leadId' => $lead->id])
+            ->set("printTypeIds.{$item->id}", (string) $print->id)
+            ->call('addPrint', $item->id)
+            ->assertHasNoErrors()
+            ->assertSet("itemFinalPrices.{$item->id}", '15.00')
+            ->set("itemFinalPrices.{$item->id}", '20.00')
+            ->call('updateFinalPrice', $item->id)
+            ->assertHasNoErrors();
+
+        $this->assertSame('20.0000', $item->fresh()->final_unit_price);
+        $this->assertSame('200.00', $item->fresh()->revenue_total);
+        $this->assertTrue($item->fresh()->final_price_overridden);
+    }
+
+    public function test_product_materials_are_private_and_order_send_is_queued_with_readable_name(): void
+    {
+        Storage::fake('local');
+        Queue::fake();
+        $admin = $this->owner();
+        $this->actingAs($admin, 'admin');
+        $account = EmailAccount::create([
+            'admin_user_id' => $admin->id,
+            'email' => 'operatore@stuart-company.com',
+            'from_name' => 'Operatore',
+            'username' => 'operatore@stuart-company.com',
+            'is_active' => true,
+        ]);
+        $account->setPassword('secret');
+        $account->save();
+        $lead = $this->lead(['name' => 'Cliente Festival']);
+        $product = CrmProduct::create(['code' => 'POLO10', 'name' => 'Polo', 'unit_cost' => 8, 'is_active' => true]);
+        $product->priceTiers()->create(['min_quantity' => 1, 'max_quantity' => 20, 'unit_price' => 18]);
+
+        Livewire::test(LeadSalesSheetComponent::class, ['leadId' => $lead->id])
+            ->set('productId', (string) $product->id)
+            ->set('quantity', '5')
+            ->call('addProduct')
+            ->assertHasNoErrors();
+        $item = $lead->fresh()->salesSheet->items()->firstOrFail();
+
+        Livewire::test(LeadSalesSheetComponent::class, ['leadId' => $lead->id])
+            ->set("itemColors.{$item->id}", "Blu navy — 3 pz\nBianco — 2 pz")
+            ->set("itemNotes.{$item->id}", 'Logo lato cuore')
+            ->set("itemUploads.{$item->id}", [UploadedFile::fake()->create('logo-finale.ai', 100, 'application/postscript')])
+            ->set('orderName', 'Staff Festival Roma')
+            ->call('sendOrder')
+            ->assertHasNoErrors()
+            ->assertSee('Ordine-Lead-staff-festival-roma.zip');
+
+        $item->refresh();
+        $this->assertSame(['Blu navy — 3 pz', 'Bianco — 2 pz'], $item->colors);
+        $this->assertSame('Logo lato cuore', $item->notes);
+        Storage::disk('local')->assertExists($item->attachments()->firstOrFail()->path);
+        $this->assertDatabaseHas('lead_order_dispatches', [
+            'filename' => 'Ordine-Lead-staff-festival-roma.zip',
+            'to_email' => 'alessandro@stuart-company.com',
+            'status' => 'pending',
+        ]);
+        Queue::assertPushed(SendLeadOrder::class);
+        $this->assertSame('daniele.dallavia@gmail.com', config('lead_orders.cc.email'));
+
+        $dispatch = $lead->fresh()->salesSheet->dispatches()->firstOrFail();
+        $package = app(LeadOrderPackageService::class)->create($lead->fresh()->salesSheet, $dispatch);
+        $zip = new \ZipArchive;
+        $this->assertTrue($zip->open(Storage::disk('local')->path($package['path'])));
+        $this->assertNotFalse($zip->locateName('Riepilogo-ordine.pdf'));
+        $this->assertNotFalse($zip->locateName('01-polo/dettagli.txt'));
+        $this->assertNotFalse($zip->locateName('01-polo/grafiche/'.$item->attachments()->firstOrFail()->id.'-logo-finale.ai'));
+        $zip->close();
     }
 
     public function test_categories_can_be_disabled_and_only_unused_categories_can_be_deleted(): void

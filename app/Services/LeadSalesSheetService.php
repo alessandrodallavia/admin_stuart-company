@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\LeadSalesItem;
 use App\Models\LeadSalesSheet;
 
 class LeadSalesSheetService
@@ -15,16 +14,25 @@ class LeadSalesSheetService
             $printCost = (float) $item->prints->sum('unit_cost');
             $printPrice = (float) $item->prints->sum('unit_price');
             $quantity = (float) $item->quantity;
+            $automaticFinalPrice = (float) $item->product_unit_price + $printPrice;
+            $finalUnitPrice = $item->final_price_overridden
+                ? (float) $item->final_unit_price
+                : $automaticFinalPrice;
             $cost = $quantity * ((float) $item->product_unit_cost + $printCost);
-            $revenue = $quantity * ((float) $item->product_unit_price + $printPrice);
-            $item->forceFill(['cost_total'=>$cost,'revenue_total'=>$revenue,'margin_total'=>$revenue-$cost])->save();
+            $revenue = $quantity * $finalUnitPrice;
+            $item->forceFill([
+                'final_unit_price' => $finalUnitPrice,
+                'cost_total' => $cost,
+                'revenue_total' => $revenue,
+                'margin_total' => $revenue - $cost,
+            ])->save();
         }
 
         $sheet->load('items');
         $revenue = (float) $sheet->items->sum('revenue_total');
         $cost = (float) $sheet->items->sum('cost_total');
         $margin = $revenue - $cost;
-        $sheet->forceFill(['revenue_total'=>$revenue,'cost_total'=>$cost,'margin_total'=>$margin,'margin_percentage'=>$revenue > 0 ? ($margin/$revenue)*100 : 0])->save();
+        $sheet->forceFill(['revenue_total' => $revenue, 'cost_total' => $cost, 'margin_total' => $margin, 'margin_percentage' => $revenue > 0 ? ($margin / $revenue) * 100 : 0])->save();
         $sheet->lead()->update([
             'margin_amount' => $margin,
             'quantity' => $sheet->items->sum('quantity'),
