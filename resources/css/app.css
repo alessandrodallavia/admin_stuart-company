@@ -92,6 +92,10 @@ input[type="file"] {
     align-items: stretch;
 }
 
+.admin-follow-up-panel:not([open]) .admin-follow-up-grid {
+    display: none;
+}
+
 .admin-line-clamp-2 {
     display: -webkit-box;
     -webkit-box-orient: vertical;

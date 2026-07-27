@@ -10,6 +10,7 @@ use App\Models\CrmProduct;
 use App\Models\EmailAccount;
 use App\Models\Lead;
 use App\Models\LeadCategory;
+use App\Models\WhatsappConversation;
 use App\Services\LeadOrderPackageService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -59,6 +60,81 @@ class AdminCrmDashboardTest extends TestCase
             ->get('/whatsapp')
             ->assertOk()
             ->assertSee('Inbox');
+    }
+
+    public function test_stale_handoff_chat_does_not_stay_above_recent_activity(): void
+    {
+        $admin = $this->owner();
+        WhatsappConversation::create([
+            'contact_phone' => '390000000001',
+            'business_phone' => '390000000000',
+            'mode' => 'manual',
+            'status' => 'open',
+            'needs_human' => true,
+            'last_message_at' => now()->subDays(2),
+        ]);
+        WhatsappConversation::create([
+            'contact_phone' => '390000000002',
+            'business_phone' => '390000000000',
+            'mode' => 'auto',
+            'status' => 'open',
+            'needs_human' => false,
+            'last_message_at' => now(),
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/whatsapp')
+            ->assertOk()
+            ->assertSeeInOrder(['390000000002', '390000000001'])
+            ->assertDontSee('scrollIntoView', false);
+    }
+
+    public function test_whatsapp_inbox_has_search_collapsible_follow_ups_and_lead_link(): void
+    {
+        $admin = $this->owner();
+        $lead = $this->lead(['name' => 'Cliente Collegato']);
+        $conversation = WhatsappConversation::create([
+            'lead_id' => $lead->id,
+            'contact_phone' => '390000000003',
+            'business_phone' => '390000000000',
+            'mode' => 'manual',
+            'status' => 'open',
+            'needs_human' => false,
+            'last_message_at' => now(),
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/whatsapp')
+            ->assertOk()
+            ->assertSee('Cerca nome, telefono, email')
+            ->assertSee('conversation-search', false);
+
+        $this->actingAs($admin, 'admin')
+            ->get("/conversations/{$conversation->id}")
+            ->assertOk()
+            ->assertSee('Apri lead')
+            ->assertSee(route('admin.leads.index', ['lead' => $lead]), false)
+            ->assertSee('admin-follow-up-summary', false)
+            ->assertDontSee('admin-follow-up-summary flex items-center justify-between gap-12 px-12 py-10 text-12 font-extrabold uppercase tracking-normal text-gray md:hidden', false);
+    }
+
+    public function test_initial_lead_list_excludes_pre_leads_but_status_filter_can_show_them(): void
+    {
+        $admin = $this->owner();
+        $this->lead(['name' => 'Pre Lead Nascosto', 'status' => 'pre']);
+        $this->lead(['name' => 'Lead Confermato Visibile', 'status' => 'confirmed']);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/leads')
+            ->assertOk()
+            ->assertDontSee('Pre Lead Nascosto')
+            ->assertSee('Lead Confermato Visibile')
+            ->assertSee('Pre-lead esclusi');
+
+        $this->actingAs($admin, 'admin')
+            ->get('/leads?status=pre')
+            ->assertOk()
+            ->assertSee('Pre Lead Nascosto');
     }
 
     public function test_crm_fields_can_be_updated_from_the_lead_page(): void

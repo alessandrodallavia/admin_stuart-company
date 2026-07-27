@@ -3,14 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\CrmPrintType;
+use App\Models\CrmProduct;
 use App\Models\EmailAccount;
 use App\Models\EmailConversation;
 use App\Models\EmailMessage;
 use App\Models\Lead;
-use App\Models\LeadQuotePdf;
 use App\Models\LeadCategory;
-use App\Models\CrmProduct;
-use App\Models\CrmPrintType;
+use App\Models\LeadQuotePdf;
 use App\Models\WhatsappConversation;
 use App\Models\WhatsappMessage;
 use App\Services\EmailMailboxService;
@@ -63,9 +63,11 @@ class LeadController extends Controller
     {
         $status = $request->string('status')->toString();
         $search = trim($request->string('q')->toString());
+        $excludePreLeads = $lead === null && $status === '' && $search === '';
 
         $leadsQuery = Lead::query()
             ->when($status !== '', fn ($query) => $query->where('status', $status))
+            ->when($excludePreLeads, fn ($query) => $query->where('status', '!=', 'pre'))
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($query) use ($search) {
                     $query
@@ -103,6 +105,7 @@ class LeadController extends Controller
             'stats' => $this->stats($statuses),
             'currentStatus' => $status,
             'search' => $search,
+            'excludePreLeads' => $excludePreLeads,
             'leadCategories' => LeadCategory::where('is_active', true)->orderBy('sort_order')->orderBy('name')->get(),
             'crmProducts' => CrmProduct::where('is_active', true)->whereHas('priceTiers')->orderBy('name')->get(),
             'crmPrintTypes' => CrmPrintType::where('is_active', true)->whereHas('priceTiers')->orderBy('name')->get(),

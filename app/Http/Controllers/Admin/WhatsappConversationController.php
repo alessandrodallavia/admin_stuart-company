@@ -31,9 +31,9 @@ class WhatsappConversationController extends Controller
             ->with(['lead', 'latestMessage', 'latestIncomingMessage'])
             ->withCount(['unreadIncomingMessages', 'pendingFollowUps', 'dueFollowUps'])
             ->orderByDesc('due_follow_ups_count')
-            ->orderByDesc('needs_human')
             ->orderByDesc('unread_incoming_messages_count')
             ->orderByDesc('last_message_at')
+            ->orderByDesc('needs_human')
             ->orderByDesc('created_at')
             ->get();
 
@@ -739,9 +739,9 @@ class WhatsappConversationController extends Controller
             ->with(['lead', 'latestMessage', 'latestIncomingMessage'])
             ->withCount(['unreadIncomingMessages', 'pendingFollowUps', 'dueFollowUps'])
             ->orderByDesc('due_follow_ups_count')
-            ->orderByDesc('needs_human')
             ->orderByDesc('unread_incoming_messages_count')
             ->orderByDesc('last_message_at')
+            ->orderByDesc('needs_human')
             ->orderByDesc('created_at')
             ->get();
 
@@ -786,9 +786,9 @@ class WhatsappConversationController extends Controller
             ->with(['lead', 'latestMessage', 'latestIncomingMessage'])
             ->withCount(['unreadIncomingMessages', 'pendingFollowUps', 'dueFollowUps'])
             ->orderByDesc('due_follow_ups_count')
-            ->orderByDesc('needs_human')
             ->orderByDesc('unread_incoming_messages_count')
             ->orderByDesc('last_message_at')
+            ->orderByDesc('needs_human')
             ->orderByDesc('created_at')
             ->get();
 

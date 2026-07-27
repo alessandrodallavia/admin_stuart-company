@@ -6,35 +6,42 @@
 
 @section('content')
             @if (! $selectedLead)
-            <div class="mb-16 flex flex-wrap items-center justify-end gap-8">
+            <div class="mb-12 flex flex-col gap-10 rounded-10 bg-black-nike px-16 py-14 text-white md:flex-row md:items-center md:justify-between">
+                <div>
+                    <p class="text-10 font-extrabold uppercase tracking-wider text-white/60">CRM commerciale</p>
+                    <h1 class="mt-4 text-24 font-black">Lista lead</h1>
+                    <p class="mt-4 text-11 font-semibold text-white/60">Cerca, filtra e apri rapidamente le opportunità da lavorare.</p>
+                </div>
+                <div class="flex flex-wrap gap-8">
                 <a href="{{ route('admin.leads.index') }}" class="rounded-10 border border-bullstar bg-bullstar px-12 py-10 text-12 font-extrabold uppercase tracking-normal text-white">
                     Tabella
                 </a>
-                <a href="{{ route('admin.leads.board') }}" class="rounded-10 border border-gray-mid bg-white px-12 py-10 text-12 font-extrabold uppercase tracking-normal text-black-nike transition hover:border-black-nike">
+                <a href="{{ route('admin.leads.board') }}" class="rounded-10 border border-white/20 bg-white/10 px-12 py-10 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-white/20">
                     Riepilogo
                 </a>
+                </div>
             </div>
 
-            <section class="mb-16 grid gap-12 md:grid-cols-4">
-                <article class="rounded-10 border border-gray-mid bg-white p-16">
+            <section class="mb-12 grid grid-cols-2 gap-8 lg:grid-cols-4">
+                <article class="rounded-10 border border-gray-mid bg-white p-12">
                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Lead totali</p>
                     <p class="mt-8 text-38 font-black leading-none tracking-normal">{{ $stats['total'] }}</p>
                 </article>
-                <article class="rounded-10 border border-gray-mid bg-white p-16">
+                <article class="rounded-10 border border-gray-mid bg-white p-12">
                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Aperti</p>
                     <p class="mt-8 text-38 font-black leading-none tracking-normal">{{ $stats['open'] }}</p>
                 </article>
-                <article class="rounded-10 border border-gray-mid bg-white p-16">
+                <article class="rounded-10 border border-gray-mid bg-white p-12">
                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Da lavorare</p>
                     <p class="mt-8 text-38 font-black leading-none tracking-normal">{{ $stats['ready'] }}</p>
                 </article>
-                <article class="rounded-10 border border-gray-mid bg-white p-16">
+                <article class="rounded-10 border border-gray-mid bg-white p-12">
                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Pagati</p>
                     <p class="mt-8 text-38 font-black leading-none tracking-normal">{{ $stats['paid'] }}</p>
                 </article>
             </section>
 
-            <section class="mb-16 overflow-hidden rounded-10 border border-gray-mid bg-white">
+            <section class="mb-12 overflow-hidden rounded-10 border border-gray-mid bg-gray-light">
                 <form method="GET" action="{{ route('admin.leads.index') }}" class="grid gap-12 p-16 lg:grid-cols-[minmax(220px,1fr)_240px_auto] lg:items-end">
                     <label class="block">
                         <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Cerca</span>
@@ -63,9 +70,12 @@
 
             <section class="min-h-[660px] flex-1">
                 <section class="{{ $selectedLead ? 'hidden' : '' }} overflow-hidden rounded-10 border border-gray-mid bg-white">
-                    <div class="flex flex-col gap-12 border-b border-gray-mid px-16 py-12 md:flex-row md:items-center md:justify-between">
+                    <div class="flex flex-col gap-12 border-b border-gray-mid bg-gray-light px-16 py-12 md:flex-row md:items-center md:justify-between">
                         <div>
-                            <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Pipeline</p>
+                            <div class="flex flex-wrap items-center gap-6">
+                                <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Pipeline</p>
+                                @if($excludePreLeads)<span class="rounded-full bg-white px-8 py-4 text-10 font-extrabold text-gray">Pre-lead esclusi</span>@endif
+                            </div>
                             <p class="mt-4 text-14 font-bold text-black-nike">{{ $leads->total() }} lead trovati</p>
                         </div>
                         <div class="flex flex-wrap gap-6">
@@ -77,9 +87,32 @@
                         </div>
                     </div>
 
-                    <div class="overflow-x-auto">
+                    <div class="grid gap-8 bg-gray-light p-8 lg:hidden">
+                        @forelse($leads as $lead)
+                            @php
+                                $mobileStatusLabel = $statuses[$lead->status] ?? ucfirst((string) $lead->status ?: 'Senza stato');
+                            @endphp
+                            <a href="{{ route('admin.leads.index', ['lead' => $lead, 'status' => $currentStatus ?: null, 'q' => $search ?: null]) }}" class="rounded-10 border border-gray-mid bg-white p-10 transition hover:border-bullstar">
+                                <div class="flex items-start justify-between gap-8">
+                                    <div class="min-w-0">
+                                        <p class="truncate text-14 font-black">{{ $lead->name ?: 'Lead senza nome' }}</p>
+                                        <p class="mt-3 truncate text-10 font-semibold text-gray">{{ $lead->club ?: $lead->city ?: 'Nessuna organizzazione' }}</p>
+                                    </div>
+                                    <span class="shrink-0 rounded-full bg-gray-light px-8 py-4 text-10 font-extrabold uppercase text-gray">{{ $mobileStatusLabel }}</span>
+                                </div>
+                                <div class="mt-8 grid grid-cols-2 gap-6 border-t border-gray-mid pt-6 text-10">
+                                    <div><p class="font-extrabold uppercase text-gray">Contatto</p><p class="mt-3 truncate font-bold">{{ $lead->email ?: $lead->phone ?: 'Incompleto' }}</p></div>
+                                    <div class="text-right"><p class="font-extrabold uppercase text-gray">Ingresso</p><p class="mt-3 font-bold">{{ optional($lead->created_at)?->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</p></div>
+                                </div>
+                            </a>
+                        @empty
+                            <div class="rounded-10 border border-dashed border-gray-mid bg-white p-20 text-center text-12 font-semibold text-gray">Nessun lead con questi filtri.</div>
+                        @endforelse
+                    </div>
+
+                    <div class="hidden overflow-x-auto lg:block">
                         <table class="min-w-[920px] w-full text-left">
-                            <thead class="border-b border-gray-mid bg-gray-light text-11 font-extrabold uppercase tracking-normal text-gray">
+                            <thead class="border-b border-gray-mid bg-black-nike text-11 font-extrabold uppercase tracking-normal text-white/70">
                                 <tr>
                                     <th class="px-12 py-12">Lead</th>
                                     <th class="px-12 py-12">Stato</th>
@@ -107,7 +140,7 @@
                                             default => 'bg-black-nike text-white',
                                         };
                                     @endphp
-                                    <tr class="{{ $isSelected ? 'bg-bullstar/5' : 'bg-white' }}">
+                                    <tr class="transition hover:bg-gray-light {{ $isSelected ? 'bg-bullstar/5' : 'bg-white' }}">
                                         <td class="px-12 py-12">
                                             <p class="max-w-[240px] truncate text-14 font-black leading-tight">{{ $lead->name ?: 'Lead senza nome' }}</p>
                                             <p class="mt-4 max-w-[240px] truncate text-12 font-semibold text-gray">{{ $lead->club ?: $lead->city ?: 'Nessuna organizzazione' }}</p>

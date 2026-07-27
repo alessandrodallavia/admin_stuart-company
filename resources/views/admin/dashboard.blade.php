@@ -37,21 +37,30 @@
             </section>
 
             <section class="grid min-h-[calc(100vh-220px)] flex-1 gap-12">
-                <aside class="{{ $selectedConversation ? 'hidden' : '' }} overflow-hidden rounded-10 border border-gray-mid bg-white">
-                    <div class="flex items-center justify-between border-b border-gray-mid px-16 py-14">
+                <aside class="{{ $selectedConversation ? 'hidden' : '' }} overflow-hidden rounded-10 border border-gray-mid bg-gray-light">
+                    <div class="flex items-center justify-between bg-black-nike px-16 py-14 text-white">
                         <div>
-                            <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Inbox</p>
-                            <p id="inbox-count" class="mt-4 text-14 font-bold text-black-nike">{{ $conversations->count() }} chat</p>
+                            <p class="text-10 font-extrabold uppercase tracking-wider text-white/60">Inbox WhatsApp</p>
+                            <p class="mt-4 text-18 font-black">Conversazioni</p>
+                            <p id="inbox-count" class="mt-3 text-10 font-semibold text-white/60">{{ $conversations->count() }} chat</p>
                         </div>
                         <a
                             href="{{ route('admin.whatsapp.index') }}"
-                            class="rounded-10 border border-gray-mid px-12 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike"
+                            class="rounded-10 border border-white/20 bg-white/10 px-12 py-8 text-10 font-extrabold uppercase tracking-normal transition hover:bg-white/20"
                         >
-                            Tutte
+                            Aggiorna
                         </a>
                     </div>
 
-                    <div id="conversation-list" class="max-h-[calc(100vh-250px)] overflow-y-auto">
+                    <div class="border-b border-gray-mid bg-white p-8">
+                        <label class="relative block">
+                            <span class="pointer-events-none absolute inset-y-0 left-10 flex items-center text-14 text-gray" aria-hidden="true">⌕</span>
+                            <input id="conversation-search" type="search" placeholder="Cerca nome, telefono, email…" class="w-full rounded-10 border-gray-mid bg-gray-light py-8 pl-32 pr-10 text-12 font-semibold focus:border-bullstar focus:ring-bullstar">
+                        </label>
+                        <p id="conversation-search-empty" class="hidden px-8 py-10 text-center text-11 font-semibold text-gray">Nessuna conversazione corrispondente.</p>
+                    </div>
+
+                    <div id="conversation-list" class="max-h-[calc(100vh-250px)] space-y-6 overflow-y-auto p-8">
                         @forelse ($conversations as $conversation)
                             @php
                                 $latestMessage = $conversation->latestMessage;
@@ -60,23 +69,37 @@
 
                             <a
                                 data-conversation-id="{{ $conversation->id }}"
+                                data-search="{{ Illuminate\Support\Str::lower(implode(' ', array_filter([$conversation->lead?->name, $conversation->lead?->club, $conversation->lead?->email, $conversation->contact_phone]))) }}"
                                 href="{{ route('admin.conversations.show', $conversation) }}"
-                                class="block border-b border-gray-mid px-14 py-12 transition hover:bg-gray-light md:py-10 {{ $isSelected ? 'bg-gray-light' : 'bg-white' }}"
+                                class="block rounded-10 border bg-white p-10 transition hover:border-black-nike {{ $isSelected ? 'border-bullstar ring-1 ring-bullstar' : 'border-gray-mid' }}"
                             >
-                                <div class="mb-4 min-w-0">
-                                    <div class="flex min-w-0 items-start justify-between gap-10">
-                                        <p class="min-w-0 truncate text-14 font-black leading-tight">
-                                            {{ $conversation->lead?->name ?: $conversation->contact_phone }}
-                                        </p>
-
-                                        <span class="shrink-0 rounded-full px-8 py-4 text-11 font-extrabold uppercase tracking-normal {{ $conversation->mode === 'manual' ? 'bg-bullstar/10 text-bullstar' : 'bg-whatsapp/10 text-whatsapp' }}">
-                                            {{ $conversation->mode }}
-                                        </span>
+                                <div class="flex min-w-0 items-start gap-8">
+                                    <span class="flex h-32 w-32 shrink-0 items-center justify-center rounded-full bg-black-nike text-12 font-black uppercase text-white">
+                                        {{ Illuminate\Support\Str::substr($conversation->lead?->name ?: $conversation->contact_phone, 0, 1) }}
+                                    </span>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex min-w-0 items-start justify-between gap-8">
+                                            <p class="min-w-0 truncate text-14 font-black leading-tight">{{ $conversation->lead?->name ?: $conversation->contact_phone }}</p>
+                                            <p class="shrink-0 text-10 font-bold text-gray">{{ optional($conversation->last_message_at ?? $conversation->created_at)?->timezone(config('app.display_timezone'))->format('d/m H:i') }}</p>
+                                        </div>
+                                        <p class="mt-3 truncate text-10 font-semibold text-gray">{{ $conversation->lead?->club ?: $conversation->contact_phone }}</p>
                                     </div>
+                                </div>
 
-                                    <div class="mt-6 flex min-w-0 flex-wrap items-center gap-5">
+                                <p class="mt-8 line-clamp-2 text-12 font-semibold leading-[18px] text-gray">
+                                    {{ $latestMessage?->body ?: match ($latestMessage?->type) {
+                                        'image' => '🖼 Immagine',
+                                        'document' => '📎 Documento',
+                                        'audio' => '🎤 Audio',
+                                        'video' => '🎥 Video',
+                                        default => 'Nessun messaggio testuale',
+                                    } }}
+                                </p>
+
+                                <div class="mt-8 flex min-w-0 flex-wrap items-center gap-5 border-t border-gray-mid pt-6">
+                                        <span class="shrink-0 rounded-full px-8 py-4 text-10 font-extrabold uppercase tracking-normal {{ $conversation->mode === 'manual' ? 'bg-bullstar/10 text-bullstar' : 'bg-whatsapp/10 text-whatsapp' }}">{{ $conversation->mode === 'manual' ? 'Manuale' : 'Auto' }}</span>
                                         @if ($conversation->needs_human)
-                                            <span class="shrink-0 rounded-full bg-brand/10 px-8 py-4 text-11 font-extrabold uppercase tracking-normal text-brand">
+                                            <span class="shrink-0 rounded-full bg-brand/10 px-8 py-4 text-10 font-extrabold uppercase tracking-normal text-brand">
                                                 Subentra
                                             </span>
                                         @endif
@@ -105,26 +128,7 @@
                                                 24h scadute
                                             </span>
                                         @endif
-                                    </div>
-
-                                    <p class="mt-4 truncate text-12 font-semibold text-gray">
-                                        {{ $conversation->lead?->club ?: $conversation->contact_phone }}
-                                    </p>
                                 </div>
-
-                                <p class="line-clamp-1 text-12 font-semibold leading-[18px] text-gray">
-                                    {{ $latestMessage?->body ?: match ($latestMessage?->type) {
-                                        'image' => 'Immagine',
-                                        'document' => 'Documento',
-                                        'audio' => 'Audio',
-                                        'video' => 'Video',
-                                        default => 'Nessun messaggio testuale',
-                                    } }}
-                                </p>
-
-                                <p class="mt-4 text-11 font-bold uppercase tracking-normal text-gray">
-                                    {{ optional($conversation->last_message_at ?? $conversation->created_at)?->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}
-                                </p>
                             </a>
                         @empty
                             <div class="p-16">
@@ -177,6 +181,11 @@
                                                 </svg>
                                                 <span>Inbox</span>
                                             </a>
+                                            @if ($selectedConversation->lead)
+                                                <a href="{{ route('admin.leads.index', ['lead' => $selectedConversation->lead]) }}" class="inline-flex h-28 w-fit shrink-0 items-center rounded-10 border border-bullstar bg-bullstar/5 px-10 text-12 font-extrabold uppercase tracking-normal text-bullstar transition hover:bg-bullstar hover:text-white">
+                                                    Apri lead ↗
+                                                </a>
+                                            @endif
                                             <p class="min-w-0 break-all text-13 font-semibold text-gray md:text-14">
                                                 {{ $selectedConversation->contact_phone }}
                                                 @if ($selectedConversation->lead?->email)
@@ -267,7 +276,7 @@
                             </div>
 
                             <details id="follow-up-panel" class="admin-follow-up-panel border-b border-gray-mid bg-white">
-                                <summary class="admin-follow-up-summary flex items-center justify-between gap-12 px-12 py-10 text-12 font-extrabold uppercase tracking-normal text-gray md:hidden">
+                                <summary class="admin-follow-up-summary flex cursor-pointer items-center justify-between gap-12 px-12 py-10 text-12 font-extrabold uppercase tracking-normal text-gray transition hover:bg-gray-light">
                                     <span>Follow-up</span>
                                     <span class="flex items-center gap-8">
                                         <span class="rounded-full bg-gray-light px-8 py-4 text-11 text-black-nike">{{ $selectedConversation->followUps->count() }}</span>
@@ -622,7 +631,10 @@
             const canManageWhatsapp = @json($canManageWhatsapp);
             let lastMessageSignature = '';
             let lastFollowUpSignature = '';
+            let lastConversationListSignature = '';
             let shouldScrollToLatestMessage = Boolean(selectedConversationId);
+            let messageListPinnedToBottom = true;
+            let conversationSearchTerm = '';
 
             function escapeHtml(value) {
                 return String(value ?? '')
@@ -645,6 +657,26 @@
                 const list = document.getElementById('conversation-list');
                 document.getElementById('inbox-count').textContent = `${conversations.length} chat`;
 
+                const signature = conversations.map((conversation) => [
+                    conversation.id,
+                    conversation.last_message_at,
+                    conversation.latest_body,
+                    conversation.mode,
+                    conversation.needs_human,
+                    conversation.unread_count,
+                    conversation.due_follow_ups_count,
+                    conversation.pending_follow_ups_count,
+                    conversation.follow_up_excluded,
+                    conversation.whatsapp_window_expired,
+                ].join(':')).join('|');
+
+                if (signature === lastConversationListSignature) {
+                    return;
+                }
+
+                const previousScrollTop = list.scrollTop;
+                lastConversationListSignature = signature;
+
                 if (!conversations.length) {
                     list.innerHTML = `
                         <div class="p-16">
@@ -657,9 +689,9 @@
                 }
 
                 list.innerHTML = conversations.map((conversation) => {
-                    const selectedClass = conversation.id === selectedConversationId ? 'bg-gray-light' : 'bg-white';
+                    const selectedClass = conversation.id === selectedConversationId ? 'border-bullstar ring-1 ring-bullstar' : 'border-gray-mid';
                     const needsHuman = conversation.needs_human
-                        ? '<span class="shrink-0 rounded-full bg-brand/10 px-8 py-4 text-11 font-extrabold uppercase tracking-normal text-brand">Subentra</span>'
+                        ? '<span class="shrink-0 rounded-full bg-brand/10 px-8 py-4 text-10 font-extrabold uppercase tracking-normal text-brand">Subentra</span>'
                         : '';
                     const unread = conversation.unread_count > 0
                         ? `<span class="shrink-0 rounded-full bg-black-nike px-8 py-4 text-11 font-extrabold uppercase tracking-normal text-white">${conversation.unread_count}</span>`
@@ -677,31 +709,57 @@
                         ? '<span class="shrink-0 rounded-full bg-red-50 px-8 py-4 text-11 font-extrabold uppercase tracking-normal text-red-700">24h scadute</span>'
                         : '';
                     const modeClass = conversation.mode === 'manual' ? 'bg-bullstar/10 text-bullstar' : 'bg-whatsapp/10 text-whatsapp';
+                    const modeLabel = conversation.mode === 'manual' ? 'Manuale' : 'Auto';
+                    const initial = escapeHtml(String(conversation.name || conversation.subtitle || '?').charAt(0));
 
                     return `
-                        <a data-conversation-id="${conversation.id}" href="${conversation.url}" class="block border-b border-gray-mid px-14 py-10 transition hover:bg-gray-light ${selectedClass}">
-                            <div class="mb-4 min-w-0">
-                                <div class="flex min-w-0 items-start justify-between gap-10">
-                                    <p class="min-w-0 truncate text-14 font-black leading-tight">${escapeHtml(conversation.name)}</p>
-                                    <span class="shrink-0 rounded-full px-8 py-4 text-11 font-extrabold uppercase tracking-normal ${modeClass}">
-                                        ${escapeHtml(conversation.mode)}
-                                    </span>
+                        <a data-conversation-id="${conversation.id}" data-search="${escapeHtml([conversation.name, conversation.subtitle, conversation.phone, conversation.email].filter(Boolean).join(' ').toLowerCase())}" href="${conversation.url}" class="block rounded-10 border bg-white p-10 transition hover:border-black-nike ${selectedClass}">
+                            <div class="flex min-w-0 items-start gap-8">
+                                <span class="flex h-32 w-32 shrink-0 items-center justify-center rounded-full bg-black-nike text-12 font-black uppercase text-white">${initial}</span>
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex min-w-0 items-start justify-between gap-8">
+                                        <p class="min-w-0 truncate text-14 font-black leading-tight">${escapeHtml(conversation.name)}</p>
+                                        <p class="shrink-0 text-10 font-bold text-gray">${escapeHtml(conversation.last_message_at)}</p>
+                                    </div>
+                                    <p class="mt-3 truncate text-10 font-semibold text-gray">${escapeHtml(conversation.subtitle)}</p>
                                 </div>
-                                <div class="mt-6 flex min-w-0 flex-wrap items-center gap-5">
+                            </div>
+                            <p class="mt-8 line-clamp-2 text-12 font-semibold leading-[18px] text-gray">${escapeHtml(conversation.latest_body)}</p>
+                            <div class="mt-8 flex min-w-0 flex-wrap items-center gap-5 border-t border-gray-mid pt-6">
+                                    <span class="shrink-0 rounded-full px-8 py-4 text-10 font-extrabold uppercase tracking-normal ${modeClass}">${modeLabel}</span>
                                     ${needsHuman}
                                     ${unread}
                                     ${dueFollowUps}
                                     ${followUps}
                                     ${followUpExcluded}
                                     ${whatsappWindowExpired}
-                                </div>
-                                <p class="mt-4 truncate text-12 font-semibold text-gray">${escapeHtml(conversation.subtitle)}</p>
                             </div>
-                            <p class="line-clamp-1 text-12 font-semibold leading-[18px] text-gray">${escapeHtml(conversation.latest_body)}</p>
-                            <p class="mt-4 text-11 font-bold uppercase tracking-normal text-gray">${escapeHtml(conversation.last_message_at)}</p>
                         </a>
                     `;
                 }).join('');
+
+                list.scrollTop = previousScrollTop;
+                applyConversationSearch();
+            }
+
+            function applyConversationSearch() {
+                const list = document.getElementById('conversation-list');
+                const empty = document.getElementById('conversation-search-empty');
+
+                if (!list) {
+                    return;
+                }
+
+                const normalizedSearch = conversationSearchTerm.trim().toLowerCase();
+                let visibleCount = 0;
+
+                list.querySelectorAll('[data-conversation-id]').forEach((conversation) => {
+                    const isVisible = normalizedSearch === '' || (conversation.dataset.search || '').includes(normalizedSearch);
+                    conversation.classList.toggle('hidden', !isVisible);
+                    visibleCount += isVisible ? 1 : 0;
+                });
+
+                empty?.classList.toggle('hidden', visibleCount > 0 || normalizedSearch === '');
             }
 
             function renderSelectedFollowUpAlert(conversation) {
@@ -840,7 +898,7 @@
                     return;
                 }
 
-                const wasNearBottom = list.scrollTop + list.clientHeight >= list.scrollHeight - 80;
+                const previousScrollTop = list.scrollTop;
                 lastMessageSignature = signature;
 
                 if (!messages.length) {
@@ -886,23 +944,23 @@
                     `;
                 }).join('') + '<div id="message-list-bottom" class="h-px" aria-hidden="true"></div>';
 
-                if (wasNearBottom || shouldScrollToLatestMessage) {
+                if (messageListPinnedToBottom || shouldScrollToLatestMessage) {
                     scrollMessagesToBottom();
                     shouldScrollToLatestMessage = false;
+                } else {
+                    window.requestAnimationFrame(() => {
+                        list.scrollTop = previousScrollTop;
+                    });
                 }
             }
 
             function scrollMessagesToBottom() {
                 const list = document.getElementById('message-list');
-                const bottom = document.getElementById('message-list-bottom');
 
                 if (list) {
                     const scroll = () => {
-                        if (bottom) {
-                            bottom.scrollIntoView({ block: 'end' });
-                        }
-
                         list.scrollTop = list.scrollHeight;
+                        messageListPinnedToBottom = true;
                     };
 
                     window.requestAnimationFrame(scroll);
@@ -1209,17 +1267,17 @@
                 }
             }
 
-            function initFollowUpPanel() {
-                const panel = document.getElementById('follow-up-panel');
-
-                if (panel && window.matchMedia('(min-width: 768px)').matches) {
-                    panel.open = true;
-                }
-            }
-
             bindMessageTemplates();
             bindVoiceRecorder();
-            initFollowUpPanel();
+            document.getElementById('conversation-search')?.addEventListener('input', (event) => {
+                conversationSearchTerm = event.currentTarget.value;
+                applyConversationSearch();
+            });
+            applyConversationSearch();
+            document.getElementById('message-list')?.addEventListener('scroll', (event) => {
+                const list = event.currentTarget;
+                messageListPinnedToBottom = list.scrollTop + list.clientHeight >= list.scrollHeight - 40;
+            }, { passive: true });
             scrollMessagesToBottom();
             window.addEventListener('load', scrollMessagesToBottom, { once: true });
             document.querySelectorAll('#message-list img').forEach((image) => {
