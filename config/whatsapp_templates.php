@@ -43,7 +43,7 @@ return [
             'label' => 'Follow-up 6 finale',
             'name' => 'followup6_finale',
             'language' => env('WHATSAPP_TEMPLATE_FOLLOWUP6_FINALE_LANGUAGE', env('WHATSAPP_TEMPLATE_DEFAULT_LANGUAGE', 'it')),
-            'body' => "Buongiorno!\nLe scrivo solo per sapere se il suo progetto è ancora di interesse.\nSe desidera proseguire, resto a completa disposizione.\nIn caso contrario, nessun problema: le cheido solo un gentile riscontro, così possiamo chiudere la pratica senza disturbarla ulteriormente.\nGrazie e buona giornata!",
+            'body' => "Buongiorno!\nLe scrivo solo per sapere se il suo progetto è ancora di interesse.\nSe desidera proseguire, resto a completa disposizione.\nIn caso contrario, nessun problema: le chiedo solo un gentile riscontro, così possiamo chiudere la pratica senza disturbarla ulteriormente.\nGrazie e buona giornata!",
             'parameters' => [],
         ],
         'recensione' => [
