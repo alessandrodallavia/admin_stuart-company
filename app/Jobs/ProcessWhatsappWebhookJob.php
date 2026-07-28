@@ -8,7 +8,6 @@ use App\Models\WhatsappMessage;
 use App\Services\AdminNotificationService;
 use App\Services\GoogleAdsConversionService;
 use App\Services\MetaConversionsApiService;
-use App\Support\MessageTemplates;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -308,9 +307,10 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
 
             case 'confirmed':
 
-                $template = MessageTemplates::current()[0]['message'] ?? null;
-
-                $this->sendText($from, $template ?: "Ciao 👋 Sono Andrea di Stuart.\nPer iniziare mandami pure:\n– logo o grafica\n- quantità indicativa (min 15pz)\n– colore delle t-shirt\n- utilizzo (evento, azienda, staff, associazione, brand, ecc...)\n\n👉 Se hai già il logo in alta qualità puoi inviarmelo direttamente qui su Whatsapp.", $conversation);
+                $greeting = now(config('app.display_timezone', 'Europe/Rome'))->hour < 18
+                    ? 'Buongiorno'
+                    : 'Buonasera';
+                $this->sendText($from, $greeting." 👋 Sono Andrea di Stuart.\nPer poterle indicare subito la soluzione più adatta e un prezzo orientativo, mi scriva semplicemente:\n- per quale utilizzo sono destinati i capi (ad esempio: azienda, evento, squadra sportiva, merchandising...)\n- la quantità indicativa (ordine minimo 15 pezzi)\n- come immagina la personalizzazione (ad esempio: logo sul petto, stampa fronte e retro, nomi e numeri...)\n\nIn base a queste informazioni le consiglierò il prodotto più adatto al suo progetto e le comunicherò un prezzo orientativo.\nSe la soluzione sarà in linea con le sue aspettative, realizzeremo gratuitamente un'anteprima grafica personalizzata e un preventivo completo.", $conversation);
 
                 $lead->status = 'completed';
                 $lead->save();
