@@ -13,6 +13,7 @@ use App\Models\LeadCategory;
 use App\Models\WhatsappConversation;
 use App\Models\WhatsappMessage;
 use App\Services\LeadOrderPackageService;
+use App\Services\GoogleAdsReportingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
@@ -398,10 +399,94 @@ class AdminCrmDashboardTest extends TestCase
         $this->actingAs($admin, 'admin')->post("/leads/{$lead->id}/sales-sheet/items/{$item->id}/prints", ['print_type_id' => $print->id])->assertSessionHasNoErrors();
 
         $sheet = $lead->fresh()->salesSheet;
-        $this->assertSame('180.00', $sheet->revenue_total);
-        $this->assertSame('72.00', $sheet->cost_total);
+        $this->assertSame('189.90', $sheet->revenue_total);
+        $this->assertSame('81.90', $sheet->cost_total);
         $this->assertSame('108.00', $sheet->margin_total);
+        $this->assertSame('180.00', $sheet->product_revenue_total);
+        $this->assertSame('9.90', $sheet->shipping_charge);
+        $this->assertSame('9.90', $sheet->shipping_cost);
         $this->assertSame('108.00', $lead->fresh()->margin_amount);
+    }
+
+    public function test_shipping_is_charged_through_250_and_absorbed_above_the_threshold(): void
+    {
+        $this->actingAs($this->owner(), 'admin');
+        $lead = $this->lead();
+        $product = CrmProduct::create(['code' => 'SHIP01', 'name' => 'Prodotto spedizione', 'unit_cost' => 5, 'is_active' => true]);
+        $product->priceTiers()->create(['min_quantity' => 1, 'max_quantity' => 20, 'unit_price' => 25]);
+
+        Livewire::test(LeadSalesSheetComponent::class, ['leadId' => $lead->id])
+            ->set('productId', (string) $product->id)
+            ->set('quantity', '10')
+            ->call('addProduct')
+            ->assertHasNoErrors();
+
+        $item = $lead->fresh()->salesSheet->items()->firstOrFail();
+        $sheet = $lead->fresh()->salesSheet;
+        $this->assertSame('250.00', $sheet->product_revenue_total);
+        $this->assertSame('9.90', $sheet->shipping_charge);
+        $this->assertSame('259.90', $sheet->revenue_total);
+        $this->assertSame('200.00', $sheet->margin_total);
+
+        Livewire::test(LeadSalesSheetComponent::class, ['leadId' => $lead->id])
+            ->set("itemFinalPrices.{$item->id}", '26.00')
+            ->call('updateFinalPrice', $item->id)
+            ->assertHasNoErrors();
+
+        $sheet = $lead->fresh()->salesSheet;
+        $this->assertSame('260.00', $sheet->product_revenue_total);
+        $this->assertSame('0.00', $sheet->shipping_charge);
+        $this->assertSame('9.90', $sheet->shipping_cost);
+        $this->assertSame('200.10', $sheet->margin_total);
+
+        Livewire::test(LeadSalesSheetComponent::class, ['leadId' => $lead->id])
+            ->set('shippingFee', '12.50')
+            ->set('freeShippingThreshold', '300.00')
+            ->call('saveShipping')
+            ->assertHasNoErrors()
+            ->assertSee('Regole di spedizione aggiornate.');
+
+        $sheet = $lead->fresh()->salesSheet;
+        $this->assertSame('12.50', $sheet->shipping_charge);
+        $this->assertSame('12.50', $sheet->shipping_cost);
+        $this->assertSame('272.50', $sheet->revenue_total);
+        $this->assertSame('210.00', $sheet->margin_total);
+    }
+
+    public function test_product_sheet_shows_cac_profit_and_economic_status(): void
+    {
+        $this->actingAs($this->owner(), 'admin');
+        $lead = $this->lead(['status' => 'order_completed']);
+        $product = CrmProduct::create(['code' => 'ECON01', 'name' => 'Prodotto redditizio', 'unit_cost' => 10, 'is_active' => true]);
+        $product->priceTiers()->create(['min_quantity' => 1, 'max_quantity' => 20, 'unit_price' => 20]);
+        $googleAds = \Mockery::mock(GoogleAdsReportingService::class);
+        $googleAds->shouldReceive('performance')->andReturn(['available' => true, 'spend' => 20]);
+        $this->app->instance(GoogleAdsReportingService::class, $googleAds);
+
+        Livewire::test(LeadSalesSheetComponent::class, ['leadId' => $lead->id])
+            ->set('productId', (string) $product->id)
+            ->set('quantity', '5')
+            ->call('addProduct')
+            ->assertHasNoErrors()
+            ->assertSee('CAC medio')
+            ->assertSee('€ 20,00')
+            ->assertSee('€ 30,00')
+            ->assertSee('Redditizio');
+    }
+
+    public function test_lost_lead_requires_a_standard_loss_reason(): void
+    {
+        $lead = $this->lead(['status' => 'confirmed']);
+
+        $this->actingAs($this->owner(), 'admin')
+            ->patch("/leads/{$lead->id}", ['status' => 'lost'])
+            ->assertSessionHasErrors('loss_reason');
+
+        $this->actingAs($this->owner(), 'admin')
+            ->patch("/leads/{$lead->id}", ['status' => 'lost', 'loss_reason' => 'no_response'])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('no_response', $lead->fresh()->loss_reason);
     }
 
     public function test_sales_sheet_can_be_updated_with_livewire_without_reloading_the_lead_page(): void

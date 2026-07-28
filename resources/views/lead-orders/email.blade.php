@@ -13,7 +13,10 @@
 </ul>
 
 <p>
-    Totale vendita: <strong>€ {{ number_format((float)$sheet->revenue_total, 2, ',', '.') }}</strong><br>
+    Totale prodotti: <strong>€ {{ number_format((float)$sheet->product_revenue_total, 2, ',', '.') }}</strong><br>
+    Spedizione cliente: <strong>€ {{ number_format((float)$sheet->shipping_charge, 2, ',', '.') }}</strong><br>
+    Costo spedizione: <strong>€ {{ number_format((float)$sheet->shipping_cost, 2, ',', '.') }}</strong><br>
+    Totale cliente: <strong>€ {{ number_format((float)$sheet->revenue_total, 2, ',', '.') }}</strong><br>
     Costo: <strong>€ {{ number_format((float)$sheet->cost_total, 2, ',', '.') }}</strong><br>
     Margine: <strong>€ {{ number_format((float)$sheet->margin_total, 2, ',', '.') }}</strong>
 </p>

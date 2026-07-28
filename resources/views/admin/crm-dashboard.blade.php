@@ -202,7 +202,7 @@
                                 <td class="whitespace-nowrap px-10 py-11">{{ $lead->margin_amount !== null ? $money($lead->margin_amount) : 'N.D.' }}</td>
                                 <td class="px-10 py-11"><span class="inline-flex whitespace-nowrap rounded-full bg-gray-light px-8 py-5 text-10 font-extrabold uppercase">{{ $statuses[$lead->status] ?? $lead->status }}</span></td>
                                 <td class="px-10 py-11">{{ $lead->lead_quality ?: '-' }}</td>
-                                <td class="max-w-[180px] truncate px-10 py-11">{{ $lead->loss_reason ?: '-' }}</td>
+                                <td class="max-w-[180px] truncate px-10 py-11">{{ $lead->loss_reason_label ?: '-' }}</td>
                                 <td class="max-w-[220px] truncate px-10 py-11" title="{{ $lead->crm_notes }}">{{ $lead->crm_notes ?: '-' }}</td>
                                 <td class="px-10 py-11"><a href="{{ route('admin.leads.index', $lead) }}" class="text-11 font-extrabold uppercase text-bullstar hover:underline">Apri</a></td>
                             </tr>

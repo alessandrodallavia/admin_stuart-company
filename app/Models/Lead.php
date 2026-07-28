@@ -197,4 +197,22 @@ class Lead extends Model
     {
         return $this->hasOne(LeadSalesSheet::class);
     }
+
+    public function getLossReasonLabelAttribute(): ?string
+    {
+        if (! $this->loss_reason) {
+            return null;
+        }
+
+        return [
+            'price' => 'Prezzo',
+            'quantity' => 'Quantità insufficiente',
+            'competitor' => 'Concorrente',
+            'delivery_time' => 'Tempi di consegna',
+            'no_response' => 'Nessuna risposta',
+            'cancelled' => 'Progetto annullato',
+            'duplicate' => 'Duplicato',
+            'invalid' => 'Non valido / spam',
+        ][$this->loss_reason] ?? $this->loss_reason;
+    }
 }

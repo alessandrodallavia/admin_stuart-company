@@ -289,7 +289,7 @@
                                         </td>
                                         <td class="px-12 py-12">
                                             <p class="text-12 font-bold text-black-nike">{{ optional($lead->created_at)?->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</p>
-                                            <p class="mt-4 max-w-[170px] truncate text-11 font-semibold text-gray">{{ $lead->landing_page ?: $lead->entry_page ?: 'Pagina non salvata' }}</p>
+                                                <p class="mt-4 max-w-[170px] truncate text-11 font-semibold text-gray">{{ $lead->landing_page ?: $lead->entry_page ?: 'Pagina non salvata' }}</p>
                                         </td>
                                         <td class="px-12 py-12 text-right">
                                             <a href="{{ route('admin.leads.index', ['lead' => $lead, 'status' => $currentStatus ?: null, 'q' => $search ?: null]) }}" class="rounded-10 border border-gray-mid px-12 py-8 text-12 font-extrabold uppercase tracking-normal transition hover:border-bullstar hover:text-bullstar">
@@ -362,7 +362,12 @@
                                         {{ $statusLabel }}
                                     </span>
                                 </div>
-                                <form method="POST" action="{{ route('admin.leads.update', $selectedLead) }}" enctype="multipart/form-data" class="space-y-10 p-12">
+                                @php
+                                    $storedLossReason = $selectedLead->loss_reason;
+                                    $selectedLossReason = array_key_exists((string) $storedLossReason, $lossReasons) ? $storedLossReason : ($storedLossReason ? 'other' : '');
+                                    $otherLossReason = $selectedLossReason === 'other' ? $storedLossReason : '';
+                                @endphp
+                                <form method="POST" action="{{ route('admin.leads.update', $selectedLead) }}" enctype="multipart/form-data" class="space-y-10 p-12" x-data="{ leadStatus: @js(old('status', $selectedLead->status)), lossReason: @js(old('loss_reason', $selectedLossReason)) }">
                                     @csrf
                                     @method('PATCH')
 
@@ -390,7 +395,7 @@
 
                                         <label class="block">
                                             <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Nuovo stato</span>
-                                            <select name="status" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
+                                            <select name="status" x-model="leadStatus" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
                                                 @foreach ($statuses as $value => $label)
                                                     <option value="{{ $value }}" @selected(old('status', $selectedLead->status) === $value)>{{ $label }}</option>
                                                 @endforeach
@@ -434,9 +439,20 @@
                                                 @endforeach
                                             </select>
                                         </label>
-                                        <label class="block">
+                                        <label x-show="leadStatus === 'lost'" x-cloak class="block">
                                             <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Motivo perdita</span>
-                                            <input name="loss_reason" value="{{ old('loss_reason', $selectedLead->loss_reason) }}" type="text" maxlength="255" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                            <select name="loss_reason" x-model="lossReason" :required="leadStatus === 'lost'" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                                <option value="">Seleziona il motivo</option>
+                                                @foreach($lossReasons as $value => $label)
+                                                    <option value="{{ $value }}">{{ $label }}</option>
+                                                @endforeach
+                                            </select>
+                                            @error('loss_reason')<span class="mt-4 block text-11 font-bold text-red-700">{{ $message }}</span>@enderror
+                                        </label>
+                                        <label x-show="leadStatus === 'lost' && lossReason === 'other'" x-cloak class="block">
+                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Specifica motivo *</span>
+                                            <input name="loss_reason_other" value="{{ old('loss_reason_other', $otherLossReason) }}" :required="leadStatus === 'lost' && lossReason === 'other'" type="text" maxlength="255" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                            @error('loss_reason_other')<span class="mt-4 block text-11 font-bold text-red-700">{{ $message }}</span>@enderror
                                         </label>
                                     </div>
 

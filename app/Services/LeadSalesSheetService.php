@@ -29,10 +29,24 @@ class LeadSalesSheetService
         }
 
         $sheet->load('items');
-        $revenue = (float) $sheet->items->sum('revenue_total');
-        $cost = (float) $sheet->items->sum('cost_total');
+        $productRevenue = (float) $sheet->items->sum('revenue_total');
+        $productCost = (float) $sheet->items->sum('cost_total');
+        $hasProducts = $sheet->items->isNotEmpty();
+        $shippingFee = $hasProducts ? (float) $sheet->shipping_fee : 0;
+        $shippingCharge = $hasProducts && $productRevenue <= (float) $sheet->free_shipping_threshold ? $shippingFee : 0;
+        $shippingCost = $hasProducts ? $shippingFee : 0;
+        $revenue = $productRevenue + $shippingCharge;
+        $cost = $productCost + $shippingCost;
         $margin = $revenue - $cost;
-        $sheet->forceFill(['revenue_total' => $revenue, 'cost_total' => $cost, 'margin_total' => $margin, 'margin_percentage' => $revenue > 0 ? ($margin / $revenue) * 100 : 0])->save();
+        $sheet->forceFill([
+            'product_revenue_total' => $productRevenue,
+            'shipping_charge' => $shippingCharge,
+            'shipping_cost' => $shippingCost,
+            'revenue_total' => $revenue,
+            'cost_total' => $cost,
+            'margin_total' => $margin,
+            'margin_percentage' => $revenue > 0 ? ($margin / $revenue) * 100 : 0,
+        ])->save();
         $sheet->lead()->update([
             'margin_amount' => $margin,
             'quantity' => $sheet->items->sum('quantity'),

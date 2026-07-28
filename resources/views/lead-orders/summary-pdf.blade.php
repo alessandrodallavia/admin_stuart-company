@@ -25,7 +25,10 @@
 
 <h2 style="font-size:14px; margin-top:16px;">Totali ordine</h2>
 <p>
-    Vendita: <strong>€ {{ number_format((float)$sheet->revenue_total, 2, ',', '.') }}</strong><br>
+    Prodotti: <strong>€ {{ number_format((float)$sheet->product_revenue_total, 2, ',', '.') }}</strong><br>
+    Spedizione cliente: <strong>€ {{ number_format((float)$sheet->shipping_charge, 2, ',', '.') }}</strong><br>
+    Costo spedizione: <strong>€ {{ number_format((float)$sheet->shipping_cost, 2, ',', '.') }}</strong><br>
+    Totale cliente: <strong>€ {{ number_format((float)$sheet->revenue_total, 2, ',', '.') }}</strong><br>
     Costo: <strong>€ {{ number_format((float)$sheet->cost_total, 2, ',', '.') }}</strong><br>
     Margine: <strong>€ {{ number_format((float)$sheet->margin_total, 2, ',', '.') }} ({{ number_format((float)$sheet->margin_percentage, 2, ',', '.') }}%)</strong>
 </p>

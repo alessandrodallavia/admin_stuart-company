@@ -8,9 +8,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class LeadSalesSheet extends Model
 {
-    protected $fillable = ['lead_id', 'revenue_total', 'cost_total', 'margin_total', 'margin_percentage', 'notes'];
+    protected $fillable = ['lead_id', 'product_revenue_total', 'shipping_fee', 'free_shipping_threshold', 'shipping_charge', 'shipping_cost', 'revenue_total', 'cost_total', 'margin_total', 'margin_percentage', 'notes'];
 
-    protected $casts = ['revenue_total' => 'decimal:2', 'cost_total' => 'decimal:2', 'margin_total' => 'decimal:2', 'margin_percentage' => 'decimal:2'];
+    protected $casts = ['product_revenue_total' => 'decimal:2', 'shipping_fee' => 'decimal:2', 'free_shipping_threshold' => 'decimal:2', 'shipping_charge' => 'decimal:2', 'shipping_cost' => 'decimal:2', 'revenue_total' => 'decimal:2', 'cost_total' => 'decimal:2', 'margin_total' => 'decimal:2', 'margin_percentage' => 'decimal:2'];
 
     public function lead(): BelongsTo
     {

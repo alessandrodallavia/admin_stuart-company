@@ -10,11 +10,11 @@
 
             <div class="grid grid-cols-2 gap-6 sm:grid-cols-4 lg:min-w-[520px]">
                 <div class="rounded-10 bg-white/10 px-8 py-8">
-                    <p class="text-10 font-extrabold uppercase text-white/50">Vendita</p>
+                    <p class="text-10 font-extrabold uppercase text-white/50">Totale cliente</p>
                     <p class="mt-3 text-16 font-black">€ {{ number_format((float)($salesSheet?->revenue_total ?? 0), 2, ',', '.') }}</p>
                 </div>
                 <div class="rounded-10 bg-white/10 px-8 py-8">
-                    <p class="text-10 font-extrabold uppercase text-white/50">Costo</p>
+                    <p class="text-10 font-extrabold uppercase text-white/50">Costi diretti</p>
                     <p class="mt-3 text-16 font-black">€ {{ number_format((float)($salesSheet?->cost_total ?? 0), 2, ',', '.') }}</p>
                 </div>
                 <div class="rounded-10 bg-bullstar px-8 py-8">
@@ -36,6 +36,74 @@
                 {{ $statusMessage }}
             </div>
         @endif
+
+        @php
+            $hasProducts = ($salesSheet?->items?->count() ?? 0) > 0;
+            $freeShipping = $hasProducts && (float)($salesSheet?->product_revenue_total ?? 0) > (float)($salesSheet?->free_shipping_threshold ?? 250);
+        @endphp
+        <section class="mb-12 grid gap-10 lg:grid-cols-2">
+            <form wire:submit="saveShipping" class="rounded-10 border border-gray-mid bg-gray-light p-10 sm:p-12">
+                <div class="flex flex-wrap items-start justify-between gap-6">
+                    <div>
+                        <p class="text-12 font-black uppercase">Spedizione</p>
+                        <p class="mt-3 text-10 font-semibold text-gray">Tariffa addebitata al cliente fino alla soglia; oltre la soglia resta a carico Stuart.</p>
+                    </div>
+                    <span class="rounded-full px-8 py-5 text-10 font-extrabold uppercase {{ $freeShipping ? 'bg-bullstar/10 text-bullstar' : 'bg-white text-gray' }}">
+                        {{ ! $hasProducts ? 'In attesa prodotti' : ($freeShipping ? 'A carico Stuart' : 'Addebitata al cliente') }}
+                    </span>
+                </div>
+
+                <div class="mt-10 grid gap-8 sm:grid-cols-2">
+                    <label>
+                        <span class="text-10 font-extrabold uppercase text-gray">Tariffa spedizione</span>
+                        <div class="mt-4 flex overflow-hidden rounded-10 border border-gray-mid bg-white focus-within:border-bullstar focus-within:ring-1 focus-within:ring-bullstar">
+                            <span class="flex shrink-0 items-center border-r border-gray-mid bg-white px-10 text-12 font-bold text-gray">€</span>
+                            <input wire:model="shippingFee" required type="number" min="0" step="0.01" class="min-w-0 flex-1 border-0 bg-white px-10 py-8 text-12 font-semibold focus:border-0 focus:ring-0">
+                        </div>
+                        @error('shippingFee')<span class="mt-4 block text-10 font-bold text-red-600">{{ $message }}</span>@enderror
+                    </label>
+                    <label>
+                        <span class="text-10 font-extrabold uppercase text-gray">Gratuita oltre</span>
+                        <div class="mt-4 flex overflow-hidden rounded-10 border border-gray-mid bg-white focus-within:border-bullstar focus-within:ring-1 focus-within:ring-bullstar">
+                            <span class="flex shrink-0 items-center border-r border-gray-mid bg-white px-10 text-12 font-bold text-gray">€</span>
+                            <input wire:model="freeShippingThreshold" required type="number" min="0" step="0.01" class="min-w-0 flex-1 border-0 bg-white px-10 py-8 text-12 font-semibold focus:border-0 focus:ring-0">
+                        </div>
+                        @error('freeShippingThreshold')<span class="mt-4 block text-10 font-bold text-red-600">{{ $message }}</span>@enderror
+                    </label>
+                </div>
+
+                <div class="mt-10 grid grid-cols-3 gap-4 rounded-10 border border-gray-mid bg-white p-8 text-center">
+                    <div><p class="text-10 font-extrabold uppercase text-gray">Prodotti</p><p class="mt-3 text-12 font-black">€ {{ number_format((float)($salesSheet?->product_revenue_total ?? 0), 2, ',', '.') }}</p></div>
+                    <div><p class="text-10 font-extrabold uppercase text-gray">Spedizione cliente</p><p class="mt-3 text-12 font-black">€ {{ number_format((float)($salesSheet?->shipping_charge ?? 0), 2, ',', '.') }}</p></div>
+                    <div><p class="text-10 font-extrabold uppercase text-gray">Costo spedizione</p><p class="mt-3 text-12 font-black">€ {{ number_format((float)($salesSheet?->shipping_cost ?? 0), 2, ',', '.') }}</p></div>
+                </div>
+
+                <button type="submit" wire:loading.attr="disabled" wire:target="saveShipping" class="mt-8 w-full rounded-10 bg-black-nike px-10 py-9 text-10 font-extrabold uppercase text-white transition hover:bg-bullstar disabled:opacity-50">Aggiorna spedizione</button>
+            </form>
+
+            <div class="rounded-10 border border-gray-mid bg-black-nike p-10 text-white sm:p-12">
+                <div class="flex items-start justify-between gap-8">
+                    <div>
+                        <p class="text-12 font-black uppercase">Diagnosi economica</p>
+                        <p class="mt-3 text-10 font-semibold text-white/60">Il CAC medio è calcolato sugli ultimi 30 giorni.</p>
+                    </div>
+                    <span class="rounded-full px-8 py-5 text-10 font-extrabold uppercase {{ $economicStatus['class'] }}">{{ $economicStatus['label'] }}</span>
+                </div>
+                <div class="mt-10 grid grid-cols-2 gap-6">
+                    <div class="rounded-10 bg-white/10 p-8"><p class="text-10 font-extrabold uppercase text-white/50">Margine lordo</p><p class="mt-3 text-14 font-black">{{ $salesSheet && $hasProducts ? '€ '.number_format((float)$salesSheet->margin_total, 2, ',', '.') : 'N.D.' }}</p></div>
+                    <div class="rounded-10 bg-white/10 p-8"><p class="text-10 font-extrabold uppercase text-white/50">CAC medio</p><p class="mt-3 text-14 font-black">{{ $currentCac !== null ? '€ '.number_format($currentCac, 2, ',', '.') : 'N.D.' }}</p></div>
+                    <div class="rounded-10 bg-white/10 p-8"><p class="text-10 font-extrabold uppercase text-white/50">Profitto dopo Ads</p><p class="mt-3 text-14 font-black">{{ $profitAfterAds !== null ? '€ '.number_format($profitAfterAds, 2, ',', '.') : 'N.D.' }}</p></div>
+                    <div class="rounded-10 bg-white/10 p-8"><p class="text-10 font-extrabold uppercase text-white/50">CAC massimo</p><p class="mt-3 text-14 font-black">{{ $salesSheet && $hasProducts ? '€ '.number_format((float)$salesSheet->margin_total, 2, ',', '.') : 'N.D.' }}</p></div>
+                </div>
+                <p class="mt-8 rounded-10 bg-white/10 px-8 py-7 text-10 font-semibold leading-[16px] text-white/70">
+                    @if($profitPercentage !== null)
+                        Dopo il CAC restano {{ number_format($profitPercentage, 1, ',', '.') }}% del totale vendita.
+                    @else
+                        La diagnosi sarà disponibile quando esistono prodotti e un CAC calcolabile.
+                    @endif
+                </p>
+            </div>
+        </section>
 
         {{-- Inserimento prodotto --}}
         <section class="rounded-10 border border-gray-mid bg-gray-light p-10 sm:p-12">

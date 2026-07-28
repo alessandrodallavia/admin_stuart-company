@@ -104,6 +104,7 @@ class LeadController extends Controller
             'statuses' => $statuses,
             'manualChannels' => $this->manualChannels(),
             'attributionConfidences' => $this->attributionConfidences(),
+            'lossReasons' => $this->lossReasons(),
             'stats' => $this->stats($statuses),
             'currentStatus' => $status,
             'search' => $search,
@@ -197,7 +198,8 @@ class LeadController extends Controller
             'payment_amount' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
             'lead_category_id' => ['nullable', 'exists:lead_categories,id'],
             'lead_quality' => ['nullable', Rule::in(['Bassa', 'Media', 'Alta'])],
-            'loss_reason' => ['nullable', 'string', 'max:255'],
+            'loss_reason' => ['nullable', 'required_if:status,lost', Rule::in(array_keys($this->lossReasons()))],
+            'loss_reason_other' => ['nullable', 'required_if:loss_reason,other', 'string', 'max:255'],
             'crm_notes' => ['nullable', 'string', 'max:5000'],
         ]);
 
@@ -223,7 +225,9 @@ class LeadController extends Controller
             'lead_category_id' => $data['lead_category_id'] ?? null,
             'category' => isset($data['lead_category_id']) ? LeadCategory::find($data['lead_category_id'])?->name : null,
             'lead_quality' => $data['lead_quality'] ?? null,
-            'loss_reason' => $data['loss_reason'] ?? null,
+            'loss_reason' => $data['status'] === 'lost'
+                ? (($data['loss_reason'] ?? null) === 'other' ? trim($data['loss_reason_other']) : ($data['loss_reason'] ?? null))
+                : null,
             'crm_notes' => $data['crm_notes'] ?? null,
         ];
 
@@ -979,6 +983,21 @@ class LeadController extends Controller
             'confirmed' => 'Confermata',
             'probable' => 'Probabile',
             'unknown' => 'Sconosciuta',
+        ];
+    }
+
+    private function lossReasons(): array
+    {
+        return [
+            'price' => 'Prezzo',
+            'quantity' => 'Quantità insufficiente',
+            'competitor' => 'Concorrente',
+            'delivery_time' => 'Tempi di consegna',
+            'no_response' => 'Nessuna risposta',
+            'cancelled' => 'Progetto annullato',
+            'duplicate' => 'Duplicato',
+            'invalid' => 'Non valido / spam',
+            'other' => 'Altro',
         ];
     }
 

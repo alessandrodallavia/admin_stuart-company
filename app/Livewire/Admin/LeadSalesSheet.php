@@ -11,6 +11,7 @@ use App\Models\LeadSalesItem;
 use App\Models\LeadSalesItemAttachment;
 use App\Models\LeadSalesItemPrint;
 use App\Services\LeadSalesSheetService;
+use App\Services\LeadEconomicMetricsService;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -31,6 +32,10 @@ class LeadSalesSheet extends Component
 
     public string $finalUnitPrice = '';
 
+    public string $shippingFee = '9.90';
+
+    public string $freeShippingThreshold = '250.00';
+
     public array $printTypeIds = [];
 
     public array $itemFinalPrices = [];
@@ -50,6 +55,7 @@ class LeadSalesSheet extends Component
         $this->leadId = $leadId;
         $lead = $this->lead()->load('salesSheet.items');
         $this->orderName = $lead->name ?: '';
+        $this->syncShippingFields($lead->salesSheet);
 
         foreach ($lead->salesSheet?->items ?? [] as $item) {
             $this->syncItemFields($item);
@@ -86,6 +92,8 @@ class LeadSalesSheet extends Component
         }
 
         $sheet = $this->lead()->salesSheet()->firstOrCreate([], [
+            'shipping_fee' => 9.90,
+            'free_shipping_threshold' => 250,
             'revenue_total' => 0,
             'cost_total' => 0,
             'margin_total' => 0,
@@ -200,6 +208,28 @@ class LeadSalesSheet extends Component
         $this->statusMessage = 'Prezzo finale ripristinato al calcolo automatico.';
     }
 
+    public function saveShipping(LeadSalesSheetService $calculator): void
+    {
+        $this->authorizeManage();
+        $data = $this->validate([
+            'shippingFee' => ['required', 'numeric', 'min:0', 'max:999999.99'],
+            'freeShippingThreshold' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
+        ]);
+        $sheet = $this->lead()->salesSheet()->firstOrCreate([], [
+            'revenue_total' => 0,
+            'cost_total' => 0,
+            'margin_total' => 0,
+            'margin_percentage' => 0,
+        ]);
+        $sheet->update([
+            'shipping_fee' => $data['shippingFee'],
+            'free_shipping_threshold' => $data['freeShippingThreshold'],
+        ]);
+        $calculator->recalculate($sheet);
+        $this->syncShippingFields($sheet->fresh());
+        $this->statusMessage = 'Regole di spedizione aggiornate.';
+    }
+
     public function saveItemDetails(int $itemId): void
     {
         $this->authorizeManage();
@@ -292,12 +322,29 @@ class LeadSalesSheet extends Component
         $this->statusMessage = "Ordine in preparazione per Alessandro ({$filename}).";
     }
 
-    public function render()
+    public function render(LeadEconomicMetricsService $economicMetrics)
     {
         $lead = $this->lead()->load(['salesSheet.items.prints', 'salesSheet.items.attachments', 'salesSheet.dispatches']);
+        $sheet = $lead->salesSheet;
+        $cac = $economicMetrics->currentCac();
+        $margin = $sheet?->items?->isNotEmpty() ? (float) $sheet->margin_total : null;
+        $profitAfterAds = $margin !== null && $cac !== null ? $margin - $cac : null;
+        $profitPercentage = $profitAfterAds !== null && (float) $sheet->revenue_total > 0
+            ? ($profitAfterAds / (float) $sheet->revenue_total) * 100
+            : null;
+        $economicStatus = match (true) {
+            $profitPercentage === null => ['label' => 'N.D.', 'class' => 'bg-white/10 text-white'],
+            $profitPercentage < 0 => ['label' => 'Non sostenibile', 'class' => 'bg-red-600 text-white'],
+            $profitPercentage < 10 => ['label' => 'Al limite', 'class' => 'bg-amber-500 text-black-nike'],
+            default => ['label' => 'Redditizio', 'class' => 'bg-whatsapp text-white'],
+        };
 
         return view('livewire.admin.lead-sales-sheet', [
-            'salesSheet' => $lead->salesSheet,
+            'salesSheet' => $sheet,
+            'currentCac' => $cac,
+            'profitAfterAds' => $profitAfterAds,
+            'profitPercentage' => $profitPercentage,
+            'economicStatus' => $economicStatus,
             'products' => CrmProduct::query()->where('is_active', true)->orderBy('code')->get(),
             'printTypes' => CrmPrintType::query()->where('is_active', true)->orderBy('code')->get(),
         ]);
@@ -330,6 +377,12 @@ class LeadSalesSheet extends Component
         $this->itemFinalPrices[$item->id] = number_format((float) $item->final_unit_price, 2, '.', '');
         $this->itemColors[$item->id] = collect($item->colors)->join("\n");
         $this->itemNotes[$item->id] = $item->notes ?? '';
+    }
+
+    private function syncShippingFields(?\App\Models\LeadSalesSheet $sheet): void
+    {
+        $this->shippingFee = number_format((float) ($sheet?->shipping_fee ?? 9.90), 2, '.', '');
+        $this->freeShippingThreshold = number_format((float) ($sheet?->free_shipping_threshold ?? 250), 2, '.', '');
     }
 
     private function persistItemDetails(LeadSalesItem $item): void
