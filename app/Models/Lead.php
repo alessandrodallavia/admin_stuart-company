@@ -195,7 +195,12 @@ class Lead extends Model
 
     public function salesSheet(): HasOne
     {
-        return $this->hasOne(LeadSalesSheet::class);
+        return $this->hasOne(LeadSalesSheet::class)->latestOfMany();
+    }
+
+    public function salesSheets(): HasMany
+    {
+        return $this->hasMany(LeadSalesSheet::class)->latest('id');
     }
 
     public function getLossReasonLabelAttribute(): ?string

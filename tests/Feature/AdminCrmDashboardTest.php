@@ -12,8 +12,9 @@ use App\Models\Lead;
 use App\Models\LeadCategory;
 use App\Models\WhatsappConversation;
 use App\Models\WhatsappMessage;
-use App\Services\LeadOrderPackageService;
 use App\Services\GoogleAdsReportingService;
+use App\Services\LeadOrderPackageService;
+use App\Services\LeadSalesSheetService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
@@ -750,6 +751,94 @@ class AdminCrmDashboardTest extends TestCase
             ['crm_catalog.view', 'crm_catalog.manage'],
             $operator->fresh()->permissions,
         );
+    }
+
+    public function test_grouped_variants_use_the_total_quantity_for_product_and_print_tiers(): void
+    {
+        $lead = $this->lead(['status' => 'confirmed']);
+        $product = CrmProduct::create(['code' => 'MAG', 'name' => 'Maglia', 'unit_cost' => 6, 'is_active' => true]);
+        $product->priceTiers()->create(['min_quantity' => 1, 'max_quantity' => 19, 'unit_cost' => 6, 'unit_price' => 12]);
+        $product->priceTiers()->create(['min_quantity' => 20, 'max_quantity' => null, 'unit_cost' => 4, 'unit_price' => 9]);
+        $print = CrmPrintType::create(['code' => 'ST', 'name' => 'Stampa', 'is_active' => true]);
+        $print->priceTiers()->create(['min_quantity' => 1, 'max_quantity' => 19, 'unit_cost' => 3, 'unit_price' => 5]);
+        $print->priceTiers()->create(['min_quantity' => 20, 'max_quantity' => null, 'unit_cost' => 1, 'unit_price' => 2]);
+        $sheet = $lead->salesSheets()->create(['order_number' => 'ORD-TEST', 'name' => 'Test gruppi']);
+
+        foreach (range(1, 4) as $variant) {
+            $item = $sheet->items()->create([
+                'crm_product_id' => $product->id, 'product_code' => 'MAG', 'product_name' => 'Maglia',
+                'configuration_name' => "Grafica {$variant}", 'pricing_group_uuid' => 'same-group',
+                'pricing_group_name' => 'Maglie stessa lavorazione', 'quantity' => 10,
+                'product_unit_cost' => 6, 'product_unit_price' => 12,
+            ]);
+            $item->prints()->create(['crm_print_type_id' => $print->id, 'print_code' => 'ST', 'print_name' => 'Stampa', 'unit_cost' => 3, 'unit_price' => 5]);
+        }
+
+        app(LeadSalesSheetService::class)->recalculate($sheet);
+
+        $this->assertSame(4.0, (float) $sheet->fresh()->items->first()->product_unit_cost);
+        $this->assertSame(9.0, (float) $sheet->fresh()->items->first()->product_unit_price);
+        $this->assertSame(1.0, (float) $sheet->fresh()->items->first()->prints->first()->unit_cost);
+        $this->assertSame(2.0, (float) $sheet->fresh()->items->first()->prints->first()->unit_price);
+    }
+
+    public function test_same_lead_can_have_multiple_orders_with_separate_adjustments(): void
+    {
+        $admin = $this->owner();
+        $lead = $this->lead(['status' => 'confirmed']);
+        $first = $lead->salesSheets()->create(['order_number' => 'ORD-000001', 'name' => 'Primo', 'revenue_total' => 100, 'margin_total' => 40]);
+
+        $this->actingAs($admin, 'admin')->post("/leads/{$lead->id}/orders", ['name' => 'Riordino agosto'])
+            ->assertSessionHasNoErrors();
+
+        $this->assertCount(2, $lead->fresh()->salesSheets);
+        $this->assertDatabaseHas('lead_sales_sheets', ['lead_id' => $lead->id, 'name' => 'Riordino agosto']);
+        $this->assertDatabaseHas('lead_sales_sheets', ['id' => $first->id, 'name' => 'Primo']);
+
+        $second = $lead->fresh()->salesSheets->firstWhere('name', 'Riordino agosto');
+        $this->actingAs($admin, 'admin')->delete("/leads/{$lead->id}/orders/{$second->id}")
+            ->assertSessionHasNoErrors();
+
+        $this->assertCount(1, $lead->fresh()->salesSheets);
+        $this->assertDatabaseMissing('lead_sales_sheets', ['id' => $second->id]);
+    }
+
+    public function test_discount_rounding_and_shipping_are_calculated_per_order(): void
+    {
+        $lead = $this->lead(['status' => 'confirmed']);
+        $sheet = $lead->salesSheets()->create([
+            'order_number' => 'ORD-DISCOUNT', 'name' => 'Ordine scontato',
+            'discount_type' => 'percentage', 'discount_value' => 10,
+            'rounding_adjustment' => -0.10, 'shipping_fee' => 9.90,
+            'free_shipping_threshold' => 250,
+        ]);
+        $sheet->items()->create([
+            'product_code' => 'TEST', 'product_name' => 'Prodotto test', 'quantity' => 20,
+            'product_unit_cost' => 5, 'product_unit_price' => 15,
+        ]);
+
+        app(LeadSalesSheetService::class)->recalculate($sheet);
+        $sheet->refresh();
+
+        $this->assertSame(30.0, (float) $sheet->discount_amount);
+        $this->assertSame(0.0, (float) $sheet->shipping_charge);
+        $this->assertSame(269.9, (float) $sheet->revenue_total);
+        $this->assertSame(160.0, (float) $sheet->margin_total);
+    }
+
+    public function test_leads_can_be_exported_as_filtered_csv(): void
+    {
+        $admin = $this->owner();
+        $this->lead(['name' => 'Cliente incluso', 'status' => 'confirmed']);
+        $this->lead(['name' => 'Cliente escluso', 'status' => 'lost']);
+
+        $response = $this->actingAs($admin, 'admin')->get('/leads/export.csv?status=confirmed');
+
+        $response->assertOk();
+        $csv = $response->streamedContent();
+        $this->assertStringContainsString('Cliente incluso', $csv);
+        $this->assertStringNotContainsString('Cliente escluso', $csv);
+        $this->assertStringStartsWith("\xEF\xBB\xBF", $csv);
     }
 
     private function owner(): AdminUser

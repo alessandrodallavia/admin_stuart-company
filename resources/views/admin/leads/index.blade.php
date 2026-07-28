@@ -177,6 +177,10 @@
                             </div>
                             <p class="mt-4 text-14 font-bold text-black-nike">{{ $leads->total() }} lead trovati</p>
                         </div>
+                        <div class="flex flex-wrap gap-5">
+                            <a href="{{ route('admin.leads.export', ['q' => $search ?: null, 'status' => $currentStatus ?: null]) }}" class="rounded-10 border border-gray-mid bg-white px-10 py-7 text-10 font-extrabold uppercase text-black-nike transition hover:border-bullstar hover:text-bullstar">Esporta risultati CSV</a>
+                            <a href="{{ route('admin.leads.export', ['scope' => 'all']) }}" class="rounded-10 bg-black-nike px-10 py-7 text-10 font-extrabold uppercase text-white transition hover:bg-bullstar">Esporta tutti</a>
+                        </div>
                         <div class="flex flex-wrap gap-6">
                             @foreach ($statuses as $value => $label)
                                 <a href="{{ route('admin.leads.index', ['status' => $value]) }}" class="rounded-full border px-10 py-6 text-11 font-extrabold uppercase tracking-normal transition {{ $currentStatus === $value ? 'border-bullstar bg-bullstar text-white' : 'border-gray-mid text-gray hover:border-black-nike hover:text-black-nike' }}">
@@ -347,7 +351,7 @@
                         <nav class="flex gap-4 overflow-x-auto border-b border-gray-mid bg-gray-light px-16 pt-10" aria-label="Sezioni del lead">
                             <button type="button" @click="selectTab('main')" :class="tab === 'main' ? 'border-black-nike bg-white text-black-nike' : 'border-transparent text-gray hover:text-black-nike'" class="h-36 shrink-0 rounded-t-10 border border-b-0 px-12 text-11 font-extrabold uppercase tracking-normal transition">Principale</button>
                             <button type="button" @click="selectTab('proposal')" :class="tab === 'proposal' ? 'border-black-nike bg-white text-black-nike' : 'border-transparent text-gray hover:text-black-nike'" class="h-36 shrink-0 rounded-t-10 border border-b-0 px-12 text-11 font-extrabold uppercase tracking-normal transition">Proposta</button>
-                            <button type="button" @click="selectTab('product')" :class="tab === 'product' ? 'border-black-nike bg-white text-black-nike' : 'border-transparent text-gray hover:text-black-nike'" class="h-36 shrink-0 rounded-t-10 border border-b-0 px-12 text-11 font-extrabold uppercase tracking-normal transition">Scheda prodotto</button>
+                            <button type="button" @click="selectTab('product')" :class="tab === 'product' ? 'border-black-nike bg-white text-black-nike' : 'border-transparent text-gray hover:text-black-nike'" class="h-36 shrink-0 rounded-t-10 border border-b-0 px-12 text-11 font-extrabold uppercase tracking-normal transition">Ordini e prodotti</button>
                             <button type="button" @click="selectTab('origin')" :class="tab === 'origin' ? 'border-black-nike bg-white text-black-nike' : 'border-transparent text-gray hover:text-black-nike'" class="h-36 shrink-0 rounded-t-10 border border-b-0 px-12 text-11 font-extrabold uppercase tracking-normal transition">Origine lead</button>
                         </nav>
 
@@ -468,7 +472,30 @@
                             </section>
 
                             <section x-show="tab === 'product'" x-cloak class="order-5 lg:col-span-2 lg:row-start-1">
-                                <livewire:admin.lead-sales-sheet :lead-id="$selectedLead->id" :key="'lead-sales-sheet-'.$selectedLead->id" />
+                                <div class="mb-10 rounded-10 border border-gray-mid bg-white p-10 sm:p-12">
+                                    <div class="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+                                        <div>
+                                            <p class="text-10 font-extrabold uppercase text-gray">Storico cliente</p>
+                                            <h3 class="mt-4 text-18 font-black">{{ $selectedLead->salesSheets->count() }} {{ $selectedLead->salesSheets->count() === 1 ? 'ordine' : 'ordini' }}</h3>
+                                            <p class="mt-3 text-10 font-semibold text-gray">Ogni nuovo acquisto resta collegato allo stesso lead e ha conti, prodotti e materiali separati.</p>
+                                        </div>
+                                        <form method="POST" action="{{ route('admin.leads.orders.store', $selectedLead) }}" class="flex w-full gap-5 lg:w-auto">@csrf
+                                            <input name="name" required maxlength="255" placeholder="Nome nuovo ordine" class="min-w-0 flex-1 rounded-10 border-gray-mid px-10 py-8 text-11 font-semibold lg:w-[240px]">
+                                            <button class="shrink-0 rounded-10 bg-bullstar px-12 text-10 font-extrabold uppercase text-white">+ Nuovo ordine</button>
+                                        </form>
+                                    </div>
+                                    <div class="mt-8 flex gap-5 overflow-x-auto pb-2">
+                                        @foreach($selectedLead->salesSheets as $order)
+                                            <div class="flex shrink-0 overflow-hidden rounded-10 border {{ $selectedSalesSheet?->id === $order->id ? 'border-black-nike bg-black-nike text-white' : 'border-gray-mid bg-gray-light' }}">
+                                                <a href="{{ route('admin.leads.index', ['lead' => $selectedLead, 'sales_sheet' => $order->id]).'#product' }}" class="px-10 py-7 text-10 font-extrabold uppercase transition {{ $selectedSalesSheet?->id === $order->id ? 'text-white' : 'hover:text-bullstar' }}">{{ $order->order_number }} · {{ $order->name }} · € {{ number_format((float)$order->revenue_total, 2, ',', '.') }}</a>
+                                                <form method="POST" action="{{ route('admin.leads.orders.destroy', [$selectedLead, $order]) }}" onsubmit="return confirm('Eliminare definitivamente questo ordine, i prodotti e tutti i file grafici collegati?')" class="flex border-l {{ $selectedSalesSheet?->id === $order->id ? 'border-white/20' : 'border-gray-mid' }}">@csrf @method('DELETE')
+                                                    <button type="submit" title="Elimina ordine" aria-label="Elimina ordine {{ $order->order_number }}" class="px-8 text-14 font-black transition {{ $selectedSalesSheet?->id === $order->id ? 'text-white/70 hover:bg-red-600 hover:text-white' : 'text-red-600 hover:bg-red-50' }}">×</button>
+                                                </form>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                                <livewire:admin.lead-sales-sheet :lead-id="$selectedLead->id" :sheet-id="$selectedSalesSheet?->id" :key="'lead-sales-sheet-'.$selectedLead->id.'-'.($selectedSalesSheet?->id ?? 'new')" />
                             </section>
 
                             <section x-show="tab === 'proposal'" x-cloak class="order-2 overflow-hidden rounded-10 border border-gray-mid bg-white shadow-sm lg:col-span-2 lg:col-start-1 lg:row-start-1">

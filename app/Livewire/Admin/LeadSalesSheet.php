@@ -10,8 +10,8 @@ use App\Models\Lead;
 use App\Models\LeadSalesItem;
 use App\Models\LeadSalesItemAttachment;
 use App\Models\LeadSalesItemPrint;
-use App\Services\LeadSalesSheetService;
 use App\Services\LeadEconomicMetricsService;
+use App\Services\LeadSalesSheetService;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -24,9 +24,13 @@ class LeadSalesSheet extends Component
 
     public int $leadId;
 
+    public ?int $sheetId = null;
+
     public string $productId = '';
 
     public string $configurationName = '';
+
+    public string $pricingGroupItemId = '';
 
     public string $quantity = '';
 
@@ -35,6 +39,12 @@ class LeadSalesSheet extends Component
     public string $shippingFee = '9.90';
 
     public string $freeShippingThreshold = '250.00';
+
+    public string $discountType = '';
+
+    public string $discountValue = '0.00';
+
+    public string $roundingAdjustment = '0.00';
 
     public array $printTypeIds = [];
 
@@ -50,14 +60,17 @@ class LeadSalesSheet extends Component
 
     public ?string $statusMessage = null;
 
-    public function mount(int $leadId): void
+    public function mount(int $leadId, ?int $sheetId = null): void
     {
         $this->leadId = $leadId;
-        $lead = $this->lead()->load('salesSheet.items');
+        $this->sheetId = $sheetId;
+        $lead = $this->lead()->load('salesSheets.items');
+        $sheet = $this->sheet();
+        $this->sheetId = $sheet?->id;
         $this->orderName = $lead->name ?: '';
-        $this->syncShippingFields($lead->salesSheet);
+        $this->syncOrderFields($sheet);
 
-        foreach ($lead->salesSheet?->items ?? [] as $item) {
+        foreach ($sheet?->items ?? [] as $item) {
             $this->syncItemFields($item);
         }
     }
@@ -72,6 +85,11 @@ class LeadSalesSheet extends Component
         $this->suggestFinalPrice();
     }
 
+    public function updatedPricingGroupItemId(): void
+    {
+        $this->suggestFinalPrice();
+    }
+
     public function addProduct(LeadSalesSheetService $calculator): void
     {
         $this->authorizeManage();
@@ -80,41 +98,51 @@ class LeadSalesSheet extends Component
             'configurationName' => ['nullable', 'string', 'max:255'],
             'quantity' => ['required', 'numeric', 'min:0.01'],
             'finalUnitPrice' => ['required', 'numeric', 'min:0'],
+            'pricingGroupItemId' => ['nullable', 'integer'],
         ]);
 
         $product = CrmProduct::query()->with('priceTiers')->where('is_active', true)->findOrFail($data['productId']);
-        $tier = $calculator->tier($product->priceTiers, (float) $data['quantity']);
+        $sheet = $this->sheet() ?? $this->createSheet();
+        $groupItem = filled($data['pricingGroupItemId'] ?? null)
+            ? $sheet->items()->findOrFail((int) $data['pricingGroupItemId'])
+            : null;
 
-        if (! $tier) {
-            $this->addError('quantity', 'Nessuna fascia prezzo configurata per questa quantità.');
+        if ($groupItem && $groupItem->crm_product_id !== $product->id) {
+            $this->addError('pricingGroupItemId', 'Il gruppo selezionato appartiene a un prodotto diverso.');
 
             return;
         }
 
-        $sheet = $this->lead()->salesSheet()->firstOrCreate([], [
-            'shipping_fee' => 9.90,
-            'free_shipping_threshold' => 250,
-            'revenue_total' => 0,
-            'cost_total' => 0,
-            'margin_total' => 0,
-            'margin_percentage' => 0,
-        ]);
+        $pricingQuantity = (float) $data['quantity'] + ($groupItem
+            ? (float) $sheet->items()->where('pricing_group_uuid', $groupItem->pricing_group_uuid)->sum('quantity')
+            : 0);
+        $tier = $calculator->tier($product->priceTiers, $pricingQuantity);
+
+        if (! $tier) {
+            $this->addError('quantity', 'Nessuna fascia prezzo configurata per la quantità complessiva del gruppo.');
+
+            return;
+        }
 
         $item = $sheet->items()->create([
             'crm_product_id' => $product->id,
             'product_code' => $product->code,
             'product_name' => $product->name,
             'configuration_name' => filled($data['configurationName'] ?? null) ? trim($data['configurationName']) : null,
+            'pricing_group_uuid' => $groupItem?->pricing_group_uuid ?: (string) Str::uuid(),
+            'pricing_group_name' => $groupItem?->pricing_group_name ?: (filled($data['configurationName'] ?? null) ? trim($data['configurationName']) : $product->name),
             'quantity' => $data['quantity'],
-            'product_unit_cost' => $product->unit_cost,
+            'product_unit_cost' => $tier->unit_cost ?? $product->unit_cost,
             'product_unit_price' => $tier->unit_price,
             'final_unit_price' => $data['finalUnitPrice'],
             'final_price_overridden' => abs((float) $data['finalUnitPrice'] - (float) $tier->unit_price) > 0.0001,
         ]);
 
         $calculator->recalculate($sheet);
-        $this->syncItemFields($item);
-        $this->reset('productId', 'configurationName', 'quantity', 'finalUnitPrice');
+        foreach ($sheet->fresh()->items as $sheetItem) {
+            $this->syncItemFields($sheetItem);
+        }
+        $this->reset('productId', 'configurationName', 'pricingGroupItemId', 'quantity', 'finalUnitPrice');
         $this->resetValidation();
         $this->statusMessage = 'Prodotto aggiunto alla scheda vendita.';
     }
@@ -123,10 +151,10 @@ class LeadSalesSheet extends Component
     {
         $this->authorizeManage();
         $lead = $this->lead();
+        $sheet = $this->sheet();
         $item = LeadSalesItem::query()->with('attachments')->findOrFail($itemId);
-        abort_unless($item->lead_sales_sheet_id === $lead->salesSheet?->id, 404);
+        abort_unless($item->lead_sales_sheet_id === $sheet?->id, 404);
 
-        $sheet = $lead->salesSheet;
         foreach ($item->attachments as $attachment) {
             Storage::disk($attachment->disk)->delete($attachment->path);
         }
@@ -140,8 +168,9 @@ class LeadSalesSheet extends Component
     {
         $this->authorizeManage();
         $lead = $this->lead();
+        $sheet = $this->sheet();
         $item = LeadSalesItem::query()->findOrFail($itemId);
-        abort_unless($item->lead_sales_sheet_id === $lead->salesSheet?->id, 404);
+        abort_unless($item->lead_sales_sheet_id === $sheet?->id, 404);
 
         $field = "printTypeIds.$itemId";
         $this->validate([$field => ['required', 'exists:crm_print_types,id']]);
@@ -162,8 +191,10 @@ class LeadSalesSheet extends Component
             'unit_price' => $tier->unit_price,
         ]);
 
-        $calculator->recalculate($lead->salesSheet);
-        $this->syncItemFields($item->fresh());
+        $calculator->recalculate($sheet);
+        foreach ($sheet->fresh()->items as $sheetItem) {
+            $this->syncItemFields($sheetItem);
+        }
         unset($this->printTypeIds[$itemId]);
         $this->resetValidation($field);
         $this->statusMessage = 'Lavorazione aggiunta.';
@@ -173,13 +204,16 @@ class LeadSalesSheet extends Component
     {
         $this->authorizeManage();
         $lead = $this->lead();
+        $sheet = $this->sheet();
         $item = LeadSalesItem::query()->findOrFail($itemId);
         $print = LeadSalesItemPrint::query()->findOrFail($printId);
-        abort_unless($item->lead_sales_sheet_id === $lead->salesSheet?->id && $print->lead_sales_item_id === $item->id, 404);
+        abort_unless($item->lead_sales_sheet_id === $sheet?->id && $print->lead_sales_item_id === $item->id, 404);
 
         $print->delete();
-        $calculator->recalculate($lead->salesSheet);
-        $this->syncItemFields($item->fresh());
+        $calculator->recalculate($sheet);
+        foreach ($sheet->fresh()->items as $sheetItem) {
+            $this->syncItemFields($sheetItem);
+        }
         $this->statusMessage = 'Lavorazione rimossa.';
     }
 
@@ -215,19 +249,33 @@ class LeadSalesSheet extends Component
             'shippingFee' => ['required', 'numeric', 'min:0', 'max:999999.99'],
             'freeShippingThreshold' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
         ]);
-        $sheet = $this->lead()->salesSheet()->firstOrCreate([], [
-            'revenue_total' => 0,
-            'cost_total' => 0,
-            'margin_total' => 0,
-            'margin_percentage' => 0,
-        ]);
+        $sheet = $this->sheet() ?? $this->createSheet();
         $sheet->update([
             'shipping_fee' => $data['shippingFee'],
             'free_shipping_threshold' => $data['freeShippingThreshold'],
         ]);
         $calculator->recalculate($sheet);
-        $this->syncShippingFields($sheet->fresh());
+        $this->syncOrderFields($sheet->fresh());
         $this->statusMessage = 'Regole di spedizione aggiornate.';
+    }
+
+    public function saveAdjustments(LeadSalesSheetService $calculator): void
+    {
+        $this->authorizeManage();
+        $data = $this->validate([
+            'discountType' => ['nullable', 'in:percentage,fixed'],
+            'discountValue' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
+            'roundingAdjustment' => ['required', 'numeric', 'min:-99999999.99', 'max:99999999.99'],
+        ]);
+        $sheet = $this->sheet() ?? $this->createSheet();
+        $sheet->update([
+            'discount_type' => filled($data['discountType']) ? $data['discountType'] : null,
+            'discount_value' => $data['discountValue'],
+            'rounding_adjustment' => $data['roundingAdjustment'],
+        ]);
+        $calculator->recalculate($sheet);
+        $this->syncOrderFields($sheet->fresh());
+        $this->statusMessage = 'Sconto e arrotondamento aggiornati.';
     }
 
     public function saveItemDetails(int $itemId): void
@@ -263,8 +311,8 @@ class LeadSalesSheet extends Component
         abort_if($admin->training_mode_active, 403, 'Invio reale non disponibile in modalità formazione.');
         $this->validate(['orderName' => ['required', 'string', 'max:100']]);
 
-        $lead = $this->lead()->load(['salesSheet.items.prints', 'salesSheet.items.attachments']);
-        $sheet = $lead->salesSheet;
+        $lead = $this->lead();
+        $sheet = $this->sheet()?->load(['items.prints', 'items.attachments']);
 
         if (! $sheet || $sheet->items->isEmpty()) {
             $this->addError('orderName', 'Aggiungi almeno un prodotto prima dell’invio.');
@@ -324,8 +372,8 @@ class LeadSalesSheet extends Component
 
     public function render(LeadEconomicMetricsService $economicMetrics)
     {
-        $lead = $this->lead()->load(['salesSheet.items.prints', 'salesSheet.items.attachments', 'salesSheet.dispatches']);
-        $sheet = $lead->salesSheet;
+        $lead = $this->lead();
+        $sheet = $this->sheet()?->load(['items.prints', 'items.attachments', 'dispatches']);
         $cac = $economicMetrics->currentCac();
         $margin = $sheet?->items?->isNotEmpty() ? (float) $sheet->margin_total : null;
         $profitAfterAds = $margin !== null && $cac !== null ? $margin - $cac : null;
@@ -367,7 +415,7 @@ class LeadSalesSheet extends Component
     {
         $lead = $this->lead();
         $item = LeadSalesItem::query()->findOrFail($itemId);
-        abort_unless($item->lead_sales_sheet_id === $lead->salesSheet?->id, 404);
+        abort_unless($item->lead_sales_sheet_id === $this->sheet()?->id, 404);
 
         return $item;
     }
@@ -379,10 +427,13 @@ class LeadSalesSheet extends Component
         $this->itemNotes[$item->id] = $item->notes ?? '';
     }
 
-    private function syncShippingFields(?\App\Models\LeadSalesSheet $sheet): void
+    private function syncOrderFields(?\App\Models\LeadSalesSheet $sheet): void
     {
         $this->shippingFee = number_format((float) ($sheet?->shipping_fee ?? 9.90), 2, '.', '');
         $this->freeShippingThreshold = number_format((float) ($sheet?->free_shipping_threshold ?? 250), 2, '.', '');
+        $this->discountType = $sheet?->discount_type ?? '';
+        $this->discountValue = number_format((float) ($sheet?->discount_value ?? 0), 2, '.', '');
+        $this->roundingAdjustment = number_format((float) ($sheet?->rounding_adjustment ?? 0), 2, '.', '');
     }
 
     private function persistItemDetails(LeadSalesItem $item): void
@@ -422,7 +473,39 @@ class LeadSalesSheet extends Component
         }
 
         $product = CrmProduct::query()->with('priceTiers')->find($this->productId);
-        $tier = $product ? app(LeadSalesSheetService::class)->tier($product->priceTiers, (float) $this->quantity) : null;
+        $groupQuantity = 0;
+        if ($this->pricingGroupItemId && ($sheet = $this->sheet())) {
+            $groupItem = $sheet->items()->find($this->pricingGroupItemId);
+            if ($groupItem && $groupItem->crm_product_id === $product?->id) {
+                $groupQuantity = (float) $sheet->items()->where('pricing_group_uuid', $groupItem->pricing_group_uuid)->sum('quantity');
+            }
+        }
+        $tier = $product ? app(LeadSalesSheetService::class)->tier($product->priceTiers, $groupQuantity + (float) $this->quantity) : null;
         $this->finalUnitPrice = $tier ? number_format((float) $tier->unit_price, 2, '.', '') : '';
+    }
+
+    private function sheet(): ?\App\Models\LeadSalesSheet
+    {
+        $query = $this->lead()->salesSheets();
+
+        return $this->sheetId ? $query->whereKey($this->sheetId)->firstOrFail() : $query->first();
+    }
+
+    private function createSheet(): \App\Models\LeadSalesSheet
+    {
+        $sheet = $this->lead()->salesSheets()->create([
+            'name' => 'Nuovo ordine',
+            'status' => 'draft',
+            'shipping_fee' => 9.90,
+            'free_shipping_threshold' => 250,
+            'revenue_total' => 0,
+            'cost_total' => 0,
+            'margin_total' => 0,
+            'margin_percentage' => 0,
+        ]);
+        $sheet->update(['order_number' => 'ORD-'.str_pad((string) $sheet->id, 6, '0', STR_PAD_LEFT)]);
+        $this->sheetId = $sheet->id;
+
+        return $sheet;
     }
 }

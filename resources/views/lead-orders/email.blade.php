@@ -1,5 +1,6 @@
 <p>Ciao Alessandro e Daniele,</p>
 <p>è disponibile il materiale completo per l’ordine <strong>{{ $dispatch->order_name }}</strong>, relativo al lead <strong>{{ $lead->name ?: '#'.$lead->id }}</strong>.</p>
+<p>Riferimento CRM: <strong>{{ $sheet->order_number }} — {{ $sheet->name }}</strong>.</p>
 
 <ul>
     @foreach($sheet->items as $item)
@@ -14,6 +15,8 @@
 
 <p>
     Totale prodotti: <strong>€ {{ number_format((float)$sheet->product_revenue_total, 2, ',', '.') }}</strong><br>
+    Sconto: <strong>- € {{ number_format((float)$sheet->discount_amount, 2, ',', '.') }}</strong><br>
+    Arrotondamento: <strong>€ {{ number_format((float)$sheet->rounding_adjustment, 2, ',', '.') }}</strong><br>
     Spedizione cliente: <strong>€ {{ number_format((float)$sheet->shipping_charge, 2, ',', '.') }}</strong><br>
     Costo spedizione: <strong>€ {{ number_format((float)$sheet->shipping_cost, 2, ',', '.') }}</strong><br>
     Totale cliente: <strong>€ {{ number_format((float)$sheet->revenue_total, 2, ',', '.') }}</strong><br>

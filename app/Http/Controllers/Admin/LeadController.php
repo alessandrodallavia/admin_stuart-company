@@ -26,6 +26,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class LeadController extends Controller
 {
@@ -82,7 +83,15 @@ class LeadController extends Controller
 
         $leads = $leadsQuery->paginate(14)->withQueryString();
 
-        $selectedLead = $lead?->fresh()->load(['quotePdfs', 'salesSheet.items.prints', 'createdByAdmin']);
+        $selectedLead = $lead?->fresh()->load(['quotePdfs', 'salesSheets.items.prints', 'createdByAdmin']);
+        $selectedSalesSheet = null;
+        if ($selectedLead) {
+            $requestedSheetId = $request->integer('sales_sheet');
+            $selectedSalesSheet = $requestedSheetId
+                ? $selectedLead->salesSheets->firstWhere('id', $requestedSheetId)
+                : $selectedLead->salesSheets->first();
+            abort_if($requestedSheetId && ! $selectedSalesSheet, 404);
+        }
 
         $selectedConversation = $selectedLead
             ? WhatsappConversation::query()
@@ -101,6 +110,7 @@ class LeadController extends Controller
             'leads' => $leads,
             'selectedLead' => $selectedLead,
             'selectedConversation' => $selectedConversation,
+            'selectedSalesSheet' => $selectedSalesSheet,
             'statuses' => $statuses,
             'manualChannels' => $this->manualChannels(),
             'attributionConfidences' => $this->attributionConfidences(),
@@ -182,6 +192,81 @@ class LeadController extends Controller
         return redirect()
             ->route('admin.leads.index', ['lead' => $lead])
             ->with('status', 'Lead manuale creato.');
+    }
+
+    public function exportCsv(Request $request): StreamedResponse
+    {
+        $query = Lead::query()->with(['quotePdfs', 'salesSheets']);
+
+        if ($request->string('scope')->toString() !== 'all') {
+            $search = trim($request->string('q')->toString());
+            $requestedStatuses = $request->input('statuses', $request->filled('status') ? [$request->input('status')] : []);
+            $selectedStatuses = collect(is_array($requestedStatuses) ? $requestedStatuses : [$requestedStatuses])
+                ->filter(fn ($status) => is_string($status) && array_key_exists($status, $this->statuses()))
+                ->values()->all();
+
+            $query
+                ->when($selectedStatuses !== [], fn ($query) => $query->whereIn('status', $selectedStatuses))
+                ->when($search !== '', fn ($query) => $query->where(fn ($query) => $query
+                    ->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%")
+                    ->orWhere('club', 'like', "%{$search}%")
+                    ->orWhere('city', 'like', "%{$search}%")))
+                ->when($request->filled('date_from'), fn ($query) => $query->whereDate('created_at', '>=', $request->date('date_from')))
+                ->when($request->filled('date_to'), fn ($query) => $query->whereDate('created_at', '<=', $request->date('date_to')));
+        }
+
+        $filename = 'lead-crm-'.now()->format('Ymd-His').'.csv';
+
+        return response()->streamDownload(function () use ($query) {
+            $stream = fopen('php://output', 'wb');
+            fwrite($stream, "\xEF\xBB\xBF");
+            fputcsv($stream, [
+                'ID', 'UUID', 'Data acquisizione', 'Nome', 'Azienda', 'Telefono', 'Email', 'Città',
+                'Stato', 'Canale', 'Affidabilità attribuzione', 'Nota attribuzione', 'UTM source',
+                'UTM medium', 'Campagna', 'GCLID', 'FBCLID', 'Categoria', 'Prodotti', 'Quantità',
+                'Qualità', 'Motivo perdita', 'Valore proposta', 'Importo pagato', 'Numero ordini',
+                'Valore ordini', 'Margine ordini', 'Note CRM',
+            ], ';');
+
+            $query->orderBy('id')->chunk(500, function ($leads) use ($stream) {
+                foreach ($leads as $lead) {
+                    fputcsv($stream, array_map([$this, 'safeCsvValue'], [
+                        $lead->id,
+                        $lead->uuid,
+                        $lead->created_at?->timezone(config('app.display_timezone'))->toIso8601String(),
+                        $lead->name,
+                        $lead->club,
+                        $lead->phone,
+                        $lead->email,
+                        $lead->city,
+                        $this->statuses()[$lead->status] ?? $lead->status,
+                        $lead->acquisition_channel,
+                        $lead->attribution_confidence,
+                        $lead->attribution_note,
+                        $lead->utm_source,
+                        $lead->utm_medium,
+                        $lead->utm_campaign,
+                        $lead->gclid,
+                        $lead->fbclid,
+                        $lead->category,
+                        $lead->product,
+                        $lead->quantity,
+                        $lead->lead_quality,
+                        $lead->loss_reason_label,
+                        $lead->quote_amount,
+                        $lead->payment_amount,
+                        $lead->salesSheets->count(),
+                        $lead->salesSheets->sum('revenue_total'),
+                        $lead->salesSheets->sum('margin_total'),
+                        $lead->crm_notes,
+                    ]), ';');
+                }
+            });
+
+            fclose($stream);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     public function update(Request $request, Lead $lead, LeadConversionTrackingService $tracking): RedirectResponse
@@ -999,6 +1084,15 @@ class LeadController extends Controller
             'invalid' => 'Non valido / spam',
             'other' => 'Altro',
         ];
+    }
+
+    private function safeCsvValue(mixed $value): mixed
+    {
+        if (is_string($value) && preg_match('/^[=+\-@]/', $value)) {
+            return "'".$value;
+        }
+
+        return $value;
     }
 
     private function boardColumns(): array

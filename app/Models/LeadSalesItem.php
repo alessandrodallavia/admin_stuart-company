@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class LeadSalesItem extends Model
 {
     protected $fillable = [
-        'lead_sales_sheet_id', 'crm_product_id', 'product_code', 'product_name', 'configuration_name',
+        'lead_sales_sheet_id', 'crm_product_id', 'product_code', 'product_name', 'configuration_name', 'pricing_group_uuid', 'pricing_group_name',
         'quantity', 'product_unit_cost', 'product_unit_price', 'final_unit_price',
         'final_price_overridden', 'colors', 'notes', 'revenue_total', 'cost_total', 'margin_total',
     ];
@@ -39,5 +39,10 @@ class LeadSalesItem extends Model
     public function attachments(): HasMany
     {
         return $this->hasMany(LeadSalesItemAttachment::class);
+    }
+
+    public function crmProduct(): BelongsTo
+    {
+        return $this->belongsTo(CrmProduct::class);
     }
 }

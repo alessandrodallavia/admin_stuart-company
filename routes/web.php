@@ -51,6 +51,7 @@ Route::name('admin.')->group(function () {
 
         Route::middleware('admin.permission:leads.view')->group(function () {
             Route::get('/', AdminDashboardController::class)->name('dashboard');
+            Route::get('/leads/export.csv', [AdminLeadController::class, 'exportCsv'])->name('leads.export');
             Route::get('/leads/board', [AdminLeadController::class, 'board'])->name('leads.board');
             Route::get('/leads/{lead?}', [AdminLeadController::class, 'index'])->name('leads.index');
             Route::get('/leads/{lead}/quote-pdfs/{quotePdf}', [AdminLeadController::class, 'showQuotePdf'])->name('leads.quote-pdfs.show');
@@ -58,6 +59,8 @@ Route::name('admin.')->group(function () {
 
         Route::middleware('admin.permission:leads.manage')->group(function () {
             Route::post('/leads', [AdminLeadController::class, 'store'])->name('leads.store');
+            Route::post('/leads/{lead}/orders', [AdminLeadSalesSheetController::class, 'storeOrder'])->name('leads.orders.store');
+            Route::delete('/leads/{lead}/orders/{sheet}', [AdminLeadSalesSheetController::class, 'destroyOrder'])->name('leads.orders.destroy');
             Route::patch('/leads/{lead}', [AdminLeadController::class, 'update'])->name('leads.update');
             Route::post('/leads/{lead}/quote-pdfs', [AdminLeadController::class, 'storeQuotePdfs'])->name('leads.quote-pdfs.store');
             Route::delete('/leads/{lead}/quote-pdfs/{quotePdf}', [AdminLeadController::class, 'destroyQuotePdf'])->name('leads.quote-pdfs.destroy');

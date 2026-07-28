@@ -3,7 +3,7 @@
     <header class="border-b border-gray-mid bg-black-nike px-12 py-12 text-white sm:px-16 sm:py-12">
         <div class="flex flex-col gap-10 lg:flex-row lg:items-center lg:justify-between">
             <div>
-                <p class="text-10 font-extrabold uppercase tracking-wider text-white/60">Scheda prodotto</p>
+                <p class="text-10 font-extrabold uppercase tracking-wider text-white/60">{{ $salesSheet?->order_number }} · {{ $salesSheet?->name }}</p>
                 <h2 class="mt-4 text-18 font-black">Configura prodotti e materiali dell'ordine</h2>
                 <p class="mt-4 max-w-2xl text-11 font-semibold text-white/60">Prezzi, lavorazioni, colori e grafiche in un unico flusso.</p>
             </div>
@@ -105,6 +105,22 @@
             </div>
         </section>
 
+        <form wire:submit="saveAdjustments" class="mb-12 rounded-10 border border-gray-mid bg-white p-10 sm:p-12">
+            <div class="flex flex-wrap items-start justify-between gap-6">
+                <div>
+                    <p class="text-12 font-black uppercase">Sconto e arrotondamento</p>
+                    <p class="mt-3 text-10 font-semibold text-gray">Applicati al totale prodotti prima del calcolo della spedizione.</p>
+                </div>
+                <span class="rounded-full bg-gray-light px-8 py-5 text-10 font-extrabold uppercase text-gray">Sconto € {{ number_format((float)($salesSheet?->discount_amount ?? 0), 2, ',', '.') }}</span>
+            </div>
+            <div class="mt-8 grid gap-8 md:grid-cols-4 md:items-end">
+                <label><span class="text-10 font-extrabold uppercase text-gray">Tipo sconto</span><select wire:model.live="discountType" class="mt-4 w-full rounded-10 border-gray-mid bg-white px-10 py-8 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"><option value="">Nessuno</option><option value="percentage">Percentuale</option><option value="fixed">Importo fisso</option></select></label>
+                <label><span class="text-10 font-extrabold uppercase text-gray">Valore sconto</span><input wire:model="discountValue" type="number" min="0" step="0.01" class="mt-4 w-full rounded-10 border-gray-mid bg-white px-10 py-8 text-12 font-semibold focus:border-bullstar focus:ring-bullstar">@error('discountValue')<span class="mt-4 block text-10 font-bold text-red-600">{{ $message }}</span>@enderror</label>
+                <label><span class="flex items-center gap-4 text-10 font-extrabold uppercase text-gray">Arrotondamento totale <span class="group relative inline-flex normal-case"><span tabindex="0" aria-label="Informazioni sull'arrotondamento" class="flex h-16 w-16 cursor-help items-center justify-center rounded-full border border-gray text-10 font-black leading-none text-gray focus:border-bullstar focus:text-bullstar">i</span><span role="tooltip" class="pointer-events-none absolute bottom-full left-1/2 z-20 mb-5 hidden w-[190px] -translate-x-1/2 rounded-10 bg-black-nike px-8 py-6 text-center text-10 font-semibold normal-case leading-[14px] text-white shadow-lg group-hover:block group-focus-within:block">Accetta anche valori negativi.</span></span></span><div class="mt-4 flex overflow-hidden rounded-10 border border-gray-mid bg-white"><span class="flex items-center border-r border-gray-mid px-10 text-12 font-bold text-gray">€</span><input wire:model="roundingAdjustment" type="number" step="0.01" class="min-w-0 flex-1 border-0 px-10 py-8 text-12 font-semibold focus:ring-0"></div></label>
+                <button class="rounded-10 bg-black-nike px-10 py-9 text-10 font-extrabold uppercase text-white transition hover:bg-bullstar">Applica correzioni</button>
+            </div>
+        </form>
+
         {{-- Inserimento prodotto --}}
         <section class="rounded-10 border border-gray-mid bg-gray-light p-10 sm:p-12">
             <div class="flex flex-wrap items-end justify-between gap-5">
@@ -116,7 +132,7 @@
             </div>
 
             <form wire:submit="addProduct" class="mt-10 grid gap-8 md:grid-cols-2 lg:grid-cols-12 lg:items-end">
-                <label class="lg:col-span-4">
+                <label class="lg:col-span-3">
                     <span class="text-10 font-extrabold uppercase text-gray">Prodotto</span>
                     <select wire:model.live="productId" required class="mt-4 w-full rounded-10 border-gray-mid bg-white px-10 py-8 text-12 font-semibold focus:border-bullstar focus:ring-bullstar">
                         <option value="">Seleziona dal catalogo</option>
@@ -124,10 +140,19 @@
                     </select>
                     @error('productId')<span class="mt-4 block text-10 font-bold text-red-600">{{ $message }}</span>@enderror
                 </label>
-                <label class="lg:col-span-3">
+                <label class="lg:col-span-2">
                     <span class="text-10 font-extrabold uppercase text-gray">Nome configurazione <span class="normal-case font-semibold">(facoltativo)</span></span>
                     <input wire:model="configurationName" type="text" maxlength="255" placeholder="Es. Maglia staff evento" class="mt-4 w-full rounded-10 border-gray-mid bg-white px-10 py-8 text-12 font-semibold focus:border-bullstar focus:ring-bullstar">
                     @error('configurationName')<span class="mt-4 block text-10 font-bold text-red-600">{{ $message }}</span>@enderror
+                </label>
+                <label class="lg:col-span-3">
+                    <span class="flex items-center gap-4 text-10 font-extrabold uppercase text-gray">Gruppo quantità <span class="normal-case font-semibold">(facoltativo)</span> <span class="group relative inline-flex normal-case"><span tabindex="0" aria-label="Informazioni sul gruppo quantità" class="flex h-16 w-16 cursor-help items-center justify-center rounded-full border border-gray text-10 font-black leading-none text-gray focus:border-bullstar focus:text-bullstar">i</span><span role="tooltip" class="pointer-events-none absolute bottom-full left-1/2 z-20 mb-5 hidden w-[230px] -translate-x-1/2 rounded-10 bg-black-nike px-8 py-6 text-center text-10 font-semibold normal-case leading-[14px] text-white shadow-lg group-hover:block group-focus-within:block">Somma le varianti per scegliere la fascia costo/prezzo corretta.</span></span></span>
+                    <select wire:model.live="pricingGroupItemId" class="mt-4 w-full rounded-10 border-gray-mid bg-white px-10 py-8 text-12 font-semibold focus:border-bullstar focus:ring-bullstar">
+                        <option value="">Nuovo gruppo autonomo</option>
+                        @foreach(($salesSheet?->items ?? collect())->where('crm_product_id', (int) $productId)->unique('pricing_group_uuid') as $groupItem)
+                            <option value="{{ $groupItem->id }}">Unisci a {{ $groupItem->pricing_group_name ?: $groupItem->configuration_name ?: $groupItem->product_name }} ({{ number_format((float)($salesSheet?->items?->where('pricing_group_uuid', $groupItem->pricing_group_uuid)->sum('quantity') ?? 0), 0, ',', '.') }} pz)</option>
+                        @endforeach
+                    </select>
                 </label>
                 <label class="lg:col-span-2">
                     <span class="text-10 font-extrabold uppercase text-gray">Quantità</span>
@@ -148,18 +173,19 @@
             </form>
         </section>
 
-        <div class="mt-12 grid items-start gap-12 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div class="mt-12 grid items-start gap-12 {{ $salesSheet?->items?->isNotEmpty() ? 'lg:grid-cols-[minmax(0,1fr)_320px]' : 'grid-cols-1' }}">
             {{-- Elenco prodotti --}}
             <main class="min-w-0 space-y-10">
                 @forelse($salesSheet?->items ?? [] as $item)
-                    <article wire:key="sales-item-{{ $item->id }}" class="overflow-hidden rounded-10 border border-gray-mid bg-white shadow-sm">
-                        <div class="border-b border-gray-mid bg-gray-light px-10 py-8 sm:px-12">
+                    @php($groupQuantity = ($salesSheet?->items ?? collect())->where('pricing_group_uuid', $item->pricing_group_uuid)->sum('quantity'))
+                    <details wire:key="sales-item-{{ $item->id }}" open class="group overflow-hidden rounded-10 border border-gray-mid bg-white shadow-sm">
+                        <summary class="cursor-pointer list-none border-b border-gray-mid bg-gray-light px-10 py-8 sm:px-12">
                             <div class="flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
                                 <div class="flex min-w-0 items-center gap-8">
                                     <span class="flex h-28 w-28 shrink-0 items-center justify-center rounded-full bg-black-nike text-10 font-black text-white">{{ $loop->iteration }}</span>
                                     <div class="min-w-0">
                                         <h3 class="truncate text-14 font-black">{{ $item->configuration_name ?: $item->product_name }}</h3>
-                                        <p class="mt-3 text-10 font-bold text-gray">{{ $item->product_code }} · {{ $item->product_name }} · {{ number_format((float)$item->quantity, 2, ',', '.') }} pz</p>
+                                        <p class="mt-3 text-10 font-bold text-gray">{{ $item->product_code }} · {{ $item->product_name }} · {{ number_format((float)$item->quantity, 2, ',', '.') }} pz @if($groupQuantity != $item->quantity) · fascia calcolata su {{ number_format((float)$groupQuantity, 0, ',', '.') }} pz @endif</p>
                                     </div>
                                 </div>
                                 <div class="flex items-center justify-between gap-10 sm:justify-end">
@@ -167,10 +193,11 @@
                                         <p class="text-10 font-extrabold uppercase text-gray">Totale prodotto</p>
                                         <p class="mt-2 text-16 font-black">€ {{ number_format((float)$item->revenue_total, 2, ',', '.') }}</p>
                                     </div>
-                                    <button type="button" wire:click="removeProduct({{ $item->id }})" wire:confirm="Rimuovere il prodotto?" wire:loading.attr="disabled" title="Rimuovi prodotto" class="flex h-28 w-28 items-center justify-center rounded-full border border-red-200 bg-white text-14 font-black text-red-600 transition hover:bg-red-50 disabled:opacity-50">×</button>
+                                    <span class="text-16 font-black text-gray transition group-open:rotate-180">⌄</span>
+                                    <button type="button" wire:click.stop="removeProduct({{ $item->id }})" wire:confirm="Rimuovere il prodotto?" wire:loading.attr="disabled" title="Rimuovi prodotto" class="flex h-28 w-28 items-center justify-center rounded-full border border-red-200 bg-white text-14 font-black text-red-600 transition hover:bg-red-50 disabled:opacity-50">×</button>
                                 </div>
                             </div>
-                        </div>
+                        </summary>
 
                         <div class="grid lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,.8fr)]">
                             {{-- Produzione --}}
@@ -295,7 +322,7 @@
                                 </div>
                             </div>
                         </div>
-                    </article>
+                    </details>
                 @empty
                     <div class="rounded-10 border border-dashed border-gray-mid bg-gray-light px-12 py-20 text-center">
                         <span class="mx-auto flex h-36 w-36 items-center justify-center rounded-full bg-white text-20 font-black text-gray">+</span>
