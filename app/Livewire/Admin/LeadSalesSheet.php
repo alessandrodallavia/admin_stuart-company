@@ -380,10 +380,13 @@ class LeadSalesSheet extends Component
         $profitPercentage = $profitAfterAds !== null && (float) $sheet->revenue_total > 0
             ? ($profitAfterAds / (float) $sheet->revenue_total) * 100
             : null;
+        $maximumSustainableCac = $margin !== null && (float) $sheet->revenue_total > 0
+            ? $margin - ((float) $sheet->revenue_total * 0.30)
+            : null;
         $economicStatus = match (true) {
             $profitPercentage === null => ['label' => 'N.D.', 'class' => 'bg-white/10 text-white'],
-            $profitPercentage < 0 => ['label' => 'Non sostenibile', 'class' => 'bg-red-600 text-white'],
-            $profitPercentage < 10 => ['label' => 'Al limite', 'class' => 'bg-amber-500 text-black-nike'],
+            $profitPercentage < 30 => ['label' => 'Non sostenibile', 'class' => 'bg-red-600 text-white'],
+            $profitPercentage < 40 => ['label' => 'Al limite', 'class' => 'bg-amber-500 text-black-nike'],
             default => ['label' => 'Redditizio', 'class' => 'bg-whatsapp text-white'],
         };
 
@@ -392,6 +395,7 @@ class LeadSalesSheet extends Component
             'currentCac' => $cac,
             'profitAfterAds' => $profitAfterAds,
             'profitPercentage' => $profitPercentage,
+            'maximumSustainableCac' => $maximumSustainableCac,
             'economicStatus' => $economicStatus,
             'products' => CrmProduct::query()->where('is_active', true)->orderBy('code')->get(),
             'printTypes' => CrmPrintType::query()->where('is_active', true)->orderBy('code')->get(),

@@ -90,10 +90,13 @@
                     <span class="rounded-full px-8 py-5 text-10 font-extrabold uppercase {{ $economicStatus['class'] }}">{{ $economicStatus['label'] }}</span>
                 </div>
                 <div class="mt-10 grid grid-cols-2 gap-6">
+                    <div class="rounded-10 bg-white/10 p-8"><p class="text-10 font-extrabold uppercase text-white/50">Totale cliente</p><p class="mt-3 text-14 font-black">{{ $salesSheet && $hasProducts ? '€ '.number_format((float)$salesSheet->revenue_total, 2, ',', '.') : 'N.D.' }}</p></div>
+                    <div class="rounded-10 bg-white/10 p-8"><p class="text-10 font-extrabold uppercase text-white/50">Costi diretti</p><p class="mt-3 text-14 font-black">{{ $salesSheet && $hasProducts ? '€ '.number_format((float)$salesSheet->cost_total, 2, ',', '.') : 'N.D.' }}</p></div>
                     <div class="rounded-10 bg-white/10 p-8"><p class="text-10 font-extrabold uppercase text-white/50">Margine lordo</p><p class="mt-3 text-14 font-black">{{ $salesSheet && $hasProducts ? '€ '.number_format((float)$salesSheet->margin_total, 2, ',', '.') : 'N.D.' }}</p></div>
                     <div class="rounded-10 bg-white/10 p-8"><p class="text-10 font-extrabold uppercase text-white/50">CAC medio</p><p class="mt-3 text-14 font-black">{{ $currentCac !== null ? '€ '.number_format($currentCac, 2, ',', '.') : 'N.D.' }}</p></div>
                     <div class="rounded-10 bg-white/10 p-8"><p class="text-10 font-extrabold uppercase text-white/50">Profitto dopo Ads</p><p class="mt-3 text-14 font-black">{{ $profitAfterAds !== null ? '€ '.number_format($profitAfterAds, 2, ',', '.') : 'N.D.' }}</p></div>
-                    <div class="rounded-10 bg-white/10 p-8"><p class="text-10 font-extrabold uppercase text-white/50">CAC massimo</p><p class="mt-3 text-14 font-black">{{ $salesSheet && $hasProducts ? '€ '.number_format((float)$salesSheet->margin_total, 2, ',', '.') : 'N.D.' }}</p></div>
+                    <div class="rounded-10 bg-white/10 p-8"><p class="text-10 font-extrabold uppercase text-white/50">Margine finale</p><p class="mt-3 text-14 font-black">{{ $profitPercentage !== null ? number_format($profitPercentage, 1, ',', '.').'%' : 'N.D.' }}</p></div>
+                    <div class="col-span-2 rounded-10 bg-white/10 p-8"><div class="flex items-center justify-between gap-6"><div><p class="text-10 font-extrabold uppercase text-white/50">CAC massimo sostenibile</p><p class="mt-3 text-14 font-black">{{ $maximumSustainableCac !== null ? '€ '.number_format($maximumSustainableCac, 2, ',', '.') : 'N.D.' }}</p></div><p class="max-w-[210px] text-right text-10 font-semibold leading-[14px] text-white/50">Margine lordo meno il 30% del totale cliente.</p></div></div>
                 </div>
                 <p class="mt-8 rounded-10 bg-white/10 px-8 py-7 text-10 font-semibold leading-[16px] text-white/70">
                     @if($profitPercentage !== null)

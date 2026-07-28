@@ -472,7 +472,9 @@ class AdminCrmDashboardTest extends TestCase
             ->assertSee('CAC medio')
             ->assertSee('€ 20,00')
             ->assertSee('€ 30,00')
-            ->assertSee('Redditizio');
+            ->assertSee('€ 17,03')
+            ->assertSee('27,3%')
+            ->assertSee('Non sostenibile');
     }
 
     public function test_lost_lead_requires_a_standard_loss_reason(): void
