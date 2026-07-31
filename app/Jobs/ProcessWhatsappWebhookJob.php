@@ -303,19 +303,12 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
                 $lead->message = $text;
                 $lead->save();
 
-                // no break: appena parte la risposta automatica il lead passa a completed.
+                // no break: programma la stessa risposta prevista per i lead confermati.
 
             case 'confirmed':
-
-                $greeting = now(config('app.display_timezone', 'Europe/Rome'))->hour < 18
-                    ? 'Buongiorno'
-                    : 'Buonasera';
-                $this->sendText($from, $greeting." 👋 Sono Andrea di Stuart.\nPer poterle indicare subito la soluzione più adatta e un prezzo orientativo, mi scriva semplicemente:\n- per quale utilizzo sono destinati i capi (ad esempio: azienda, evento, squadra sportiva, merchandising...)\n- la quantità indicativa (ordine minimo 15 pezzi)\n- come immagina la personalizzazione (ad esempio: logo sul petto, stampa fronte e retro, nomi e numeri...)\n\nIn base a queste informazioni le consiglierò il prodotto più adatto al suo progetto e le comunicherò un prezzo orientativo.\nSe la soluzione sarà in linea con le sue aspettative, realizzeremo gratuitamente un'anteprima grafica personalizzata e un preventivo completo.", $conversation);
-
-                $lead->status = 'completed';
-                $lead->save();
-
-                $this->requestHumanHandoff($conversation, 'Lead completato: prepara mockup e proposta.');
+                SendAutomaticWhatsappReplyJob::dispatch($lead->id, $conversation->id, $from)
+                    ->delay(now()->addSeconds(45))
+                    ->onQueue('admin');
 
                 break;
         }

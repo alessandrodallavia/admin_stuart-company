@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Jobs\ProcessWhatsappWebhookJob;
+use App\Jobs\SendAutomaticWhatsappReplyJob;
 use App\Models\AdminUser;
 use App\Models\EmailAccount;
 use App\Models\EmailConversation;
@@ -14,6 +15,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -183,6 +185,86 @@ class TrainingModeTest extends TestCase
             'status' => 'sent',
         ]);
         Http::assertSentCount(1);
+    }
+
+    public function test_initial_whatsapp_auto_reply_is_queued_with_a_45_second_delay(): void
+    {
+        Carbon::setTestNow('2026-07-31 10:00:00');
+        Queue::fake();
+
+        $operator = $this->operator();
+        $lead = $this->lead([
+            'status' => 'pre',
+            'phone' => '393331234567',
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+        ]);
+        $conversation = WhatsappConversation::withoutGlobalScope('training')->create([
+            'lead_id' => $lead->id,
+            'contact_phone' => $lead->phone,
+            'mode' => 'auto',
+            'status' => 'open',
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+        ]);
+
+        app()->call([new ProcessWhatsappWebhookJob($this->whatsappWebhook(
+            $lead->phone,
+            'Vorrei 30 magliette personalizzate.',
+        )), 'handle']);
+
+        Queue::assertPushed(SendAutomaticWhatsappReplyJob::class, function (SendAutomaticWhatsappReplyJob $job): bool {
+            return $job->delay?->equalTo(now()->addSeconds(45))
+                && $job->queue === 'admin';
+        });
+        $this->assertSame('confirmed', $lead->fresh()->status);
+        $this->assertSame('auto', $conversation->fresh()->mode);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_initial_whatsapp_auto_reply_uses_the_current_period_config_template(): void
+    {
+        Carbon::setTestNow('2026-07-31 18:00:00');
+        Http::fake([
+            'https://graph.facebook.com/*' => Http::response([
+                'messages' => [['id' => 'configured-auto-response']],
+            ]),
+        ]);
+
+        $operator = $this->operator();
+        $lead = $this->lead([
+            'status' => 'confirmed',
+            'phone' => '393331234567',
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+        ]);
+        $conversation = WhatsappConversation::withoutGlobalScope('training')->create([
+            'lead_id' => $lead->id,
+            'contact_phone' => $lead->phone,
+            'mode' => 'auto',
+            'status' => 'open',
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+        ]);
+
+        app()->call([new SendAutomaticWhatsappReplyJob(
+            $lead->id,
+            $conversation->id,
+            $lead->phone,
+        ), 'handle']);
+
+        Http::assertSent(function ($request): bool {
+            return $request['text']['body'] === config('message_templates.evening.0.message');
+        });
+        $this->assertDatabaseHas('whatsapp_messages', [
+            'provider_message_id' => 'configured-auto-response',
+            'body' => config('message_templates.evening.0.message'),
+        ]);
+        $this->assertSame('completed', $lead->fresh()->status);
+        $this->assertSame('manual', $conversation->fresh()->mode);
+
+        Carbon::setTestNow();
     }
 
     public function test_request_id_without_label_does_not_connect_to_training_lead(): void
