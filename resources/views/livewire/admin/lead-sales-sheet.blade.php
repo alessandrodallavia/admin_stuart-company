@@ -94,10 +94,10 @@
                     <div class="rounded-10 bg-white/10 p-8"><p class="text-10 font-extrabold uppercase text-white/50">Costi diretti</p><p class="mt-3 text-14 font-black">{{ $salesSheet && $hasProducts ? '€ '.number_format((float)$salesSheet->cost_total, 2, ',', '.') : 'N.D.' }}</p></div>
                     <div class="rounded-10 bg-white/10 p-8"><p class="text-10 font-extrabold uppercase text-white/50">Margine lordo</p><p class="mt-3 text-14 font-black">{{ $salesSheet && $hasProducts ? '€ '.number_format((float)$salesSheet->margin_total, 2, ',', '.') : 'N.D.' }}</p></div>
                     <div class="rounded-10 bg-white/10 p-8">
-                        <div class="flex items-center justify-center gap-4">
-                            <p class="text-10 font-extrabold uppercase text-white/50">{{ $isReorder ? 'CAC riordino' : 'CAC medio' }}</p>
+                        <div class="inline-flex items-center justify-center gap-4">
+                            <p class="text-10 font-extrabold uppercase leading-none text-white/50">{{ $isReorder ? 'CAC riordino' : 'CAC medio' }}</p>
                             <span class="group relative inline-flex normal-case">
-                                <button type="button" aria-label="Informazioni sul CAC {{ $isReorder ? 'del riordino' : 'del primo ordine' }}" class="flex h-16 w-16 cursor-help items-center justify-center rounded-full border border-white/40 text-10 font-black leading-none text-white/70 focus:border-white focus:text-white focus:outline-none">?</button>
+                                <button type="button" aria-label="Informazioni sul CAC {{ $isReorder ? 'del riordino' : 'del primo ordine' }}" class="inline-flex h-16 w-16 -translate-y-px cursor-help items-center justify-center rounded-full border border-white/40 text-10 font-black leading-none text-white/70 focus:border-white focus:text-white focus:outline-none">?</button>
                                 <span role="tooltip" class="pointer-events-none invisible absolute bottom-full left-1/2 z-50 mb-6 w-[230px] -translate-x-1/2 rounded-10 bg-white px-9 py-7 text-left text-10 font-semibold normal-case leading-[15px] text-black-nike opacity-0 shadow-lg transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">{{ $isReorder ? 'Il costo di acquisizione viene attribuito soltanto al primo ordine del cliente. Per questo riordino il CAC è pari a zero.' : 'Questo è il primo ordine del cliente: il CAC medio degli ultimi 30 giorni viene sottratto qui una sola volta.' }}</span>
                             </span>
                         </div>
