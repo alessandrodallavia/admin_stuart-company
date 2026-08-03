@@ -374,7 +374,8 @@ class LeadSalesSheet extends Component
     {
         $lead = $this->lead();
         $sheet = $this->sheet()?->load(['items.prints', 'items.attachments', 'dispatches']);
-        $cac = $economicMetrics->currentCac();
+        $isReorder = $sheet !== null && $lead->salesSheets()->whereKeyNot($sheet->id)->where('id', '<', $sheet->id)->exists();
+        $cac = $isReorder ? 0.0 : $economicMetrics->currentCac();
         $margin = $sheet?->items?->isNotEmpty() ? (float) $sheet->margin_total : null;
         $profitAfterAds = $margin !== null && $cac !== null ? $margin - $cac : null;
         $profitPercentage = $profitAfterAds !== null && (float) $sheet->revenue_total > 0
@@ -393,6 +394,7 @@ class LeadSalesSheet extends Component
         return view('livewire.admin.lead-sales-sheet', [
             'salesSheet' => $sheet,
             'currentCac' => $cac,
+            'isReorder' => $isReorder,
             'profitAfterAds' => $profitAfterAds,
             'profitPercentage' => $profitPercentage,
             'maximumSustainableCac' => $maximumSustainableCac,

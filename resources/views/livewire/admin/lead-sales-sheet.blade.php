@@ -85,7 +85,7 @@
                 <div class="flex items-start justify-between gap-8">
                     <div>
                         <p class="text-12 font-black uppercase">Diagnosi economica</p>
-                        <p class="mt-3 text-10 font-semibold text-white/60">Il CAC medio è calcolato sugli ultimi 30 giorni.</p>
+                        <p class="mt-3 text-10 font-semibold text-white/60">{{ $isReorder ? 'Il riordino non sostiene nuovamente il costo di acquisizione del cliente.' : 'Il CAC medio è calcolato sugli ultimi 30 giorni.' }}</p>
                     </div>
                     <span class="rounded-full px-8 py-5 text-10 font-extrabold uppercase {{ $economicStatus['class'] }}">{{ $economicStatus['label'] }}</span>
                 </div>
@@ -93,14 +93,23 @@
                     <div class="rounded-10 bg-white/10 p-8"><p class="text-10 font-extrabold uppercase text-white/50">Totale cliente</p><p class="mt-3 text-14 font-black">{{ $salesSheet && $hasProducts ? '€ '.number_format((float)$salesSheet->revenue_total, 2, ',', '.') : 'N.D.' }}</p></div>
                     <div class="rounded-10 bg-white/10 p-8"><p class="text-10 font-extrabold uppercase text-white/50">Costi diretti</p><p class="mt-3 text-14 font-black">{{ $salesSheet && $hasProducts ? '€ '.number_format((float)$salesSheet->cost_total, 2, ',', '.') : 'N.D.' }}</p></div>
                     <div class="rounded-10 bg-white/10 p-8"><p class="text-10 font-extrabold uppercase text-white/50">Margine lordo</p><p class="mt-3 text-14 font-black">{{ $salesSheet && $hasProducts ? '€ '.number_format((float)$salesSheet->margin_total, 2, ',', '.') : 'N.D.' }}</p></div>
-                    <div class="rounded-10 bg-white/10 p-8"><p class="text-10 font-extrabold uppercase text-white/50">CAC medio</p><p class="mt-3 text-14 font-black">{{ $currentCac !== null ? '€ '.number_format($currentCac, 2, ',', '.') : 'N.D.' }}</p></div>
+                    <div class="rounded-10 bg-white/10 p-8">
+                        <div class="flex items-center justify-center gap-4">
+                            <p class="text-10 font-extrabold uppercase text-white/50">{{ $isReorder ? 'CAC riordino' : 'CAC medio' }}</p>
+                            <span class="group relative inline-flex normal-case">
+                                <button type="button" aria-label="Informazioni sul CAC {{ $isReorder ? 'del riordino' : 'del primo ordine' }}" class="flex h-16 w-16 cursor-help items-center justify-center rounded-full border border-white/40 text-10 font-black leading-none text-white/70 focus:border-white focus:text-white focus:outline-none">?</button>
+                                <span role="tooltip" class="pointer-events-none invisible absolute bottom-full left-1/2 z-50 mb-6 w-[230px] -translate-x-1/2 rounded-10 bg-white px-9 py-7 text-left text-10 font-semibold normal-case leading-[15px] text-black-nike opacity-0 shadow-lg transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">{{ $isReorder ? 'Il costo di acquisizione viene attribuito soltanto al primo ordine del cliente. Per questo riordino il CAC è pari a zero.' : 'Questo è il primo ordine del cliente: il CAC medio degli ultimi 30 giorni viene sottratto qui una sola volta.' }}</span>
+                            </span>
+                        </div>
+                        <p class="mt-3 text-14 font-black">{{ $currentCac !== null ? '€ '.number_format($currentCac, 2, ',', '.') : 'N.D.' }}</p>
+                    </div>
                     <div class="rounded-10 bg-white/10 p-8"><p class="text-10 font-extrabold uppercase text-white/50">Profitto dopo Ads</p><p class="mt-3 text-14 font-black">{{ $profitAfterAds !== null ? '€ '.number_format($profitAfterAds, 2, ',', '.') : 'N.D.' }}</p></div>
                     <div class="rounded-10 bg-white/10 p-8"><p class="text-10 font-extrabold uppercase text-white/50">Margine finale</p><p class="mt-3 text-14 font-black">{{ $profitPercentage !== null ? number_format($profitPercentage, 1, ',', '.').'%' : 'N.D.' }}</p></div>
                     <div class="col-span-2 rounded-10 bg-white/10 p-8"><div class="flex items-center justify-between gap-6"><div><p class="text-10 font-extrabold uppercase text-white/50">CAC massimo sostenibile</p><p class="mt-3 text-14 font-black">{{ $maximumSustainableCac !== null ? '€ '.number_format($maximumSustainableCac, 2, ',', '.') : 'N.D.' }}</p></div><p class="max-w-[210px] text-right text-10 font-semibold leading-[14px] text-white/50">Margine lordo meno il 30% del totale cliente.</p></div></div>
                 </div>
                 <p class="mt-8 rounded-10 bg-white/10 px-8 py-7 text-10 font-semibold leading-[16px] text-white/70">
                     @if($profitPercentage !== null)
-                        Dopo il CAC restano {{ number_format($profitPercentage, 1, ',', '.') }}% del totale vendita.
+                        {{ $isReorder ? 'Senza un nuovo CAC restano' : 'Dopo il CAC restano' }} {{ number_format($profitPercentage, 1, ',', '.') }}% del totale vendita.
                     @else
                         La diagnosi sarà disponibile quando esistono prodotti e un CAC calcolabile.
                     @endif

@@ -156,7 +156,7 @@ class StripeWebhookController extends Controller
             ])->save();
         }
 
-        $body = "Grazie, il pagamento ricevuto correttamente. Procederemo ora con il suo ordine e la aggiorneremo non appena sarà pronto.\n\nPer completare la fatturazione, clicchi sul pulsante qui sotto e inserisca i suoi dati di fatturazione.";
+        $body = "Grazie, il pagamento è stato ricevuto correttamente.\n\nProcederemo ora con il suo ordine e la aggiorneremo non appena sarà pronto.\n\nPer completare la fatturazione, clicchi sul pulsante qui sotto e inserisca i suoi dati di fatturazione.";
         $payload = [
             'messaging_product' => 'whatsapp',
             'to' => $conversation->contact_phone,

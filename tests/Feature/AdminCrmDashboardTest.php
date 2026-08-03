@@ -470,11 +470,53 @@ class AdminCrmDashboardTest extends TestCase
             ->call('addProduct')
             ->assertHasNoErrors()
             ->assertSee('CAC medio')
+            ->assertSee('Questo è il primo ordine del cliente: il CAC medio degli ultimi 30 giorni viene sottratto qui una sola volta.')
             ->assertSee('€ 20,00')
             ->assertSee('€ 30,00')
             ->assertSee('€ 17,03')
             ->assertSee('27,3%')
             ->assertSee('Non sostenibile');
+    }
+
+    public function test_reorder_does_not_apply_customer_acquisition_cost_again(): void
+    {
+        $this->actingAs($this->owner(), 'admin');
+        $lead = $this->lead(['status' => 'order_completed']);
+        $lead->salesSheets()->create([
+            'order_number' => 'ORD-000001',
+            'name' => 'Primo ordine',
+            'revenue_total' => 100,
+            'cost_total' => 50,
+            'margin_total' => 50,
+        ]);
+        $reorder = $lead->salesSheets()->create([
+            'order_number' => 'ORD-000002',
+            'name' => 'Riordino',
+            'revenue_total' => 100,
+            'cost_total' => 60,
+            'margin_total' => 40,
+        ]);
+        $reorder->items()->create([
+            'product_code' => 'REORDER',
+            'product_name' => 'Prodotto riordinato',
+            'quantity' => 1,
+            'product_unit_cost' => 60,
+            'product_unit_price' => 100,
+            'final_unit_price' => 100,
+            'cost_total' => 60,
+            'revenue_total' => 100,
+            'margin_total' => 40,
+        ]);
+        $googleAds = \Mockery::mock(GoogleAdsReportingService::class);
+        $googleAds->shouldNotReceive('performance');
+        $this->app->instance(GoogleAdsReportingService::class, $googleAds);
+
+        Livewire::test(LeadSalesSheetComponent::class, ['leadId' => $lead->id, 'sheetId' => $reorder->id])
+            ->assertSee('CAC riordino')
+            ->assertSee('Il costo di acquisizione viene attribuito soltanto al primo ordine del cliente. Per questo riordino il CAC è pari a zero.')
+            ->assertSee('€ 0,00')
+            ->assertSee('€ 40,00')
+            ->assertSee('Senza un nuovo CAC restano 40,0% del totale vendita.');
     }
 
     public function test_lost_lead_requires_a_standard_loss_reason(): void

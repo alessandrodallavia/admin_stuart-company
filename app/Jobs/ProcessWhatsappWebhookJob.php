@@ -266,7 +266,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
 
         $lead->save();
 
-        $this->sendText($from, 'Perfetto, ti invio subito la proforma con tutti i dati bancari per il bonifico.', $conversation);
+        $this->sendText($from, "Per poterle inviare la fattura proforma e procedere con la conferma dell\'ordine, avrei bisogno dei seguenti dati di fatturazione:\n\n- Nome e cognome / Ragione sociale\n- Codice fiscale / Partita IVA\n- Indirizzo completo\n- Codice destinatario / PEC (se azienda)\n\nNon appena il pagamento sarà confermato, avvieremo la produzione e le comunicheremo la data di consegna prevista.\n\nRimango a disposizione per qualsiasi necessità.", $conversation);
         $this->requestHumanHandoff($conversation, 'Il cliente ha richiesto pagamento con bonifico: inviare proforma con dati bancari.');
         $adminNotifications->notifyBankTransferProformaRequested($lead->fresh());
     }
