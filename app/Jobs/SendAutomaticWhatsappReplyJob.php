@@ -63,11 +63,11 @@ class SendAutomaticWhatsappReplyJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $body = collect(MessageTemplates::current())
-            ->firstWhere('title', 'Risposta iniziale')['message'] ?? null;
+        $templateTitle = $lead->calculator_used ? 'Risposta iniziale calcolatore' : 'Risposta iniziale';
+        $body = MessageTemplates::initialReply((bool) $lead->calculator_used);
 
         if (! is_string($body) || trim($body) === '') {
-            throw new RuntimeException('Template "Risposta iniziale" non configurato per il periodo corrente.');
+            throw new RuntimeException("Template \"{$templateTitle}\" non configurato per il periodo corrente.");
         }
         $payload = [
             'messaging_product' => 'whatsapp',
