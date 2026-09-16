@@ -979,7 +979,32 @@ class LeadController extends Controller
     private function ensureStripeCustomer(Lead $lead, string $secretKey): string
     {
         if ($lead->stripe_customer_id) {
-            return $lead->stripe_customer_id;
+            try {
+                $response = Http::withToken($secretKey)
+                    ->get('https://api.stripe.com/v1/customers/'.$lead->stripe_customer_id);
+            } catch (ConnectionException $exception) {
+                throw ValidationException::withMessages([
+                    'payment_amount' => 'Stripe non raggiungibile durante la verifica del cliente. Controlla la connessione e riprova.',
+                ]);
+            }
+
+            if ($response->successful() && ! $response->json('deleted')) {
+                return $lead->stripe_customer_id;
+            }
+
+            $isMissingCustomer = $response->status() === 404
+                && $response->json('error.code') === 'resource_missing';
+
+            if (! $isMissingCustomer && ! $response->json('deleted')) {
+                throw ValidationException::withMessages([
+                    'payment_amount' => 'Verifica cliente Stripe fallita: '.($response->json('error.message') ?: 'errore sconosciuto'),
+                ]);
+            }
+
+            Log::info('Customer Stripe non disponibile nell’account corrente, verrà ricreato', [
+                'lead_id' => $lead->id,
+                'previous_stripe_customer_id' => $lead->stripe_customer_id,
+            ]);
         }
 
         try {

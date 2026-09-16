@@ -780,6 +780,53 @@ class TrainingModeTest extends TestCase
         $this->assertSame('https://checkout.stripe.com/c/pay/cs_test_training', $lead->payment_link);
     }
 
+    public function test_stripe_customer_from_another_account_is_recreated_before_checkout(): void
+    {
+        config()->set('services.stripe.test_secret_key', 'sk_test_training');
+        Http::fake(function ($request) {
+            if ($request->method() === 'GET') {
+                return Http::response([
+                    'error' => ['code' => 'resource_missing', 'message' => 'No such customer'],
+                ], 404);
+            }
+
+            if ($request->url() === 'https://api.stripe.com/v1/customers') {
+                return Http::response(['id' => 'cus_new_account']);
+            }
+
+            return Http::response([
+                'id' => 'cs_test_new_account',
+                'url' => 'https://checkout.stripe.com/c/pay/cs_test_new_account',
+            ]);
+        });
+
+        $operator = $this->operator();
+        $lead = $this->lead([
+            'uuid' => 'TRAIN-OLD-CUSTOMER',
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+            'stripe_customer_id' => 'cus_old_account',
+        ]);
+        $lead->quotePdfs()->create([
+            'proposal_number' => 'TRAINING-NEW-ACCOUNT/A',
+            'amount' => 420,
+            'disk' => 'local',
+            'path' => 'quotes/proposta-new-account.pdf',
+            'filename' => 'proposta-new-account.pdf',
+            'mime_type' => 'application/pdf',
+            'uploaded_at' => now(),
+        ]);
+
+        $this->actingAs($operator, 'admin')
+            ->post("/leads/{$lead->id}/stripe-payment-link")
+            ->assertRedirect();
+
+        $this->assertSame('cus_new_account', $lead->fresh()->stripe_customer_id);
+        Http::assertSentCount(3);
+        Http::assertSent(fn ($request) => $request->method() === 'GET'
+            && $request->url() === 'https://api.stripe.com/v1/customers/cus_old_account');
+    }
+
     public function test_training_stripe_link_requires_a_proposal(): void
     {
         Http::fake();
