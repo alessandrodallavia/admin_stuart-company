@@ -471,8 +471,7 @@
                                 </form>
                             </section>
 
-                            @if ($selectedLead->live_mockup_used || filled($selectedLead->live_mockup_front_file) || filled($selectedLead->live_mockup_back_file))
-                                @php
+                            @php
                                     $personalizationLabels = [
                                         'heart_logo' => 'Logo lato cuore',
                                         'front_print' => 'Stampa frontale',
@@ -482,14 +481,15 @@
                                         'big_front_print_big_back_print' => 'Stampa grande frontale + stampa grande retro',
                                     ];
                                     $mockupPersonalization = $personalizationLabels[$selectedLead->calculator_personalization] ?? $selectedLead->calculator_personalization;
-                                @endphp
+                                    $hasLiveMockupGraphics = filled($selectedLead->live_mockup_front_file) || filled($selectedLead->live_mockup_back_file);
+                            @endphp
                                 <section x-show="tab === 'main'" x-cloak class="order-2 overflow-hidden rounded-10 border border-gray-mid bg-white shadow-sm lg:col-start-2 lg:row-start-1">
                                     <div class="flex items-center justify-between gap-10 bg-black-nike px-12 py-10 text-white">
                                         <div>
                                             <p class="text-10 font-extrabold uppercase tracking-wider text-white/60">Anteprima live</p>
                                             <h3 class="mt-4 text-18 font-black">Grafiche mockup</h3>
                                         </div>
-                                        <span class="rounded-full bg-white/10 px-10 py-6 text-10 font-extrabold uppercase">Caricate dal cliente</span>
+                                        <span class="rounded-full bg-white/10 px-10 py-6 text-10 font-extrabold uppercase">{{ $hasLiveMockupGraphics ? 'Caricate dal cliente' : 'Nessuna grafica' }}</span>
                                     </div>
 
                                     <div class="space-y-12 p-12">
@@ -550,7 +550,6 @@
                                         </div>
                                     </div>
                                 </section>
-                            @endif
 
                             <section x-show="tab === 'product'" x-cloak class="order-5 lg:col-span-2 lg:row-start-1">
                                 <div class="mb-10 rounded-10 border border-gray-mid bg-white p-10 sm:p-12">

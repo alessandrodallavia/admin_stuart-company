@@ -927,6 +927,20 @@ class AdminCrmDashboardTest extends TestCase
             ->assertDownload('grafica-fronte.svg');
     }
 
+    public function test_lead_always_shows_the_mockup_diagnostic_section(): void
+    {
+        Storage::fake('live_mockups');
+        $admin = $this->owner();
+        $lead = $this->lead();
+
+        $this->actingAs($admin, 'admin')
+            ->get(route('admin.leads.index', $lead))
+            ->assertOk()
+            ->assertSee('Grafiche mockup')
+            ->assertSee('Nessuna grafica')
+            ->assertSee('Grafica non caricata.');
+    }
+
     private function owner(): AdminUser
     {
         return AdminUser::create([
