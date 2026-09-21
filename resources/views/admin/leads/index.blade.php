@@ -483,7 +483,7 @@
                                     $mockupPersonalization = $personalizationLabels[$selectedLead->calculator_personalization] ?? $selectedLead->calculator_personalization;
                                     $hasLiveMockupGraphics = filled($selectedLead->live_mockup_front_file) || filled($selectedLead->live_mockup_back_file);
                             @endphp
-                                <section class="order-2 overflow-hidden rounded-10 border border-gray-mid bg-white shadow-sm lg:col-start-2 lg:row-start-1">
+                                <section x-show="tab === 'main'" class="order-5 overflow-hidden rounded-10 border border-gray-mid bg-white shadow-sm lg:col-start-2 lg:row-start-3">
                                     <div class="flex items-center justify-between gap-10 bg-black-nike px-12 py-10 text-white">
                                         <div>
                                             <p class="text-10 font-extrabold uppercase tracking-wider text-white/60">Anteprima live</p>

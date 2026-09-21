@@ -912,6 +912,7 @@ class AdminCrmDashboardTest extends TestCase
             ->assertSee('Premium')
             ->assertSee('Nero')
             ->assertSee('Anteprima live')
+            ->assertSee('lg:row-start-3', false)
             ->assertSee('Logo lato cuore')
             ->assertSee(route('admin.leads.mockup-files.show', [$lead, 'front']), false)
             ->assertSee(route('admin.leads.mockup-files.download', [$lead, 'front']), false);
