@@ -484,7 +484,6 @@
                                     $hasLiveMockupGraphics = filled($selectedLead->live_mockup_front_file) || filled($selectedLead->live_mockup_back_file);
                                     $mockupModelKey = Illuminate\Support\Str::slug((string) $selectedLead->calculator_model);
                                     $mockupColorKey = Illuminate\Support\Str::slug((string) $selectedLead->live_mockup_color);
-                                    $mockupPublicUrl = config('filesystems.disks.live_mockups.public_url');
                                     $hasMockupBase = filled($mockupModelKey) && filled($mockupColorKey);
                                     $isHeartLogo = str_starts_with((string) $selectedLead->calculator_personalization, 'heart_logo');
                                     $isLargePrint = in_array($selectedLead->calculator_personalization, ['big_front_print', 'big_front_print_big_back_print'], true);
@@ -551,7 +550,7 @@
                                                     @if ($hasMockupBase)
                                                         <div class="bg-white p-8">
                                                             <div class="relative mx-auto aspect-[4/5] max-w-[250px] overflow-hidden">
-                                                                <img src="{{ $mockupPublicUrl }}/assets/images/landing/live-mockup/{{ $mockupModelKey }}/{{ $mockupModelKey }}-{{ $mockupColorKey }}-{{ $side }}.webp" alt="Mockup {{ strtolower($label) }} {{ $selectedLead->calculator_model }} {{ $selectedLead->live_mockup_color }}" class="h-full w-full object-contain">
+                                                                <img src="{{ route('admin.leads.mockup-base.show', [$selectedLead, $side]) }}" alt="Mockup {{ strtolower($label) }} {{ $selectedLead->calculator_model }} {{ $selectedLead->live_mockup_color }}" class="h-full w-full object-contain">
                                                                 @if ($liveMockupFiles[$side]['exists'])
                                                                     <img src="{{ route('admin.leads.mockup-files.show', [$selectedLead, $side]) }}" alt="Grafica {{ strtolower($label) }} caricata dal cliente" class="absolute -translate-x-1/2 object-contain" style="top: {{ $artworkPositions[$side]['top'] }}; left: {{ $artworkPositions[$side]['left'] }}; width: {{ $artworkPositions[$side]['width'] }}; height: {{ $artworkPositions[$side]['height'] }};">
                                                                 @endif

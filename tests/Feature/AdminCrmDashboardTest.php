@@ -888,9 +888,14 @@ class AdminCrmDashboardTest extends TestCase
     public function test_live_mockup_graphics_are_visible_and_downloadable_from_the_lead(): void
     {
         Storage::fake('live_mockups');
+        Storage::fake('live_mockup_assets');
         Storage::disk('live_mockups')->put(
             'live-mockups/CRM1234/grafica.svg',
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>'
+        );
+        Storage::disk('live_mockup_assets')->put(
+            'premium/premium-black-front.webp',
+            'mockup-webp'
         );
 
         $admin = $this->owner();
@@ -913,7 +918,7 @@ class AdminCrmDashboardTest extends TestCase
             ->assertSee('Black')
             ->assertSee('Anteprima live')
             ->assertSee('lg:row-start-3', false)
-            ->assertSee('https://stuart-company.com/assets/images/landing/live-mockup/premium/premium-black-front.webp', false)
+            ->assertSee(route('admin.leads.mockup-base.show', [$lead, 'front']), false)
             ->assertSee('top: 22%; left: 62%; width: 16%; height: 16%;', false)
             ->assertSee('Logo lato cuore')
             ->assertSee(route('admin.leads.mockup-files.show', [$lead, 'front']), false)
@@ -928,6 +933,11 @@ class AdminCrmDashboardTest extends TestCase
             ->get(route('admin.leads.mockup-files.download', [$lead, 'front']))
             ->assertOk()
             ->assertDownload('grafica-fronte.svg');
+
+        $this->actingAs($admin, 'admin')
+            ->get(route('admin.leads.mockup-base.show', [$lead, 'front']))
+            ->assertOk()
+            ->assertHeader('content-type', 'image/webp');
     }
 
     public function test_lead_always_shows_the_mockup_diagnostic_section(): void

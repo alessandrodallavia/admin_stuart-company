@@ -157,6 +157,24 @@ class LeadController extends Controller
         ]);
     }
 
+    public function showMockupBase(Lead $lead, string $side): StreamedResponse
+    {
+        abort_unless(in_array($side, ['front', 'back'], true), 404);
+
+        $model = Str::slug((string) $lead->calculator_model);
+        $color = Str::slug((string) $lead->live_mockup_color);
+        abort_if($model === '' || $color === '', 404);
+
+        $path = "{$model}/{$model}-{$color}-{$side}.webp";
+        abort_unless(Storage::disk('live_mockup_assets')->exists($path), 404);
+
+        return Storage::disk('live_mockup_assets')->response($path, null, [
+            'Content-Type' => 'image/webp',
+            'Cache-Control' => 'private, max-age=3600',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
     private function mockupFile(Lead $lead, string $side): array
     {
         abort_unless(in_array($side, ['front', 'back'], true), 404);

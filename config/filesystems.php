@@ -41,7 +41,17 @@ return [
         'live_mockups' => [
             'driver' => 'local',
             'root' => env('LIVE_MOCKUP_STORAGE_PATH') ?: base_path('../public_html/storage/app/private'),
-            'public_url' => rtrim(env('LIVE_MOCKUP_PUBLIC_URL', 'https://stuart-company.com'), '/'),
+            'serve' => false,
+            'throw' => false,
+            'report' => false,
+        ],
+
+        'live_mockup_assets' => [
+            'driver' => 'local',
+            'root' => env('LIVE_MOCKUP_ASSET_PATH')
+                ?: (env('LIVE_MOCKUP_STORAGE_PATH')
+                    ? dirname(env('LIVE_MOCKUP_STORAGE_PATH'), 3).'/public/assets/images/landing/live-mockup'
+                    : base_path('../public_html/public/assets/images/landing/live-mockup')),
             'serve' => false,
             'throw' => false,
             'report' => false,
