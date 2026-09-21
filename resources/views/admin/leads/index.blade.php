@@ -482,6 +482,22 @@
                                     ];
                                     $mockupPersonalization = $personalizationLabels[$selectedLead->calculator_personalization] ?? $selectedLead->calculator_personalization;
                                     $hasLiveMockupGraphics = filled($selectedLead->live_mockup_front_file) || filled($selectedLead->live_mockup_back_file);
+                                    $mockupModelKey = Illuminate\Support\Str::slug((string) $selectedLead->calculator_model);
+                                    $mockupColorKey = Illuminate\Support\Str::slug((string) $selectedLead->live_mockup_color);
+                                    $mockupPublicUrl = config('filesystems.disks.live_mockups.public_url');
+                                    $hasMockupBase = filled($mockupModelKey) && filled($mockupColorKey);
+                                    $isHeartLogo = str_starts_with((string) $selectedLead->calculator_personalization, 'heart_logo');
+                                    $isLargePrint = in_array($selectedLead->calculator_personalization, ['big_front_print', 'big_front_print_big_back_print'], true);
+                                    $artworkPositions = [
+                                        'front' => $isHeartLogo
+                                            ? ['top' => '22%', 'left' => '62%', 'width' => '16%', 'height' => '16%']
+                                            : ($isLargePrint
+                                                ? ['top' => '20%', 'left' => '50%', 'width' => '40%', 'height' => '44%']
+                                                : ['top' => '25%', 'left' => '50%', 'width' => '40%', 'height' => '24%']),
+                                        'back' => $isLargePrint
+                                            ? ['top' => '18%', 'left' => '50%', 'width' => '40%', 'height' => '44%']
+                                            : ['top' => '22%', 'left' => '50%', 'width' => '40%', 'height' => '24%'],
+                                    ];
                             @endphp
                                 <section x-show="tab === 'main'" class="order-5 overflow-hidden rounded-10 border border-gray-mid bg-white shadow-sm lg:col-start-2 lg:row-start-3">
                                     <div class="flex items-center justify-between gap-10 bg-black-nike px-12 py-10 text-white">
@@ -528,14 +544,26 @@
                                                     <div class="flex items-center justify-between border-b border-gray-mid bg-white px-10 py-8">
                                                         <p class="text-11 font-black uppercase">{{ $label }}</p>
                                                         @if ($liveMockupFiles[$side]['exists'])
-                                                            <span class="rounded-full bg-whatsapp/10 px-7 py-4 text-9 font-extrabold uppercase text-whatsapp">Disponibile</span>
+                                                            <span class="rounded-full bg-whatsapp/10 px-5 py-2 text-[8px] font-extrabold uppercase leading-none text-whatsapp">Disponibile</span>
                                                         @endif
                                                     </div>
 
-                                                    @if ($liveMockupFiles[$side]['exists'])
+                                                    @if ($hasMockupBase)
+                                                        <div class="bg-white p-8">
+                                                            <div class="relative mx-auto aspect-[4/5] max-w-[250px] overflow-hidden">
+                                                                <img src="{{ $mockupPublicUrl }}/assets/images/landing/live-mockup/{{ $mockupModelKey }}/{{ $mockupModelKey }}-{{ $mockupColorKey }}-{{ $side }}.webp" alt="Mockup {{ strtolower($label) }} {{ $selectedLead->calculator_model }} {{ $selectedLead->live_mockup_color }}" class="h-full w-full object-contain">
+                                                                @if ($liveMockupFiles[$side]['exists'])
+                                                                    <img src="{{ route('admin.leads.mockup-files.show', [$selectedLead, $side]) }}" alt="Grafica {{ strtolower($label) }} caricata dal cliente" class="absolute -translate-x-1/2 object-contain" style="top: {{ $artworkPositions[$side]['top'] }}; left: {{ $artworkPositions[$side]['left'] }}; width: {{ $artworkPositions[$side]['width'] }}; height: {{ $artworkPositions[$side]['height'] }};">
+                                                                @endif
+                                                            </div>
+                                                        </div>
+                                                    @elseif ($liveMockupFiles[$side]['exists'])
                                                         <a href="{{ route('admin.leads.mockup-files.show', [$selectedLead, $side]) }}" target="_blank" rel="noopener" class="block bg-white p-8">
                                                             <img src="{{ route('admin.leads.mockup-files.show', [$selectedLead, $side]) }}" alt="Grafica {{ strtolower($label) }} caricata dal cliente" class="mx-auto h-44 w-full object-contain">
                                                         </a>
+                                                    @endif
+
+                                                    @if ($liveMockupFiles[$side]['exists'])
                                                         <div class="grid grid-cols-2 gap-6 p-8">
                                                             <a href="{{ route('admin.leads.mockup-files.show', [$selectedLead, $side]) }}" target="_blank" rel="noopener" class="inline-flex h-32 items-center justify-center rounded-10 border border-gray-mid bg-white px-8 text-10 font-extrabold uppercase transition hover:border-bullstar hover:text-bullstar">Apri</a>
                                                             <a href="{{ route('admin.leads.mockup-files.download', [$selectedLead, $side]) }}" class="inline-flex h-32 items-center justify-center rounded-10 bg-bullstar px-8 text-10 font-extrabold uppercase text-white transition hover:bg-bullstar-hover">Scarica</a>

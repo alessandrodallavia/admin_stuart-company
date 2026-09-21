@@ -897,7 +897,7 @@ class AdminCrmDashboardTest extends TestCase
         $lead = $this->lead([
             'live_mockup_used' => true,
             'cta_origin' => 'live_mockup',
-            'live_mockup_color' => 'Nero',
+            'live_mockup_color' => 'Black',
             'live_mockup_front_file' => 'live-mockups/CRM1234/grafica.svg',
             'live_mockup_configured_at' => now(),
             'calculator_model' => 'Premium',
@@ -910,9 +910,11 @@ class AdminCrmDashboardTest extends TestCase
             ->assertOk()
             ->assertSee('Grafiche mockup')
             ->assertSee('Premium')
-            ->assertSee('Nero')
+            ->assertSee('Black')
             ->assertSee('Anteprima live')
             ->assertSee('lg:row-start-3', false)
+            ->assertSee('https://stuart-company.com/assets/images/landing/live-mockup/premium/premium-black-front.webp', false)
+            ->assertSee('top: 22%; left: 62%; width: 16%; height: 16%;', false)
             ->assertSee('Logo lato cuore')
             ->assertSee(route('admin.leads.mockup-files.show', [$lead, 'front']), false)
             ->assertSee(route('admin.leads.mockup-files.download', [$lead, 'front']), false);
