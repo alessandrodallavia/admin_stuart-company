@@ -471,6 +471,87 @@
                                 </form>
                             </section>
 
+                            @if ($selectedLead->live_mockup_used || filled($selectedLead->live_mockup_front_file) || filled($selectedLead->live_mockup_back_file))
+                                @php
+                                    $personalizationLabels = [
+                                        'heart_logo' => 'Logo lato cuore',
+                                        'front_print' => 'Stampa frontale',
+                                        'big_front_print' => 'Stampa grande frontale',
+                                        'heart_logo_back_print' => 'Logo lato cuore + stampa retro',
+                                        'front_print_back_print' => 'Stampa frontale + stampa retro',
+                                        'big_front_print_big_back_print' => 'Stampa grande frontale + stampa grande retro',
+                                    ];
+                                    $mockupPersonalization = $personalizationLabels[$selectedLead->calculator_personalization] ?? $selectedLead->calculator_personalization;
+                                @endphp
+                                <section x-show="tab === 'main'" x-cloak class="order-2 overflow-hidden rounded-10 border border-gray-mid bg-white shadow-sm lg:col-start-2 lg:row-start-1">
+                                    <div class="flex items-center justify-between gap-10 bg-black-nike px-12 py-10 text-white">
+                                        <div>
+                                            <p class="text-10 font-extrabold uppercase tracking-wider text-white/60">Anteprima live</p>
+                                            <h3 class="mt-4 text-18 font-black">Grafiche mockup</h3>
+                                        </div>
+                                        <span class="rounded-full bg-white/10 px-10 py-6 text-10 font-extrabold uppercase">Caricate dal cliente</span>
+                                    </div>
+
+                                    <div class="space-y-12 p-12">
+                                        <dl class="grid grid-cols-2 gap-x-10 gap-y-8 rounded-10 border border-gray-mid bg-gray-light p-10 text-11 sm:grid-cols-3">
+                                            <div>
+                                                <dt class="font-extrabold uppercase text-gray">Modello</dt>
+                                                <dd class="mt-3 font-black">{{ $selectedLead->calculator_model ?: '—' }}</dd>
+                                            </div>
+                                            <div>
+                                                <dt class="font-extrabold uppercase text-gray">Colore</dt>
+                                                <dd class="mt-3 font-black">{{ $selectedLead->live_mockup_color ?: '—' }}</dd>
+                                            </div>
+                                            <div>
+                                                <dt class="font-extrabold uppercase text-gray">Quantità</dt>
+                                                <dd class="mt-3 font-black">{{ $selectedLead->calculator_quantity ? number_format($selectedLead->calculator_quantity, 0, ',', '.') : '—' }}</dd>
+                                            </div>
+                                            <div>
+                                                <dt class="font-extrabold uppercase text-gray">Origine CTA</dt>
+                                                <dd class="mt-3 font-black">{{ $selectedLead->cta_origin === 'live_mockup' ? 'Anteprima live' : ($selectedLead->cta_origin ?: '—') }}</dd>
+                                            </div>
+                                            <div class="col-span-2 sm:col-span-3">
+                                                <dt class="font-extrabold uppercase text-gray">Personalizzazione</dt>
+                                                <dd class="mt-3 font-black">{{ $mockupPersonalization ?: '—' }}</dd>
+                                            </div>
+                                            @if ($selectedLead->live_mockup_configured_at)
+                                                <div class="col-span-2 sm:col-span-3">
+                                                    <dt class="font-extrabold uppercase text-gray">Configurato il</dt>
+                                                    <dd class="mt-3 font-black">{{ $selectedLead->live_mockup_configured_at->format('d/m/Y H:i') }}</dd>
+                                                </div>
+                                            @endif
+                                        </dl>
+
+                                        <div class="grid gap-10 sm:grid-cols-2">
+                                            @foreach (['front' => 'Fronte', 'back' => 'Retro'] as $side => $label)
+                                                <article class="overflow-hidden rounded-10 border border-gray-mid bg-gray-light">
+                                                    <div class="flex items-center justify-between border-b border-gray-mid bg-white px-10 py-8">
+                                                        <p class="text-11 font-black uppercase">{{ $label }}</p>
+                                                        @if ($liveMockupFiles[$side]['exists'])
+                                                            <span class="rounded-full bg-whatsapp/10 px-7 py-4 text-9 font-extrabold uppercase text-whatsapp">Disponibile</span>
+                                                        @endif
+                                                    </div>
+
+                                                    @if ($liveMockupFiles[$side]['exists'])
+                                                        <a href="{{ route('admin.leads.mockup-files.show', [$selectedLead, $side]) }}" target="_blank" rel="noopener" class="block bg-white p-8">
+                                                            <img src="{{ route('admin.leads.mockup-files.show', [$selectedLead, $side]) }}" alt="Grafica {{ strtolower($label) }} caricata dal cliente" class="mx-auto h-44 w-full object-contain">
+                                                        </a>
+                                                        <div class="grid grid-cols-2 gap-6 p-8">
+                                                            <a href="{{ route('admin.leads.mockup-files.show', [$selectedLead, $side]) }}" target="_blank" rel="noopener" class="inline-flex h-32 items-center justify-center rounded-10 border border-gray-mid bg-white px-8 text-10 font-extrabold uppercase transition hover:border-bullstar hover:text-bullstar">Apri</a>
+                                                            <a href="{{ route('admin.leads.mockup-files.download', [$selectedLead, $side]) }}" class="inline-flex h-32 items-center justify-center rounded-10 bg-bullstar px-8 text-10 font-extrabold uppercase text-white transition hover:bg-bullstar-hover">Scarica</a>
+                                                        </div>
+                                                    @elseif (filled($liveMockupFiles[$side]['path']))
+                                                        <div class="p-12 text-center text-11 font-bold text-red-700">File non trovato nello spazio di archiviazione.</div>
+                                                    @else
+                                                        <div class="p-12 text-center text-11 font-semibold text-gray">Grafica non caricata.</div>
+                                                    @endif
+                                                </article>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                </section>
+                            @endif
+
                             <section x-show="tab === 'product'" x-cloak class="order-5 lg:col-span-2 lg:row-start-1">
                                 <div class="mb-10 rounded-10 border border-gray-mid bg-white p-10 sm:p-12">
                                     <div class="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">

@@ -885,6 +885,48 @@ class AdminCrmDashboardTest extends TestCase
         $this->assertStringStartsWith("\xEF\xBB\xBF", $csv);
     }
 
+    public function test_live_mockup_graphics_are_visible_and_downloadable_from_the_lead(): void
+    {
+        Storage::fake('live_mockups');
+        Storage::disk('live_mockups')->put(
+            'live-mockups/CRM1234/grafica.svg',
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>'
+        );
+
+        $admin = $this->owner();
+        $lead = $this->lead([
+            'live_mockup_used' => true,
+            'cta_origin' => 'live_mockup',
+            'live_mockup_color' => 'Nero',
+            'live_mockup_front_file' => 'live-mockups/CRM1234/grafica.svg',
+            'live_mockup_configured_at' => now(),
+            'calculator_model' => 'Premium',
+            'calculator_quantity' => 100,
+            'calculator_personalization' => 'heart_logo',
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->get(route('admin.leads.index', $lead))
+            ->assertOk()
+            ->assertSee('Grafiche mockup')
+            ->assertSee('Premium')
+            ->assertSee('Nero')
+            ->assertSee('Anteprima live')
+            ->assertSee('Logo lato cuore')
+            ->assertSee(route('admin.leads.mockup-files.show', [$lead, 'front']), false)
+            ->assertSee(route('admin.leads.mockup-files.download', [$lead, 'front']), false);
+
+        $this->actingAs($admin, 'admin')
+            ->get(route('admin.leads.mockup-files.show', [$lead, 'front']))
+            ->assertOk()
+            ->assertHeader('content-type', 'image/svg+xml');
+
+        $this->actingAs($admin, 'admin')
+            ->get(route('admin.leads.mockup-files.download', [$lead, 'front']))
+            ->assertOk()
+            ->assertDownload('grafica-fronte.svg');
+    }
+
     private function owner(): AdminUser
     {
         return AdminUser::create([

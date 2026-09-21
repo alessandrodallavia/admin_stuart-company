@@ -106,11 +106,20 @@ class LeadController extends Controller
 
         $statuses = $this->statuses();
 
+        $liveMockupFiles = collect([
+            'front' => $selectedLead?->live_mockup_front_file,
+            'back' => $selectedLead?->live_mockup_back_file,
+        ])->map(fn (?string $path) => [
+            'path' => $path,
+            'exists' => filled($path) && Storage::disk('live_mockups')->exists($path),
+        ])->all();
+
         return view('admin.leads.index', [
             'leads' => $leads,
             'selectedLead' => $selectedLead,
             'selectedConversation' => $selectedConversation,
             'selectedSalesSheet' => $selectedSalesSheet,
+            'liveMockupFiles' => $liveMockupFiles,
             'statuses' => $statuses,
             'manualChannels' => $this->manualChannels(),
             'attributionConfidences' => $this->attributionConfidences(),
@@ -123,6 +132,43 @@ class LeadController extends Controller
             'crmProducts' => CrmProduct::where('is_active', true)->whereHas('priceTiers')->orderBy('name')->get(),
             'crmPrintTypes' => CrmPrintType::where('is_active', true)->whereHas('priceTiers')->orderBy('name')->get(),
         ]);
+    }
+
+    public function showMockupFile(Lead $lead, string $side): StreamedResponse
+    {
+        [$path, $filename, $mimeType] = $this->mockupFile($lead, $side);
+
+        return Storage::disk('live_mockups')->response($path, $filename, [
+            'Content-Type' => $mimeType,
+            'Content-Disposition' => 'inline; filename="'.$filename.'"',
+            'Cache-Control' => 'private, max-age=300',
+            'X-Content-Type-Options' => 'nosniff',
+            'Content-Security-Policy' => "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+        ]);
+    }
+
+    public function downloadMockupFile(Lead $lead, string $side): StreamedResponse
+    {
+        [$path, $filename, $mimeType] = $this->mockupFile($lead, $side);
+
+        return Storage::disk('live_mockups')->download($path, $filename, [
+            'Content-Type' => $mimeType,
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    private function mockupFile(Lead $lead, string $side): array
+    {
+        abort_unless(in_array($side, ['front', 'back'], true), 404);
+
+        $path = $side === 'front' ? $lead->live_mockup_front_file : $lead->live_mockup_back_file;
+        abort_if(blank($path) || ! Storage::disk('live_mockups')->exists($path), 404);
+
+        $extension = pathinfo($path, PATHINFO_EXTENSION);
+        $filename = 'grafica-'.($side === 'front' ? 'fronte' : 'retro').($extension ? '.'.$extension : '');
+        $mimeType = Storage::disk('live_mockups')->mimeType($path) ?: 'application/octet-stream';
+
+        return [$path, $filename, $mimeType];
     }
 
     public function store(Request $request): RedirectResponse

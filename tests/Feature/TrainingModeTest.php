@@ -267,6 +267,95 @@ class TrainingModeTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_live_mockup_request_uses_the_dedicated_automatic_reply(): void
+    {
+        Carbon::setTestNow('2026-09-16 10:00:00');
+        Http::fake([
+            'https://graph.facebook.com/*' => Http::response([
+                'messages' => [['id' => 'live-mockup-auto-response']],
+            ]),
+        ]);
+
+        $operator = $this->operator();
+        $lead = $this->lead([
+            'status' => 'confirmed',
+            'phone' => '393331234567',
+            'calculator_used' => true,
+            'live_mockup_used' => true,
+            'cta_origin' => 'live_mockup',
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+        ]);
+        $conversation = WhatsappConversation::withoutGlobalScope('training')->create([
+            'lead_id' => $lead->id,
+            'contact_phone' => $lead->phone,
+            'mode' => 'auto',
+            'status' => 'open',
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+        ]);
+
+        app()->call([new SendAutomaticWhatsappReplyJob(
+            $lead->id,
+            $conversation->id,
+            $lead->phone,
+        ), 'handle']);
+
+        Http::assertSent(function ($request): bool {
+            return str_contains($request['text']['body'], 'ho ricevuto il suo progetto e le grafiche caricate')
+                && str_contains($request['text']['body'], 'Solo dopo la sua approvazione')
+                && ! str_contains($request['text']['body'], 'mi invii semplicemente');
+        });
+        $this->assertDatabaseHas('whatsapp_messages', [
+            'provider_message_id' => 'live-mockup-auto-response',
+            'source' => 'automation',
+        ]);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_other_ctas_do_not_use_the_live_mockup_automatic_reply(): void
+    {
+        Carbon::setTestNow('2026-09-16 10:00:00');
+        Http::fake([
+            'https://graph.facebook.com/*' => Http::response([
+                'messages' => [['id' => 'calculator-auto-response']],
+            ]),
+        ]);
+
+        $operator = $this->operator();
+        $lead = $this->lead([
+            'status' => 'confirmed',
+            'phone' => '393331234567',
+            'calculator_used' => true,
+            'live_mockup_used' => true,
+            'cta_origin' => 'hero',
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+        ]);
+        $conversation = WhatsappConversation::withoutGlobalScope('training')->create([
+            'lead_id' => $lead->id,
+            'contact_phone' => $lead->phone,
+            'mode' => 'auto',
+            'status' => 'open',
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+        ]);
+
+        app()->call([new SendAutomaticWhatsappReplyJob(
+            $lead->id,
+            $conversation->id,
+            $lead->phone,
+        ), 'handle']);
+
+        Http::assertSent(function ($request): bool {
+            return str_contains($request['text']['body'], 'Perfetto, ho ricevuto la sua richiesta.')
+                && ! str_contains($request['text']['body'], 'grafiche caricate');
+        });
+
+        Carbon::setTestNow();
+    }
+
     public function test_request_id_without_label_does_not_connect_to_training_lead(): void
     {
         Http::fake();

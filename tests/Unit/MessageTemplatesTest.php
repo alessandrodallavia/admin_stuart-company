@@ -33,4 +33,19 @@ class MessageTemplatesTest extends TestCase
 
         Carbon::setTestNow();
     }
+
+    public function test_it_selects_the_dedicated_live_mockup_reply(): void
+    {
+        Carbon::setTestNow('2026-09-16 10:00:00');
+
+        $message = MessageTemplates::initialReply(true, true);
+
+        $this->assertStringStartsWith('Buongiorno!', $message);
+        $this->assertStringContainsString('ho ricevuto il suo progetto e le grafiche caricate', $message);
+        $this->assertStringContainsString('rimozione di eventuali sfondi', $message);
+        $this->assertStringContainsString('Solo dopo la sua approvazione', $message);
+        $this->assertStringNotContainsString('mi invii semplicemente', $message);
+
+        Carbon::setTestNow();
+    }
 }

@@ -63,8 +63,16 @@ class SendAutomaticWhatsappReplyJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $templateTitle = $lead->calculator_used ? 'Risposta iniziale calcolatore' : 'Risposta iniziale';
-        $body = MessageTemplates::initialReply((bool) $lead->calculator_used);
+        $isLiveMockupRequest = (bool) $lead->live_mockup_used && $lead->cta_origin === 'live_mockup';
+        $templateTitle = match (true) {
+            $isLiveMockupRequest => 'Risposta iniziale anteprima live',
+            (bool) $lead->calculator_used => 'Risposta iniziale calcolatore',
+            default => 'Risposta iniziale',
+        };
+        $body = MessageTemplates::initialReply(
+            (bool) $lead->calculator_used,
+            $isLiveMockupRequest,
+        );
 
         if (! is_string($body) || trim($body) === '') {
             throw new RuntimeException("Template \"{$templateTitle}\" non configurato per il periodo corrente.");

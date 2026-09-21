@@ -38,6 +38,14 @@ return [
             'report' => false,
         ],
 
+        'live_mockups' => [
+            'driver' => 'local',
+            'root' => env('LIVE_MOCKUP_STORAGE_PATH') ?: base_path('../public_html/storage/app/private'),
+            'serve' => false,
+            'throw' => false,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

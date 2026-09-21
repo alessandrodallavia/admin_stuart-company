@@ -53,8 +53,10 @@ Route::name('admin.')->group(function () {
             Route::get('/', AdminDashboardController::class)->name('dashboard');
             Route::get('/leads/export.csv', [AdminLeadController::class, 'exportCsv'])->name('leads.export');
             Route::get('/leads/board', [AdminLeadController::class, 'board'])->name('leads.board');
-            Route::get('/leads/{lead?}', [AdminLeadController::class, 'index'])->name('leads.index');
             Route::get('/leads/{lead}/quote-pdfs/{quotePdf}', [AdminLeadController::class, 'showQuotePdf'])->name('leads.quote-pdfs.show');
+            Route::get('/leads/{lead}/mockup-files/{side}/download', [AdminLeadController::class, 'downloadMockupFile'])->name('leads.mockup-files.download');
+            Route::get('/leads/{lead}/mockup-files/{side}', [AdminLeadController::class, 'showMockupFile'])->name('leads.mockup-files.show');
+            Route::get('/leads/{lead?}', [AdminLeadController::class, 'index'])->name('leads.index');
         });
 
         Route::middleware('admin.permission:leads.manage')->group(function () {
