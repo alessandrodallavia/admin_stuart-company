@@ -11,6 +11,8 @@ class LeadQuotePdf extends Model
         'lead_id',
         'proposal_number',
         'amount',
+        'project_mockup_front_path',
+        'project_mockup_back_path',
         'disk',
         'path',
         'filename',

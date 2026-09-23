@@ -386,6 +386,38 @@ class AdminCrmDashboardTest extends TestCase
         $this->assertNull($lead->fresh()->acquisition_region);
     }
 
+    public function test_lead_page_shows_stored_billing_data(): void
+    {
+        $lead = $this->lead([
+            'billing_customer_type' => 'company',
+            'billing_name' => 'Stuart Cliente Srl',
+            'billing_email' => 'amministrazione@cliente.test',
+            'billing_phone' => '+39 049 1234567',
+            'billing_tax_code' => '01234567890',
+            'billing_vat_number' => 'IT01234567890',
+            'billing_recipient_code' => 'ABC1234',
+            'billing_pec' => 'cliente@pec.test',
+            'billing_address_line1' => 'Via Roma 10',
+            'billing_address_line2' => 'Scala B',
+            'billing_postal_code' => '35100',
+            'billing_city' => 'Padova',
+            'billing_province' => 'PD',
+            'billing_country' => 'IT',
+            'billing_completed_at' => now(),
+        ]);
+
+        $this->actingAs($this->owner(), 'admin')
+            ->get(route('admin.leads.index', ['lead' => $lead]))
+            ->assertOk()
+            ->assertSee('Dati di fatturazione')
+            ->assertSee('Stuart Cliente Srl')
+            ->assertSee('IT01234567890')
+            ->assertSee('ABC1234')
+            ->assertSee('cliente@pec.test')
+            ->assertSee('Via Roma 10')
+            ->assertSee('35100 Padova');
+    }
+
     public function test_sales_sheet_calculates_product_print_and_margin(): void
     {
         $admin = $this->owner();

@@ -250,7 +250,7 @@ class AdminEmailWorkflowTest extends TestCase
         $this->assertSame('375.25', $lead->fresh()->quote_amount);
     }
 
-    public function test_operator_can_save_proposal_without_pdf(): void
+    public function test_operator_can_generate_project_pdf_with_admin_mockups(): void
     {
         Storage::fake('local');
         Notification::fake();
@@ -266,6 +266,8 @@ class AdminEmailWorkflowTest extends TestCase
             ->post("/leads/{$lead->id}/quote-pdfs", [
                 'proposal_number' => 'PROPOSTA-SENZA-PDF',
                 'proposal_amount' => 180,
+                'project_mockup_front' => UploadedFile::fake()->image('fronte.jpg', 1200, 1200),
+                'project_mockup_back' => UploadedFile::fake()->image('retro.png', 1200, 1200),
             ])
             ->assertSessionHasNoErrors()
             ->assertRedirect();
@@ -274,15 +276,19 @@ class AdminEmailWorkflowTest extends TestCase
 
         $this->assertSame('PROPOSTA-SENZA-PDF', $proposal->proposal_number);
         $this->assertSame('180.00', $proposal->amount);
-        $this->assertNull($proposal->path);
-        $this->assertNull($proposal->filename);
+        $this->assertNotNull($proposal->path);
+        $this->assertSame('progetto-proposta-senza-pdf.pdf', $proposal->filename);
+        Storage::disk('local')->assertExists($proposal->path);
+        Storage::disk('local')->assertExists($proposal->project_mockup_front_path);
+        Storage::disk('local')->assertExists($proposal->project_mockup_back_path);
+        $this->assertStringStartsWith('%PDF-', Storage::disk('local')->get($proposal->path));
         $this->assertSame('PROPOSTA-SENZA-PDF', $lead->fresh()->quote_number);
         $this->assertSame('180.00', $lead->fresh()->quote_amount);
 
         $this->actingAs($operator, 'admin')
             ->get("/leads/{$lead->id}")
             ->assertOk()
-            ->assertSee('Nessun PDF allegato');
+            ->assertSee('progetto-proposta-senza-pdf.pdf');
     }
 
     public function test_payment_link_email_is_plain_and_mentions_bank_transfer_proforma(): void

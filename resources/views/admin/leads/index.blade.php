@@ -626,9 +626,17 @@
                                         <input name="proposal_amount" value="{{ old('proposal_amount') }}" type="number" min="0.50" step="0.01" required placeholder="0,00" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
                                     </label>
                                     <label class="block min-w-0 md:col-span-2">
-                                        <span class="text-12 font-extrabold uppercase tracking-normal text-gray">PDF proposta</span>
+                                        <span class="text-12 font-extrabold uppercase tracking-normal text-gray">PDF esterno (facoltativo)</span>
                                         <input name="proposal_pdf" type="file" accept="application/pdf,.pdf" class="mt-6 block w-full min-w-0 overflow-hidden rounded-10 border border-dashed border-gray-mid bg-white px-8 py-8 text-12 font-semibold text-black-nike file:mr-8 file:rounded-10 file:border-0 file:bg-black-nike file:px-10 file:py-8 file:text-11 file:font-extrabold file:uppercase file:tracking-normal file:text-white focus:border-bullstar focus:ring-bullstar">
-                                        <span class="mt-4 block text-10 font-semibold text-gray">Facoltativo · PDF fino a 20 MB.</span>
+                                        <span class="mt-4 block text-10 font-semibold text-gray">Se non carichi un PDF, Stuart genera automaticamente il PDF progetto.</span>
+                                    </label>
+                                    <label class="block min-w-0">
+                                        <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Mockup fronte</span>
+                                        <input name="project_mockup_front" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" class="mt-6 block w-full min-w-0 overflow-hidden rounded-10 border border-dashed border-gray-mid bg-white px-8 py-8 text-12 font-semibold text-black-nike file:mr-8 file:rounded-10 file:border-0 file:bg-black-nike file:px-10 file:py-8 file:text-11 file:font-extrabold file:uppercase file:tracking-normal file:text-white">
+                                    </label>
+                                    <label class="block min-w-0">
+                                        <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Mockup retro</span>
+                                        <input name="project_mockup_back" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" class="mt-6 block w-full min-w-0 overflow-hidden rounded-10 border border-dashed border-gray-mid bg-white px-8 py-8 text-12 font-semibold text-black-nike file:mr-8 file:rounded-10 file:border-0 file:bg-black-nike file:px-10 file:py-8 file:text-11 file:font-extrabold file:uppercase file:tracking-normal file:text-white">
                                     </label>
                                     <label class="flex items-start gap-8 rounded-10 border border-gray-mid bg-white px-10 py-8">
                                         <input name="send_google_event" value="1" type="checkbox" class="mt-1 rounded border-gray-mid text-bullstar focus:ring-bullstar">
@@ -637,7 +645,7 @@
                                         </span>
                                     </label>
                                     <button type="submit" class="w-full rounded-10 bg-bullstar px-16 py-12 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">
-                                        Salva proposta
+                                        Genera PDF progetto
                                     </button>
                                 </form>
 
@@ -750,6 +758,61 @@
                             </section>
 
                             <section x-show="tab === 'main'" x-cloak class="order-4 grid gap-10 lg:col-start-2 lg:row-start-2">
+                                @php
+                                    $hasBillingData = collect([
+                                        $selectedLead->billing_name,
+                                        $selectedLead->billing_email,
+                                        $selectedLead->billing_phone,
+                                        $selectedLead->billing_tax_code,
+                                        $selectedLead->billing_vat_number,
+                                        $selectedLead->billing_recipient_code,
+                                        $selectedLead->billing_pec,
+                                        $selectedLead->billing_address_line1,
+                                        $selectedLead->billing_address_line2,
+                                        $selectedLead->billing_postal_code,
+                                        $selectedLead->billing_city,
+                                        $selectedLead->billing_province,
+                                        $selectedLead->billing_country,
+                                    ])->contains(fn ($value) => filled($value));
+                                    $billingType = match ($selectedLead->billing_customer_type) {
+                                        'company', 'business' => 'Azienda',
+                                        'private', 'individual' => 'Privato',
+                                        default => $selectedLead->billing_customer_type ?: '—',
+                                    };
+                                    $billingAddress = collect([
+                                        $selectedLead->billing_address_line1,
+                                        $selectedLead->billing_address_line2,
+                                        trim(collect([$selectedLead->billing_postal_code, $selectedLead->billing_city])->filter()->join(' ')),
+                                        $selectedLead->billing_province,
+                                        $selectedLead->billing_country,
+                                    ])->filter()->join(', ');
+                                @endphp
+                                <div class="overflow-hidden rounded-10 border border-gray-mid bg-white shadow-sm">
+                                    <div class="flex items-center justify-between gap-8 border-b border-gray-mid bg-gray-light px-12 py-8">
+                                        <div>
+                                            <p class="text-11 font-black uppercase">Dati di fatturazione</p>
+                                            <p class="mt-3 text-10 font-semibold text-gray">Dati salvati direttamente sul lead.</p>
+                                        </div>
+                                        @if ($selectedLead->billing_completed_at)
+                                            <span class="rounded-full bg-whatsapp/10 px-8 py-5 text-9 font-extrabold uppercase text-whatsapp">Completi</span>
+                                        @endif
+                                    </div>
+                                    @if ($hasBillingData)
+                                        <dl class="grid gap-x-10 gap-y-8 p-12 text-11 sm:grid-cols-2">
+                                            <div><dt class="font-extrabold uppercase text-gray">Tipo cliente</dt><dd class="mt-3 font-black">{{ $billingType }}</dd></div>
+                                            <div><dt class="font-extrabold uppercase text-gray">Intestatario</dt><dd class="mt-3 break-words font-black">{{ $selectedLead->billing_name ?: '—' }}</dd></div>
+                                            <div><dt class="font-extrabold uppercase text-gray">Codice fiscale</dt><dd class="mt-3 break-all font-black">{{ $selectedLead->billing_tax_code ?: '—' }}</dd></div>
+                                            <div><dt class="font-extrabold uppercase text-gray">Partita IVA</dt><dd class="mt-3 break-all font-black">{{ $selectedLead->billing_vat_number ?: '—' }}</dd></div>
+                                            <div><dt class="font-extrabold uppercase text-gray">Codice SDI</dt><dd class="mt-3 break-all font-black">{{ $selectedLead->billing_recipient_code ?: '—' }}</dd></div>
+                                            <div><dt class="font-extrabold uppercase text-gray">PEC</dt><dd class="mt-3 break-all font-black">{{ $selectedLead->billing_pec ?: '—' }}</dd></div>
+                                            <div><dt class="font-extrabold uppercase text-gray">Email fatturazione</dt><dd class="mt-3 break-all font-black">{{ $selectedLead->billing_email ?: '—' }}</dd></div>
+                                            <div><dt class="font-extrabold uppercase text-gray">Telefono fatturazione</dt><dd class="mt-3 break-all font-black">{{ $selectedLead->billing_phone ?: '—' }}</dd></div>
+                                            <div class="sm:col-span-2"><dt class="font-extrabold uppercase text-gray">Indirizzo di fatturazione</dt><dd class="mt-3 break-words font-black">{{ $billingAddress ?: '—' }}</dd></div>
+                                        </dl>
+                                    @else
+                                        <div class="p-12 text-11 font-semibold text-gray">Nessun dato di fatturazione ancora salvato per questo lead.</div>
+                                    @endif
+                                </div>
                                 <div class="rounded-10 border border-gray-mid bg-white p-12 shadow-sm">
                                     <p class="text-11 font-black uppercase">Contatti</p>
                                     <div class="mt-8 grid gap-5">

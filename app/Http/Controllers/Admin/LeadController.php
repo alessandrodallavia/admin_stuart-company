@@ -15,6 +15,7 @@ use App\Models\WhatsappConversation;
 use App\Models\WhatsappMessage;
 use App\Services\EmailMailboxService;
 use App\Services\LeadConversionTrackingService;
+use App\Services\LeadProjectPdfService;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -392,12 +393,14 @@ class LeadController extends Controller
             ->with('status', 'Lead aggiornato.');
     }
 
-    public function storeQuotePdfs(Request $request, Lead $lead, LeadConversionTrackingService $tracking): RedirectResponse
+    public function storeQuotePdfs(Request $request, Lead $lead, LeadConversionTrackingService $tracking, LeadProjectPdfService $projectPdf): RedirectResponse
     {
         $data = $request->validate([
             'proposal_number' => ['required', 'string', 'max:100', Rule::unique('lead_quote_pdfs', 'proposal_number')],
             'proposal_amount' => ['required', 'numeric', 'min:0.50', 'max:99999999.99'],
             'proposal_pdf' => ['nullable', 'file', 'mimes:pdf', 'mimetypes:application/pdf', 'max:20480'],
+            'project_mockup_front' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:20480'],
+            'project_mockup_back' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:20480'],
             'send_google_event' => ['nullable', 'boolean'],
         ]);
 
@@ -412,9 +415,18 @@ class LeadController extends Controller
             $path = $file->storeAs("leads/{$lead->id}/proposals", $filename, self::QUOTE_PDF_DISK);
         }
 
-        $lead->quotePdfs()->create([
+        $mockupPaths = [];
+        foreach (['front', 'back'] as $side) {
+            if ($mockup = $data["project_mockup_{$side}"] ?? null) {
+                $mockupPaths[$side] = $mockup->store("leads/{$lead->id}/project-mockups", self::QUOTE_PDF_DISK);
+            }
+        }
+
+        $proposal = $lead->quotePdfs()->create([
             'proposal_number' => $data['proposal_number'],
             'amount' => $data['proposal_amount'],
+            'project_mockup_front_path' => $mockupPaths['front'] ?? null,
+            'project_mockup_back_path' => $mockupPaths['back'] ?? null,
             'disk' => $file ? self::QUOTE_PDF_DISK : null,
             'path' => $path,
             'filename' => $originalName,
@@ -422,6 +434,13 @@ class LeadController extends Controller
             'size' => $file?->getSize(),
             'uploaded_at' => now(),
         ]);
+
+        if (! $file) {
+            $proposal->forceFill([
+                ...$projectPdf->generate($lead->fresh(), $proposal),
+                'uploaded_at' => now(),
+            ])->save();
+        }
 
         $lead->forceFill([
             'quote_number' => $data['proposal_number'],
@@ -438,7 +457,7 @@ class LeadController extends Controller
 
         return redirect()
             ->route('admin.leads.index', ['lead' => $lead])
-            ->with('status', $file ? 'Proposta caricata.' : 'Proposta salvata senza PDF.');
+            ->with('status', $file ? 'Proposta caricata.' : 'PDF progetto generato.');
     }
 
     public function showQuotePdf(Lead $lead, LeadQuotePdf $quotePdf)
@@ -465,6 +484,12 @@ class LeadController extends Controller
             Storage::disk($quotePdf->disk)->delete($quotePdf->path);
         }
 
+        foreach ([$quotePdf->project_mockup_front_path, $quotePdf->project_mockup_back_path] as $mockupPath) {
+            if ($mockupPath && Storage::disk(self::QUOTE_PDF_DISK)->exists($mockupPath)) {
+                Storage::disk(self::QUOTE_PDF_DISK)->delete($mockupPath);
+            }
+        }
+
         $quotePdf->delete();
         $latestProposal = $lead->quotePdfs()->first();
         $lead->forceFill([
@@ -477,7 +502,7 @@ class LeadController extends Controller
             ->with('status', 'Proposta eliminata.');
     }
 
-    public function createStripePaymentLink(Request $request, Lead $lead): RedirectResponse
+    public function createStripePaymentLink(Request $request, Lead $lead, LeadProjectPdfService $projectPdf): RedirectResponse
     {
         $proposal = $this->latestProposal($lead);
         $quoteNumber = $proposal->proposal_number;
@@ -569,6 +594,13 @@ class LeadController extends Controller
             'status' => 'link_sent',
         ])->save();
         $lead->refresh();
+
+        if ($proposal->disk && $proposal->path && str_starts_with($proposal->filename ?: '', 'progetto-')) {
+            $proposal->forceFill([
+                ...$projectPdf->generate($lead, $proposal),
+                'uploaded_at' => now(),
+            ])->save();
+        }
 
         app(LeadConversionTrackingService::class)->trackPaymentLinkSent($lead);
 
