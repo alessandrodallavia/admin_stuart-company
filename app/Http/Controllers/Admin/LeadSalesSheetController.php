@@ -43,6 +43,9 @@ class LeadSalesSheetController extends Controller
         foreach ($sheet->items->flatMap->attachments as $attachment) {
             Storage::disk($attachment->disk)->delete($attachment->path);
         }
+        foreach ($sheet->items->pluck('size_chart_path')->filter() as $sizeChartPath) {
+            Storage::disk('local')->delete($sizeChartPath);
+        }
 
         $sheet->delete();
         $remainingSheet = $lead->salesSheets()->first();
@@ -76,6 +79,9 @@ class LeadSalesSheetController extends Controller
     {
         abort_unless($item->lead_sales_sheet_id === $lead->salesSheet?->id, 404);
         $sheet = $lead->salesSheet;
+        if ($item->size_chart_path) {
+            Storage::disk('local')->delete($item->size_chart_path);
+        }
         $item->delete();
         $calculator->recalculate($sheet);
 

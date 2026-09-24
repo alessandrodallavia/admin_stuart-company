@@ -638,6 +638,11 @@
                                         <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Mockup retro</span>
                                         <input name="project_mockup_back" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" class="mt-6 block w-full min-w-0 overflow-hidden rounded-10 border border-dashed border-gray-mid bg-white px-8 py-8 text-12 font-semibold text-black-nike file:mr-8 file:rounded-10 file:border-0 file:bg-black-nike file:px-10 file:py-8 file:text-11 file:font-extrabold file:uppercase file:tracking-normal file:text-white">
                                     </label>
+                                    <label class="block min-w-0 md:col-span-2">
+                                        <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Note generali del progetto</span>
+                                        <textarea name="project_notes" rows="4" maxlength="1500" placeholder="Inserisci eventuali indicazioni valide per l'intera proposta..." class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-13 font-medium normal-case text-black-nike focus:border-bullstar focus:ring-bullstar">{{ old('project_notes') }}</textarea>
+                                        <span class="mt-4 block text-10 font-semibold text-gray">Vengono mostrate come ultima sezione del PDF.</span>
+                                    </label>
                                     <label class="flex items-start gap-8 rounded-10 border border-gray-mid bg-white px-10 py-8">
                                         <input name="send_google_event" value="1" type="checkbox" class="mt-1 rounded border-gray-mid text-bullstar focus:ring-bullstar">
                                         <span class="min-w-0 text-12 font-bold leading-[18px] text-black-nike">

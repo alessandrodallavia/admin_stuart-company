@@ -2,12 +2,12 @@
 
 use App\Http\Controllers\Admin\AdminUserController as AdminAdminUserController;
 use App\Http\Controllers\Admin\AuthController as AdminAuthController;
-use App\Http\Controllers\Admin\DocumentController as AdminDocumentController;
-use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\CrmCatalogController as AdminCrmCatalogController;
-use App\Http\Controllers\Admin\LeadSalesSheetController as AdminLeadSalesSheetController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\DocumentController as AdminDocumentController;
 use App\Http\Controllers\Admin\EmailController as AdminEmailController;
 use App\Http\Controllers\Admin\LeadController as AdminLeadController;
+use App\Http\Controllers\Admin\LeadSalesSheetController as AdminLeadSalesSheetController;
 use App\Http\Controllers\Admin\NotificationController as AdminNotificationController;
 use App\Http\Controllers\Admin\ShipmentController as AdminShipmentController;
 use App\Http\Controllers\Admin\TrainingController as AdminTrainingController;
@@ -57,6 +57,7 @@ Route::name('admin.')->group(function () {
             Route::get('/leads/{lead}/mockup-files/{side}/download', [AdminLeadController::class, 'downloadMockupFile'])->name('leads.mockup-files.download');
             Route::get('/leads/{lead}/mockup-files/{side}', [AdminLeadController::class, 'showMockupFile'])->name('leads.mockup-files.show');
             Route::get('/leads/{lead}/mockup-base/{side}', [AdminLeadController::class, 'showMockupBase'])->name('leads.mockup-base.show');
+            Route::get('/tools/project-pdf-preview', [AdminLeadController::class, 'previewProjectPdf'])->name('tools.project-pdf-preview');
             Route::get('/leads/{lead?}', [AdminLeadController::class, 'index'])->name('leads.index');
         });
 

@@ -13,6 +13,8 @@ class LeadQuotePdf extends Model
         'amount',
         'project_mockup_front_path',
         'project_mockup_back_path',
+        'project_size_chart_path',
+        'project_notes',
         'disk',
         'path',
         'filename',

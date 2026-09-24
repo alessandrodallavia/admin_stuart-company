@@ -268,6 +268,7 @@ class AdminEmailWorkflowTest extends TestCase
                 'proposal_amount' => 180,
                 'project_mockup_front' => UploadedFile::fake()->image('fronte.jpg', 1200, 1200),
                 'project_mockup_back' => UploadedFile::fake()->image('retro.png', 1200, 1200),
+                'project_notes' => 'Controllare le quantità definitive prima della produzione.',
             ])
             ->assertSessionHasNoErrors()
             ->assertRedirect();
@@ -281,6 +282,7 @@ class AdminEmailWorkflowTest extends TestCase
         Storage::disk('local')->assertExists($proposal->path);
         Storage::disk('local')->assertExists($proposal->project_mockup_front_path);
         Storage::disk('local')->assertExists($proposal->project_mockup_back_path);
+        $this->assertSame('Controllare le quantità definitive prima della produzione.', $proposal->project_notes);
         $this->assertStringStartsWith('%PDF-', Storage::disk('local')->get($proposal->path));
         $this->assertSame('PROPOSTA-SENZA-PDF', $lead->fresh()->quote_number);
         $this->assertSame('180.00', $lead->fresh()->quote_amount);

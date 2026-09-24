@@ -250,6 +250,18 @@
                                     @error('itemUploads.'.$item->id.'.*')<span class="mt-4 block text-10 font-bold text-red-600">{{ $message }}</span>@enderror
                                 </label>
 
+                                <label class="mt-8 block cursor-pointer rounded-10 border border-dashed border-gray-mid bg-gray-light px-10 py-8 transition hover:border-bullstar hover:bg-bullstar/5">
+                                    <span class="flex items-center gap-8">
+                                        <span class="flex h-28 w-28 shrink-0 items-center justify-center rounded-full bg-white text-16 font-black text-bullstar">↕</span>
+                                        <span>
+                                            <span class="block text-10 font-extrabold uppercase">Tabella taglie del prodotto</span>
+                                            <span class="mt-2 block text-10 font-semibold text-gray">JPG o PNG · max 20 MB @if($item->size_chart_path) · già caricata @endif</span>
+                                        </span>
+                                    </span>
+                                    <input wire:model="itemSizeCharts.{{ $item->id }}" type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" class="sr-only">
+                                    @error('itemSizeCharts.'.$item->id)<span class="mt-4 block text-10 font-bold text-red-600">{{ $message }}</span>@enderror
+                                </label>
+
                                 @if($item->attachments->isNotEmpty())
                                     <div class="mt-8 grid gap-4 sm:grid-cols-2">
                                         @foreach($item->attachments as $attachment)

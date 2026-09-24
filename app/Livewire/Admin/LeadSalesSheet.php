@@ -56,6 +56,8 @@ class LeadSalesSheet extends Component
 
     public array $itemUploads = [];
 
+    public array $itemSizeCharts = [];
+
     public string $orderName = '';
 
     public ?string $statusMessage = null;
@@ -158,9 +160,12 @@ class LeadSalesSheet extends Component
         foreach ($item->attachments as $attachment) {
             Storage::disk($attachment->disk)->delete($attachment->path);
         }
+        if ($item->size_chart_path) {
+            Storage::disk('local')->delete($item->size_chart_path);
+        }
         $item->delete();
         $calculator->recalculate($sheet);
-        unset($this->printTypeIds[$itemId], $this->itemFinalPrices[$itemId], $this->itemColors[$itemId], $this->itemNotes[$itemId], $this->itemUploads[$itemId]);
+        unset($this->printTypeIds[$itemId], $this->itemFinalPrices[$itemId], $this->itemColors[$itemId], $this->itemNotes[$itemId], $this->itemUploads[$itemId], $this->itemSizeCharts[$itemId]);
         $this->statusMessage = 'Prodotto rimosso.';
     }
 
@@ -287,6 +292,7 @@ class LeadSalesSheet extends Component
             "itemNotes.$itemId" => ['nullable', 'string', 'max:10000'],
             "itemUploads.$itemId" => ['nullable', 'array', 'max:10'],
             "itemUploads.$itemId.*" => ['file', 'max:10240'],
+            "itemSizeCharts.$itemId" => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:20480'],
         ]);
 
         $this->persistItemDetails($item);
@@ -325,6 +331,7 @@ class LeadSalesSheet extends Component
             'itemNotes.*' => ['nullable', 'string', 'max:10000'],
             'itemUploads.*' => ['nullable', 'array', 'max:10'],
             'itemUploads.*.*' => ['file', 'max:10240'],
+            'itemSizeCharts.*' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:20480'],
         ]);
 
         foreach ($sheet->items as $item) {
@@ -467,7 +474,17 @@ class LeadSalesSheet extends Component
             ]);
         }
 
+        if ($file = $this->itemSizeCharts[$item->id] ?? null) {
+            if ($item->size_chart_path) {
+                Storage::disk('local')->delete($item->size_chart_path);
+            }
+            $item->update([
+                'size_chart_path' => $file->store('lead-orders/'.$this->leadId.'/items/'.$item->id.'/size-charts', 'local'),
+            ]);
+        }
+
         $this->itemUploads[$item->id] = [];
+        $this->itemSizeCharts[$item->id] = null;
     }
 
     private function suggestFinalPrice(): void

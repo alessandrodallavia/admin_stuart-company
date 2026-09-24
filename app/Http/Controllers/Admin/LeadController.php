@@ -11,6 +11,9 @@ use App\Models\EmailMessage;
 use App\Models\Lead;
 use App\Models\LeadCategory;
 use App\Models\LeadQuotePdf;
+use App\Models\LeadSalesItem;
+use App\Models\LeadSalesItemPrint;
+use App\Models\LeadSalesSheet;
 use App\Models\WhatsappConversation;
 use App\Models\WhatsappMessage;
 use App\Services\EmailMailboxService;
@@ -401,6 +404,7 @@ class LeadController extends Controller
             'proposal_pdf' => ['nullable', 'file', 'mimes:pdf', 'mimetypes:application/pdf', 'max:20480'],
             'project_mockup_front' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:20480'],
             'project_mockup_back' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:20480'],
+            'project_notes' => ['nullable', 'string', 'max:1500'],
             'send_google_event' => ['nullable', 'boolean'],
         ]);
 
@@ -421,12 +425,12 @@ class LeadController extends Controller
                 $mockupPaths[$side] = $mockup->store("leads/{$lead->id}/project-mockups", self::QUOTE_PDF_DISK);
             }
         }
-
         $proposal = $lead->quotePdfs()->create([
             'proposal_number' => $data['proposal_number'],
             'amount' => $data['proposal_amount'],
             'project_mockup_front_path' => $mockupPaths['front'] ?? null,
             'project_mockup_back_path' => $mockupPaths['back'] ?? null,
+            'project_notes' => $data['project_notes'] ?? null,
             'disk' => $file ? self::QUOTE_PDF_DISK : null,
             'path' => $path,
             'filename' => $originalName,
@@ -476,6 +480,132 @@ class LeadController extends Controller
         );
     }
 
+    public function previewProjectPdf(LeadProjectPdfService $projectPdf)
+    {
+        $lead = new Lead([
+            'name' => 'Associazione Sportiva Aurora',
+            'product' => 'T-shirt Premium',
+            'quantity' => 40,
+            'live_mockup_color' => 'Nero',
+            'payment_link' => 'https://checkout.stripe.com/demo-stuart-company',
+        ]);
+        $lead->id = 0;
+
+        $proposal = new LeadQuotePdf([
+            'proposal_number' => 'DEMO-2026-001',
+            'amount' => 706.38,
+            'project_notes' => 'Le tonalità visualizzate nei mockup sono indicative. Prima della produzione definitiva verrà richiesto un ultimo controllo dei file di stampa e delle quantità per taglia.',
+        ]);
+
+        $item = new LeadSalesItem([
+            'configuration_name' => 'T-shirt Premium - Nero',
+            'product_name' => 'T-shirt Premium',
+            'quantity' => 40,
+            'final_unit_price' => 9.85,
+            'revenue_total' => 394,
+            'colors' => ['Nero'],
+            'notes' => 'Logo lato cuore e stampa grande sul retro',
+        ]);
+        $item->setRelation('prints', collect([
+            new LeadSalesItemPrint(['print_name' => 'Logo lato cuore']),
+            new LeadSalesItemPrint(['print_name' => 'Stampa retro']),
+        ]));
+        $item->size_chart_path = $this->demoProjectSizeChart();
+
+        $secondItem = new LeadSalesItem([
+            'configuration_name' => 'Felpa Premium - Blu',
+            'product_name' => 'Felpa Premium',
+            'quantity' => 10,
+            'final_unit_price' => 18.50,
+            'revenue_total' => 185,
+            'colors' => ['Blu'],
+        ]);
+        $secondItem->setRelation('prints', collect([
+            new LeadSalesItemPrint(['print_name' => 'Ricamo lato cuore']),
+        ]));
+        $secondItem->size_chart_path = $this->demoProjectSizeChart();
+
+        $sheet = new LeadSalesSheet;
+        $sheet->setRelation('items', collect([$item, $secondItem]));
+
+        $mockups = [
+            'Fronte' => $this->demoProjectMockup('front'),
+            'Retro' => $this->demoProjectMockup('back'),
+        ];
+        try {
+            $contents = $projectPdf->render($lead, $proposal, $sheet, $mockups);
+        } finally {
+            collect($mockups)->each(fn (string $path) => @unlink($path));
+            collect([$item->size_chart_path, $secondItem->size_chart_path])->each(fn (string $path) => @unlink($path));
+        }
+
+        return response($contents, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="anteprima-progetto-stuart.pdf"',
+            'Cache-Control' => 'no-store, private',
+        ]);
+    }
+
+    private function demoProjectMockup(string $side): string
+    {
+        $image = imagecreatetruecolor(720, 560);
+        $background = imagecolorallocate($image, 244, 247, 251);
+        $shirt = imagecolorallocate($image, 25, 25, 27);
+        $blue = imagecolorallocate($image, 32, 106, 233);
+        $white = imagecolorallocate($image, 255, 255, 255);
+        imagefill($image, 0, 0, $background);
+
+        imagefilledpolygon($image, [230, 85, 150, 125, 65, 225, 155, 285, 195, 235, 195, 505, 525, 505, 525, 235, 565, 285, 655, 225, 570, 125, 490, 85, 435, 125, 285, 125], $shirt);
+        imagefilledellipse($image, 360, 112, 120, 72, $background);
+
+        if ($side === 'front') {
+            imagefilledellipse($image, 425, 205, 58, 58, $blue);
+            imagestring($image, 5, 396, 197, 'S', $white);
+        } else {
+            imagefilledrectangle($image, 275, 190, 445, 350, $blue);
+            imagestring($image, 5, 322, 258, 'STUART', $white);
+        }
+
+        $path = sys_get_temp_dir().'/stuart-project-mockup-'.Str::uuid().'.png';
+        imagepng($image, $path);
+        imagedestroy($image);
+
+        return $path;
+    }
+
+    private function demoProjectSizeChart(): string
+    {
+        $image = imagecreatetruecolor(1400, 300);
+        $white = imagecolorallocate($image, 255, 255, 255);
+        $black = imagecolorallocate($image, 17, 17, 17);
+        $blue = imagecolorallocate($image, 32, 106, 233);
+        $line = imagecolorallocate($image, 222, 226, 232);
+        imagefill($image, 0, 0, $white);
+
+        $columns = ['TAGLIA', 'S', 'M', 'L', 'XL', 'XXL'];
+        $widths = ['LARGHEZZA', '48 cm', '51 cm', '54 cm', '57 cm', '60 cm'];
+        $heights = ['LUNGHEZZA', '69 cm', '71 cm', '73 cm', '75 cm', '77 cm'];
+        $columnWidth = 220;
+        $startX = 40;
+
+        foreach ([$columns, $widths, $heights] as $rowIndex => $row) {
+            $rowY = 25 + ($rowIndex * 82);
+            foreach ($row as $columnIndex => $value) {
+                $cellX = $startX + ($columnIndex * $columnWidth);
+                imagefilledrectangle($image, $cellX, $rowY, $cellX + $columnWidth, $rowY + 66, $rowIndex === 0 ? $black : $white);
+                imagerectangle($image, $cellX, $rowY, $cellX + $columnWidth, $rowY + 66, $line);
+                $textColor = $rowIndex === 0 ? ($columnIndex === 0 ? $blue : $white) : ($columnIndex === 0 ? $blue : $black);
+                imagestring($image, 5, $cellX + 68, $rowY + 25, $value, $textColor);
+            }
+        }
+
+        $path = sys_get_temp_dir().'/stuart-project-size-chart-'.Str::uuid().'.png';
+        imagepng($image, $path);
+        imagedestroy($image);
+
+        return $path;
+    }
+
     public function destroyQuotePdf(Lead $lead, LeadQuotePdf $quotePdf): RedirectResponse
     {
         $quotePdf = $this->quotePdfForLead($lead, $quotePdf);
@@ -484,7 +614,7 @@ class LeadController extends Controller
             Storage::disk($quotePdf->disk)->delete($quotePdf->path);
         }
 
-        foreach ([$quotePdf->project_mockup_front_path, $quotePdf->project_mockup_back_path] as $mockupPath) {
+        foreach ([$quotePdf->project_mockup_front_path, $quotePdf->project_mockup_back_path, $quotePdf->project_size_chart_path] as $mockupPath) {
             if ($mockupPath && Storage::disk(self::QUOTE_PDF_DISK)->exists($mockupPath)) {
                 Storage::disk(self::QUOTE_PDF_DISK)->delete($mockupPath);
             }
