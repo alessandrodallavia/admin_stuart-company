@@ -610,11 +610,14 @@
                                     <div>
                                         <p class="text-10 font-extrabold uppercase tracking-wider text-white/60">Scheda proposta</p>
                                         <h3 class="mt-4 text-18 font-black">Preventivi e invii al cliente</h3>
-                                        <p class="mt-3 text-10 font-semibold text-white/60">Crea, archivia e condividi le proposte commerciali.</p>
+                                        <p class="mt-3 text-10 font-semibold text-white/60">Consulta, archivia e condividi le proposte. I nuovi PDF si generano dall’ordine selezionato.</p>
                                     </div>
                                     <span class="rounded-full bg-white/10 px-10 py-6 text-10 font-extrabold">{{ $selectedLead->quotePdfs->count() }} {{ $selectedLead->quotePdfs->count() === 1 ? 'proposta' : 'proposte' }}</span>
                                 </div>
 
+                                <div class="mx-12 mt-12 rounded-10 border border-bullstar/20 bg-bullstar/5 px-10 py-9 text-11 font-semibold text-gray">
+                                    Per creare una nuova proposta dai prodotti, apri <a href="#product" @click="tab = 'product'" class="font-black text-bullstar underline">Ordini e prodotti</a>, seleziona l’ordine e usa “Genera proposta”. Qui puoi ancora archiviare un PDF ricevuto dall’esterno.
+                                </div>
                                 <form method="POST" action="{{ route('admin.leads.quote-pdfs.store', $selectedLead) }}" enctype="multipart/form-data" class="m-12 grid min-w-0 gap-10 rounded-10 border border-gray-mid bg-gray-light p-10 md:grid-cols-2">
                                     @csrf
                                     <label class="block min-w-0">
@@ -626,22 +629,9 @@
                                         <input name="proposal_amount" value="{{ old('proposal_amount') }}" type="number" min="0.50" step="0.01" required placeholder="0,00" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
                                     </label>
                                     <label class="block min-w-0 md:col-span-2">
-                                        <span class="text-12 font-extrabold uppercase tracking-normal text-gray">PDF esterno (facoltativo)</span>
-                                        <input name="proposal_pdf" type="file" accept="application/pdf,.pdf" class="mt-6 block w-full min-w-0 overflow-hidden rounded-10 border border-dashed border-gray-mid bg-white px-8 py-8 text-12 font-semibold text-black-nike file:mr-8 file:rounded-10 file:border-0 file:bg-black-nike file:px-10 file:py-8 file:text-11 file:font-extrabold file:uppercase file:tracking-normal file:text-white focus:border-bullstar focus:ring-bullstar">
-                                        <span class="mt-4 block text-10 font-semibold text-gray">Se non carichi un PDF, Stuart genera automaticamente il PDF progetto.</span>
-                                    </label>
-                                    <label class="block min-w-0">
-                                        <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Mockup fronte</span>
-                                        <input name="project_mockup_front" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" class="mt-6 block w-full min-w-0 overflow-hidden rounded-10 border border-dashed border-gray-mid bg-white px-8 py-8 text-12 font-semibold text-black-nike file:mr-8 file:rounded-10 file:border-0 file:bg-black-nike file:px-10 file:py-8 file:text-11 file:font-extrabold file:uppercase file:tracking-normal file:text-white">
-                                    </label>
-                                    <label class="block min-w-0">
-                                        <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Mockup retro</span>
-                                        <input name="project_mockup_back" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" class="mt-6 block w-full min-w-0 overflow-hidden rounded-10 border border-dashed border-gray-mid bg-white px-8 py-8 text-12 font-semibold text-black-nike file:mr-8 file:rounded-10 file:border-0 file:bg-black-nike file:px-10 file:py-8 file:text-11 file:font-extrabold file:uppercase file:tracking-normal file:text-white">
-                                    </label>
-                                    <label class="block min-w-0 md:col-span-2">
-                                        <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Note generali del progetto</span>
-                                        <textarea name="project_notes" rows="4" maxlength="1500" placeholder="Inserisci eventuali indicazioni valide per l'intera proposta..." class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-13 font-medium normal-case text-black-nike focus:border-bullstar focus:ring-bullstar">{{ old('project_notes') }}</textarea>
-                                        <span class="mt-4 block text-10 font-semibold text-gray">Vengono mostrate come ultima sezione del PDF.</span>
+                                        <span class="text-12 font-extrabold uppercase tracking-normal text-gray">PDF esterno</span>
+                                        <input name="proposal_pdf" required type="file" accept="application/pdf,.pdf" class="mt-6 block w-full min-w-0 overflow-hidden rounded-10 border border-dashed border-gray-mid bg-white px-8 py-8 text-12 font-semibold text-black-nike file:mr-8 file:rounded-10 file:border-0 file:bg-black-nike file:px-10 file:py-8 file:text-11 file:font-extrabold file:uppercase file:tracking-normal file:text-white focus:border-bullstar focus:ring-bullstar">
+                                        <span class="mt-4 block text-10 font-semibold text-gray">Usa questo modulo solo per archiviare una proposta già prodotta altrove.</span>
                                     </label>
                                     <label class="flex items-start gap-8 rounded-10 border border-gray-mid bg-white px-10 py-8">
                                         <input name="send_google_event" value="1" type="checkbox" class="mt-1 rounded border-gray-mid text-bullstar focus:ring-bullstar">
@@ -650,7 +640,7 @@
                                         </span>
                                     </label>
                                     <button type="submit" class="w-full rounded-10 bg-bullstar px-16 py-12 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">
-                                        Genera PDF progetto
+                                        Archivia PDF esterno
                                     </button>
                                 </form>
 
@@ -670,6 +660,9 @@
                                             <div class="flex flex-wrap items-center justify-between gap-6">
                                                 <div class="min-w-0">
                                                     <p class="text-10 font-extrabold uppercase text-gray">{{ $quotePdf->proposal_number }}</p>
+                                                    @if($quotePdf->salesSheet)
+                                                        <p class="mt-2 text-10 font-bold text-bullstar">{{ $quotePdf->salesSheet->order_number }} · {{ $quotePdf->salesSheet->name }}</p>
+                                                    @endif
                                                     <p class="mt-3 text-18 font-black text-black-nike">€ {{ number_format((float) $quotePdf->amount, 2, ',', '.') }}</p>
                                                     @if ($hasProposalPdf)
                                                         <a href="{{ route('admin.leads.quote-pdfs.show', [$selectedLead, $quotePdf]) }}" target="_blank" class="mt-2 block truncate text-12 font-bold text-bullstar underline-offset-4 hover:underline">{{ $quotePdf->filename }}</a>

@@ -15,8 +15,13 @@ class LeadProjectPdfService
 
     public function generate(Lead $lead, LeadQuotePdf $proposal): array
     {
-        $lead->loadMissing('salesSheets.items.prints');
-        $sheet = $lead->salesSheets->first();
+        $sheet = $proposal->salesSheet;
+        if ($sheet) {
+            $sheet->loadMissing(['items.prints', 'items.attachments']);
+        } else {
+            $lead->loadMissing('salesSheets.items.prints', 'salesSheets.items.attachments');
+            $sheet = $lead->salesSheets->first();
+        }
         $contents = $this->render($lead, $proposal, $sheet, $this->mockups($proposal));
 
         $directory = "leads/{$lead->id}/proposals";
@@ -82,6 +87,31 @@ class LeadProjectPdfService
             : null;
     }
 
+    private function itemMockups($item, array $fallback = []): array
+    {
+        if (! $item) {
+            return $fallback;
+        }
+
+        $mockups = collect($item->attachments ?? [])
+            ->filter(fn ($attachment) => in_array($attachment->role, ['mockup_front', 'mockup_back'], true))
+            ->mapWithKeys(function ($attachment) {
+                $path = file_exists($attachment->path)
+                    ? $attachment->path
+                    : (Storage::disk($attachment->disk)->exists($attachment->path) ? Storage::disk($attachment->disk)->path($attachment->path) : null);
+                if (! $path) {
+                    return [];
+                }
+
+                return [
+                    $attachment->role === 'mockup_front' ? 'Fronte' : 'Retro' => $path,
+                ];
+            })
+            ->all();
+
+        return $mockups + $fallback;
+    }
+
     private function registerFonts(): void
     {
         if (! file_exists(K_PATH_FONTS.'roboto.php')) {
@@ -142,6 +172,15 @@ class LeadProjectPdfService
         $pdf->SetXY($x + 8, 53);
         $pdf->Cell($width - 16, 4, 'Controlla mockup, configurazione e prezzo prima di confermare.', 0, 0, 'C');
 
+        $items = collect($sheet?->items ?? []);
+        if ($items->count() > 1) {
+            $this->drawProductsWithMockups($pdf, $lead, $items, $mockups, $proposal->project_notes, $subtotal, $vat, $amount, $blue, $black, $muted, $surface, $line, $money);
+
+            return;
+        }
+
+        $mockups = $this->itemMockups($items->first(), $mockups);
+
         $this->sectionLabel($pdf, 70, '1. MOCKUP DEFINITIVO', $blue);
         $cardGap = 5.0;
         $cardWidth = ($width - $cardGap) / 2;
@@ -160,15 +199,8 @@ class LeadProjectPdfService
             $pdf->Cell($cardWidth - 10, 4, 'Mockup definitivo', 0, 0, 'C');
             $path = $mockups[$label] ?? null;
             if ($path && file_exists($path)) {
-                $pdf->Image($path, $cardX + 8, 92, $cardWidth - 16, 35, '', '', '', false, 300, '', false, false, 0, 'CM');
+                $pdf->Image($path, $cardX + 1, 92, $cardWidth - 2, 40, '', '', '', false, 300, '', false, false, 0, 'CM');
             }
-        }
-
-        $items = collect($sheet?->items ?? []);
-        if ($items->count() > 1) {
-            $this->drawMultipleProducts($pdf, $lead, $items, $proposal->project_notes, $subtotal, $vat, $amount, $blue, $black, $muted, $surface, $line, $money);
-
-            return;
         }
 
         $this->sectionLabel($pdf, 139, '2. RIEPILOGO CONFIGURAZIONE', $blue);
@@ -183,13 +215,13 @@ class LeadProjectPdfService
 
         $pdf->SetFillColor(...$surface);
         $pdf->SetDrawColor(...$line);
-        $pdf->RoundedRect($x, 146, $width, 65, 5, '1111', 'DF');
+        $pdf->RoundedRect($x, 146, $width, $sizeChart ? 65 : 40, 5, '1111', 'DF');
         $pdf->SetTextColor(...$blue);
         $pdf->SetFont('roboto', 'B', 7.5);
         $pdf->SetXY($x + 6, 149);
         $pdf->Cell($width - 12, 4, 'PRODOTTO 1');
         $pdf->SetFillColor(255, 255, 255);
-        $pdf->RoundedRect($x + 4, 156, $width - 8, 20, 3, '1111', 'F');
+        $pdf->RoundedRect($x + 4, 156, $width - 8, 24, 3, '1111', 'F');
         $pdf->SetTextColor(...$muted);
         $pdf->SetFont('roboto', 'B', 6.5);
         $pdf->SetXY($x + 8, 159);
@@ -217,39 +249,36 @@ class LeadProjectPdfService
         $pdf->SetXY($x + 146, 165);
         $pdf->Cell(28, 5, $money((float) ($item?->revenue_total ?: $subtotal)).' + IVA', 0, 0, 'R');
 
-        $pdf->SetTextColor(...$muted);
-        $pdf->SetFont('roboto', 'B', 6.2);
-        $pdf->SetXY($x + 8, 179);
-        $pdf->Cell($width - 16, 4, 'TABELLA TAGLIE');
-        $pdf->SetFillColor(255, 255, 255);
-        $pdf->RoundedRect($x + 4, 184, $width - 8, 23, 3, '1111', 'F');
         if ($sizeChart && file_exists($sizeChart)) {
-            $pdf->Image($sizeChart, $x + 9, 187, $width - 18, 17, '', '', '', false, 300, '', false, false, 0, 'CM');
-        } else {
             $pdf->SetTextColor(...$muted);
-            $pdf->SetFont('roboto', '', 7);
-            $pdf->SetXY($x + 9, 193);
-            $pdf->Cell($width - 10, 5, 'Tabella taglie non allegata.', 0, 0, 'C');
+            $pdf->SetFont('roboto', 'B', 6.2);
+            $pdf->SetXY($x + 8, 179);
+            $pdf->Cell($width - 16, 4, 'TABELLA TAGLIE');
+            $pdf->SetFillColor(255, 255, 255);
+            $pdf->RoundedRect($x + 4, 184, $width - 8, 23, 3, '1111', 'F');
+            $pdf->Image($sizeChart, $x + 9, 187, $width - 18, 17, '', '', '', false, 300, '', false, false, 0, 'CM');
         }
 
-        $this->sectionLabel($pdf, 216, '3. PREZZO E CONFERMA', $blue);
+        $confirmationY = $sizeChart ? 216.0 : 191.0;
+        $offset = $confirmationY - 216.0;
+        $this->sectionLabel($pdf, $confirmationY, '3. PREZZO E CONFERMA', $blue);
         $pdf->SetFillColor(...$black);
-        $pdf->RoundedRect($x, 222, $width, 27, 5, '1111', 'F');
+        $pdf->RoundedRect($x, 222 + $offset, $width, 27, 5, '1111', 'F');
         $pdf->SetTextColor(174, 180, 190);
         $pdf->SetFont('roboto', 'B', 6.5);
-        $pdf->SetXY($x + 7, 226);
+        $pdf->SetXY($x + 7, 226 + $offset);
         $pdf->Cell(75, 4, 'PREZZO DEL PROGETTO');
         $pdf->SetTextColor(255, 255, 255);
         $pdf->SetFont('futuracondensedextrab', '', 20);
-        $pdf->SetXY($x + 7, 231);
+        $pdf->SetXY($x + 7, 231 + $offset);
         $pdf->Cell(75, 9, $money($amount));
         $pdf->SetFont('roboto', '', 6.5);
         $pdf->SetTextColor(174, 180, 190);
-        $pdf->SetXY($x + 7, 241);
+        $pdf->SetXY($x + 7, 241 + $offset);
         $pdf->Cell(75, 4, 'IVA inclusa');
         $pdf->SetFont('roboto', '', 7.5);
         foreach ([['Imponibile', $subtotal], ['IVA '.self::VAT_RATE.'%', $vat], ['Totale IVA inclusa', $amount]] as $index => [$label, $value]) {
-            $rowY = 225 + ($index * 7);
+            $rowY = 225 + $offset + ($index * 7);
             $pdf->SetTextColor($index === 2 ? 255 : 174, $index === 2 ? 255 : 180, $index === 2 ? 255 : 190);
             $pdf->SetFont('roboto', $index === 2 ? 'B' : '', 7.5);
             $pdf->SetXY($x + 105, $rowY);
@@ -262,29 +291,122 @@ class LeadProjectPdfService
         foreach ([['TEMPI DI CONSEGNA', 'Spedizione entro 6 giorni lavorativi dalla conferma + 24/48 ore lavorative per la consegna.'], ['ASSISTENZA DIRETTA', 'Andrea resta a disposizione prima della conferma.']] as $index => [$title, $body]) {
             $cardX = $x + ($index * ($cardWidth + $cardGap));
             $pdf->SetFillColor(...$surface);
-            $pdf->RoundedRect($cardX, 253, $cardWidth, 12, 4, '1111', 'F');
+            $pdf->RoundedRect($cardX, 253 + $offset, $cardWidth, 12, 4, '1111', 'F');
             $pdf->SetTextColor(...$blue);
             $pdf->SetFont('roboto', 'B', 7);
-            $pdf->SetXY($cardX + 5, 254.5);
+            $pdf->SetXY($cardX + 5, 254.5 + $offset);
             $pdf->Cell($cardWidth - 10, 4, $title);
             $pdf->SetTextColor(...$muted);
             $pdf->SetFont('roboto', '', 6.5);
-            $pdf->SetXY($cardX + 5, 258.5);
+            $pdf->SetXY($cardX + 5, 258.5 + $offset);
             $pdf->MultiCell($cardWidth - 10, 6, $body, 0, 'L', false, 0);
         }
 
         $pdf->SetFillColor(...$blue);
-        $pdf->RoundedRect($x, 268, $width, 10, 5, '1111', 'F');
+        $pdf->RoundedRect($x, 268 + $offset, $width, 10, 5, '1111', 'F');
         $pdf->SetTextColor(255, 255, 255);
         $pdf->SetFont('roboto', 'B', 9);
-        $pdf->SetXY($x + 5, 270);
+        $pdf->SetXY($x + 5, 270 + $offset);
         $pdf->Cell($width - 10, 6, "CONFERMA L'ORDINE E PROCEDI AL PAGAMENTO", 0, 0, 'C', false, $lead->payment_link ?: '');
 
-        $this->drawSecondaryActions($pdf, 278.5, $black, $muted, $surface, $line);
+        $this->drawSecondaryActions($pdf, 278.5 + $offset, $black, $muted, $surface, $line);
 
         if (filled($proposal->project_notes)) {
             $pdf->AddPage();
             $this->drawNotesSection($pdf, (string) $proposal->project_notes, 18, $blue, $black, $muted, $surface, $line);
+        }
+    }
+
+    private function drawProductsWithMockups(TCPDF $pdf, Lead $lead, $items, array $legacyMockups, ?string $notes, float $subtotal, float $vat, float $amount, array $blue, array $black, array $muted, array $surface, array $line, callable $money): void
+    {
+        $x = 15.0;
+        $width = 180.0;
+
+        foreach ($items->values() as $index => $item) {
+            if ($index > 0) {
+                $pdf->AddPage();
+                $y = 18.0;
+            } else {
+                $y = 70.0;
+            }
+
+            $this->sectionLabel($pdf, $y, ($index + 1).'. PRODOTTO E MOCKUP', $blue);
+            $y += 7;
+            $product = $item->configuration_name ?: $item->product_name ?: 'Prodotto personalizzato';
+            $quantity = (float) ($item->quantity ?: 1);
+            $colors = collect($item->colors)->filter()->join(', ') ?: ($lead->live_mockup_color ?: '-');
+            $prints = $item->prints?->pluck('print_name')->filter()->join(', ') ?: 'Personalizzazione inclusa';
+
+            $pdf->SetFillColor(...$surface);
+            $pdf->SetDrawColor(...$line);
+            $pdf->RoundedRect($x, $y, $width, 30, 5, '1111', 'DF');
+            $pdf->SetTextColor(...$blue);
+            $pdf->SetFont('roboto', 'B', 7);
+            $pdf->SetXY($x + 7, $y + 4);
+            $pdf->Cell($width - 14, 4, 'PRODOTTO '.($index + 1));
+            $pdf->SetTextColor(...$black);
+            $pdf->SetFont('roboto', 'B', 10);
+            $pdf->SetXY($x + 7, $y + 10);
+            $pdf->Cell(92, 5, $product);
+            $pdf->SetTextColor(...$muted);
+            $pdf->SetFont('roboto', '', 7);
+            $pdf->SetXY($x + 7, $y + 17);
+            $pdf->MultiCell(92, 8, 'Colore: '.$colors."\n".$prints, 0, 'L', false, 0);
+            foreach ([
+                [$x + 108, 18, 'Q.TÀ', number_format($quantity, 0, ',', '.')],
+                [$x + 128, 22, 'PREZZO/PZ', $money((float) $item->final_unit_price)],
+                [$x + 152, 21, 'TOTALE', $money((float) $item->revenue_total)],
+            ] as [$cellX, $cellWidth, $label, $value]) {
+                $pdf->SetTextColor(...$muted);
+                $pdf->SetFont('roboto', 'B', 6);
+                $pdf->SetXY($cellX, $y + 8);
+                $pdf->Cell($cellWidth, 4, $label, 0, 0, 'R');
+                $pdf->SetTextColor(...$black);
+                $pdf->SetFont('roboto', 'B', 7);
+                $pdf->SetXY($cellX, $y + 15);
+                $pdf->Cell($cellWidth, 5, $value, 0, 0, 'R');
+            }
+
+            $mockups = $this->itemMockups($item, $index === 0 ? $legacyMockups : []);
+            $mockupY = $y + 36;
+            $gap = 5.0;
+            $cardWidth = ($width - $gap) / 2;
+            foreach (['Fronte', 'Retro'] as $sideIndex => $label) {
+                $cardX = $x + ($sideIndex * ($cardWidth + $gap));
+                $pdf->SetFillColor(...$surface);
+                $pdf->RoundedRect($cardX, $mockupY, $cardWidth, 65, 5, '1111', 'F');
+                $pdf->SetTextColor(...$blue);
+                $pdf->SetFont('roboto', 'B', 7);
+                $pdf->SetXY($cardX + 5, $mockupY + 4);
+                $pdf->Cell($cardWidth - 10, 4, 'VISTA '.strtoupper($label), 0, 0, 'C');
+                $path = $mockups[$label] ?? null;
+                if ($path && file_exists($path)) {
+                    $pdf->Image($path, $cardX + 1, $mockupY + 7, $cardWidth - 2, 55, '', '', '', false, 300, '', false, false, 0, 'CM');
+                } else {
+                    $pdf->SetTextColor(...$muted);
+                    $pdf->SetFont('roboto', '', 7);
+                    $pdf->SetXY($cardX + 5, $mockupY + 32);
+                    $pdf->Cell($cardWidth - 10, 5, 'Mockup non allegato.', 0, 0, 'C');
+                }
+            }
+
+            $sizeChart = $this->itemSizeChart($item);
+            if ($sizeChart) {
+                $chartY = $mockupY + 71;
+                $pdf->SetTextColor(...$muted);
+                $pdf->SetFont('roboto', 'B', 6.2);
+                $pdf->SetXY($x + 5, $chartY);
+                $pdf->Cell($width - 10, 4, 'TABELLA TAGLIE');
+                $pdf->SetFillColor(...$surface);
+                $pdf->RoundedRect($x, $chartY + 5, $width, 32, 5, '1111', 'F');
+                $pdf->Image($sizeChart, $x + 8, $chartY + 9, $width - 16, 24, '', '', '', false, 300, '', false, false, 0, 'CM');
+            }
+        }
+
+        $pdf->AddPage();
+        $notesY = $this->drawConfirmation($pdf, $lead, $subtotal, $vat, $amount, 18, $blue, $black, $muted, $surface, $line, $money);
+        if (filled($notes)) {
+            $this->drawNotesSection($pdf, (string) $notes, $notesY, $blue, $black, $muted, $surface, $line);
         }
     }
 

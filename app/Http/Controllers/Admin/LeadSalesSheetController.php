@@ -9,13 +9,62 @@ use App\Models\Lead;
 use App\Models\LeadSalesItem;
 use App\Models\LeadSalesItemPrint;
 use App\Models\LeadSalesSheet;
+use App\Services\LeadConversionTrackingService;
+use App\Services\LeadProjectPdfService;
 use App\Services\LeadSalesSheetService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class LeadSalesSheetController extends Controller
 {
+    public function storeProposal(
+        Request $request,
+        Lead $lead,
+        LeadSalesSheet $sheet,
+        LeadProjectPdfService $projectPdf,
+        LeadConversionTrackingService $tracking,
+    ): RedirectResponse {
+        abort_unless($sheet->lead_id === $lead->id, 404);
+
+        $data = $request->validate([
+            'proposal_number' => ['required', 'string', 'max:100', Rule::unique('lead_quote_pdfs', 'proposal_number')],
+            'project_notes' => ['nullable', 'string', 'max:1500'],
+            'send_google_event' => ['nullable', 'boolean'],
+        ]);
+
+        $sheet->load(['items.prints', 'items.attachments']);
+        if ($sheet->items->isEmpty()) {
+            return back()->withErrors(['proposal_number' => 'Aggiungi almeno un prodotto prima di generare la proposta.']);
+        }
+
+        $proposal = $lead->quotePdfs()->create([
+            'lead_sales_sheet_id' => $sheet->id,
+            'proposal_number' => $data['proposal_number'],
+            'amount' => $sheet->revenue_total,
+            'project_notes' => $data['project_notes'] ?? null,
+            'uploaded_at' => now(),
+        ]);
+        $proposal->forceFill([
+            ...$projectPdf->generate($lead, $proposal),
+            'uploaded_at' => now(),
+        ])->save();
+
+        $lead->forceFill([
+            'quote_number' => $proposal->proposal_number,
+            'quote_amount' => $proposal->amount,
+        ])->save();
+
+        if ($request->boolean('send_google_event')) {
+            $lead->forceFill(['status' => 'quote_sent'])->save();
+            $tracking->trackQuoteSent($lead->fresh());
+        }
+
+        return redirect()->to(route('admin.leads.index', ['lead' => $lead, 'sales_sheet' => $sheet->id]).'#proposal')
+            ->with('status', 'Proposta generata dai dati dell’ordine '.$sheet->order_number.'.');
+    }
+
     public function storeOrder(Request $request, Lead $lead): RedirectResponse
     {
         $data = $request->validate(['name' => ['required', 'string', 'max:100']]);

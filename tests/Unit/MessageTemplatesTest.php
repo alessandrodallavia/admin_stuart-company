@@ -48,4 +48,16 @@ class MessageTemplatesTest extends TestCase
 
         Carbon::setTestNow();
     }
+
+    public function test_price_communication_uses_the_complete_forty_piece_standard(): void
+    {
+        $message = collect(MessageTemplates::current())->firstWhere('title', 'Comunicazione del prezzo')['message'];
+
+        $this->assertStringContainsString('I prezzi si riferiscono a 40 pezzi', $message);
+        $this->assertStringContainsString('Totale 40 pz: EUR 219,60 + IVA - EUR 267,91 IVA inclusa', $message);
+        $this->assertStringContainsString('Totale 40 pz: EUR 275,60 + IVA - EUR 336,23 IVA inclusa', $message);
+        $this->assertStringContainsString('Totale 40 pz: EUR 394,00 + IVA - EUR 480,68 IVA inclusa', $message);
+        $this->assertStringContainsString('https://stuart-company.com/#calcolatore-prezzo', $message);
+        $this->assertStringNotContainsString('100 pezzi', $message);
+    }
 }

@@ -56,6 +56,10 @@ class LeadSalesSheet extends Component
 
     public array $itemUploads = [];
 
+    public array $itemMockupFronts = [];
+
+    public array $itemMockupBacks = [];
+
     public array $itemSizeCharts = [];
 
     public string $orderName = '';
@@ -90,6 +94,16 @@ class LeadSalesSheet extends Component
     public function updatedPricingGroupItemId(): void
     {
         $this->suggestFinalPrice();
+    }
+
+    public function updatedItemMockupFronts($file, $itemId): void
+    {
+        $this->persistMockupUpload((int) $itemId, 'front', 'itemMockupFronts');
+    }
+
+    public function updatedItemMockupBacks($file, $itemId): void
+    {
+        $this->persistMockupUpload((int) $itemId, 'back', 'itemMockupBacks');
     }
 
     public function addProduct(LeadSalesSheetService $calculator): void
@@ -165,7 +179,7 @@ class LeadSalesSheet extends Component
         }
         $item->delete();
         $calculator->recalculate($sheet);
-        unset($this->printTypeIds[$itemId], $this->itemFinalPrices[$itemId], $this->itemColors[$itemId], $this->itemNotes[$itemId], $this->itemUploads[$itemId], $this->itemSizeCharts[$itemId]);
+        unset($this->printTypeIds[$itemId], $this->itemFinalPrices[$itemId], $this->itemColors[$itemId], $this->itemNotes[$itemId], $this->itemUploads[$itemId], $this->itemMockupFronts[$itemId], $this->itemMockupBacks[$itemId], $this->itemSizeCharts[$itemId]);
         $this->statusMessage = 'Prodotto rimosso.';
     }
 
@@ -292,7 +306,9 @@ class LeadSalesSheet extends Component
             "itemNotes.$itemId" => ['nullable', 'string', 'max:10000'],
             "itemUploads.$itemId" => ['nullable', 'array', 'max:10'],
             "itemUploads.$itemId.*" => ['file', 'max:10240'],
-            "itemSizeCharts.$itemId" => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:20480'],
+            "itemMockupFronts.$itemId" => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:20480'],
+            "itemMockupBacks.$itemId" => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:20480'],
+            "itemSizeCharts.$itemId" => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:20480'],
         ]);
 
         $this->persistItemDetails($item);
@@ -331,7 +347,9 @@ class LeadSalesSheet extends Component
             'itemNotes.*' => ['nullable', 'string', 'max:10000'],
             'itemUploads.*' => ['nullable', 'array', 'max:10'],
             'itemUploads.*.*' => ['file', 'max:10240'],
-            'itemSizeCharts.*' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:20480'],
+            'itemMockupFronts.*' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:20480'],
+            'itemMockupBacks.*' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:20480'],
+            'itemSizeCharts.*' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:20480'],
         ]);
 
         foreach ($sheet->items as $item) {
@@ -466,6 +484,7 @@ class LeadSalesSheet extends Component
         foreach ($this->itemUploads[$item->id] ?? [] as $file) {
             $path = $file->store('lead-orders/'.$this->leadId.'/items/'.$item->id, 'local');
             $item->attachments()->create([
+                'role' => 'artwork',
                 'disk' => 'local',
                 'path' => $path,
                 'filename' => $file->getClientOriginalName(),
@@ -474,17 +493,86 @@ class LeadSalesSheet extends Component
             ]);
         }
 
+        foreach (['front' => 'itemMockupFronts', 'back' => 'itemMockupBacks'] as $side => $property) {
+            $this->persistMockupUpload($item->id, $side, $property, false);
+        }
+
         if ($file = $this->itemSizeCharts[$item->id] ?? null) {
             if ($item->size_chart_path) {
                 Storage::disk('local')->delete($item->size_chart_path);
             }
-            $item->update([
-                'size_chart_path' => $file->store('lead-orders/'.$this->leadId.'/items/'.$item->id.'/size-charts', 'local'),
-            ]);
+            $stored = $this->storePdfImage($file, 'lead-orders/'.$this->leadId.'/items/'.$item->id.'/size-charts');
+            $item->update(['size_chart_path' => $stored['path']]);
         }
 
         $this->itemUploads[$item->id] = [];
+        $this->itemMockupFronts[$item->id] = null;
+        $this->itemMockupBacks[$item->id] = null;
         $this->itemSizeCharts[$item->id] = null;
+    }
+
+    private function persistMockupUpload(int $itemId, string $side, string $property, bool $showStatus = true): void
+    {
+        if (! $file = $this->{$property}[$itemId] ?? null) {
+            return;
+        }
+
+        $this->authorizeManage();
+        $item = $this->itemForLead($itemId);
+        $this->validate([
+            "{$property}.{$itemId}" => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:20480'],
+        ]);
+
+        foreach ($item->attachments()->where('role', 'mockup_'.$side)->get() as $attachment) {
+            Storage::disk($attachment->disk)->delete($attachment->path);
+            $attachment->delete();
+        }
+
+        $stored = $this->storePdfImage($file, 'lead-orders/'.$this->leadId.'/items/'.$item->id.'/mockups');
+        $item->attachments()->create([
+            'role' => 'mockup_'.$side,
+            'disk' => 'local',
+            ...$stored,
+        ]);
+        $this->{$property}[$itemId] = null;
+
+        if ($showStatus) {
+            $this->statusMessage = 'Mockup '.($side === 'front' ? 'fronte' : 'retro').' salvato e pronto per il PDF.';
+        }
+    }
+
+    private function storePdfImage($file, string $directory): array
+    {
+        if (strtolower($file->getClientOriginalExtension()) !== 'webp') {
+            $path = $file->store($directory, 'local');
+
+            return [
+                'path' => $path,
+                'filename' => $file->getClientOriginalName(),
+                'mime_type' => $file->getClientMimeType(),
+                'size' => $file->getSize(),
+            ];
+        }
+
+        $image = imagecreatefromwebp($file->getRealPath());
+        abort_unless($image !== false, 422, 'Il file WEBP non è valido.');
+        imagealphablending($image, false);
+        imagesavealpha($image, true);
+        ob_start();
+        imagepng($image, null, 6);
+        $contents = ob_get_clean();
+        imagedestroy($image);
+
+        $filename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME).'.png';
+        $path = $directory.'/'.Str::uuid().'.png';
+        Storage::disk('local')->put($path, $contents);
+
+        return [
+            'path' => $path,
+            'filename' => $filename,
+            'mime_type' => 'image/png',
+            'size' => strlen($contents),
+        ];
     }
 
     private function suggestFinalPrice(): void

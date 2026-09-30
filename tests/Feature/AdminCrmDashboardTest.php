@@ -430,6 +430,101 @@ class AdminCrmDashboardTest extends TestCase
         $this->assertStringStartsWith('%PDF-', $response->getContent());
     }
 
+    public function test_admin_generates_a_proposal_from_the_selected_order_with_product_mockups(): void
+    {
+        Storage::fake('local');
+        $lead = $this->lead();
+        $sheet = $lead->salesSheets()->create([
+            'order_number' => 'ORD-000321',
+            'name' => 'Divise evento',
+            'status' => 'draft',
+            'revenue_total' => 512.40,
+            'cost_total' => 250,
+            'margin_total' => 262.40,
+        ]);
+
+        foreach ([['T-shirt staff', 40], ['Felpa coordinatori', 8]] as $index => [$name, $quantity]) {
+            $item = $sheet->items()->create([
+                'product_code' => 'DEMO-'.($index + 1),
+                'product_name' => $name,
+                'quantity' => $quantity,
+                'product_unit_cost' => 5,
+                'product_unit_price' => $index === 0 ? 9.50 : 16.55,
+                'final_unit_price' => $index === 0 ? 9.50 : 16.55,
+                'revenue_total' => $index === 0 ? 380 : 132.40,
+                'colors' => [$index === 0 ? 'Nero' : 'Blu'],
+            ]);
+            foreach (['front', 'back'] as $side) {
+                $file = UploadedFile::fake()->image("{$index}-{$side}.png", 800, 600);
+                $path = $file->store("lead-orders/{$lead->id}/items/{$item->id}/mockups", 'local');
+                $item->attachments()->create([
+                    'role' => 'mockup_'.$side,
+                    'disk' => 'local',
+                    'path' => $path,
+                    'filename' => $file->getClientOriginalName(),
+                    'mime_type' => 'image/png',
+                    'size' => $file->getSize(),
+                ]);
+            }
+        }
+
+        $this->actingAs($this->owner(), 'admin')
+            ->post(route('admin.leads.orders.proposal.store', [$lead, $sheet]), [
+                'proposal_number' => 'PROP-ORD-000321',
+                'project_notes' => 'Confermare colori e quantità prima della produzione.',
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('status');
+
+        $proposal = $lead->quotePdfs()->firstOrFail();
+        $this->assertSame($sheet->id, $proposal->lead_sales_sheet_id);
+        $this->assertSame('512.40', $proposal->amount);
+        Storage::disk('local')->assertExists($proposal->path);
+        $this->assertStringStartsWith('%PDF-', Storage::disk('local')->get($proposal->path));
+    }
+
+    public function test_product_mockup_accepts_webp_and_normalizes_it_for_the_pdf(): void
+    {
+        Storage::fake('local');
+        $this->actingAs($this->owner(), 'admin');
+        $lead = $this->lead();
+        $sheet = $lead->salesSheets()->create([
+            'order_number' => 'ORD-WEBP',
+            'name' => 'Ordine WEBP',
+            'status' => 'draft',
+            'revenue_total' => 100,
+            'cost_total' => 50,
+            'margin_total' => 50,
+        ]);
+        $item = $sheet->items()->create([
+            'product_code' => 'WEBP-1',
+            'product_name' => 'Maglia WEBP',
+            'quantity' => 10,
+            'product_unit_cost' => 5,
+            'product_unit_price' => 10,
+            'final_unit_price' => 10,
+            'revenue_total' => 100,
+        ]);
+
+        $image = imagecreatetruecolor(40, 40);
+        imagefill($image, 0, 0, imagecolorallocate($image, 32, 106, 233));
+        ob_start();
+        imagewebp($image);
+        $contents = ob_get_clean();
+        imagedestroy($image);
+
+        Livewire::test(LeadSalesSheetComponent::class, ['leadId' => $lead->id, 'sheetId' => $sheet->id])
+            ->set("itemMockupFronts.{$item->id}", UploadedFile::fake()->createWithContent('mockup-fronte.webp', $contents))
+            ->assertHasNoErrors()
+            ->assertSee('Mockup fronte salvato e pronto per il PDF.');
+
+        $attachment = $item->attachments()->where('role', 'mockup_front')->firstOrFail();
+        $this->assertSame('mockup-fronte.png', $attachment->filename);
+        $this->assertSame('image/png', $attachment->mime_type);
+        $this->assertStringEndsWith('.png', $attachment->path);
+        Storage::disk('local')->assertExists($attachment->path);
+    }
+
     public function test_sales_sheet_calculates_product_print_and_margin(): void
     {
         $admin = $this->owner();

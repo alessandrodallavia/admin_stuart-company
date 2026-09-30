@@ -237,11 +237,23 @@
                                     </label>
                                 </div>
 
-                                <label class="mt-8 block cursor-pointer rounded-10 border border-dashed border-gray-mid bg-gray-light px-10 py-8 transition hover:border-bullstar hover:bg-bullstar/5">
+                                <div class="mt-8 grid gap-6 sm:grid-cols-2">
+                                    @foreach(['front' => ['Fronte', 'itemMockupFronts'], 'back' => ['Retro', 'itemMockupBacks']] as $side => [$label, $property])
+                                        @php($currentMockup = $item->attachments->firstWhere('role', 'mockup_'.$side))
+                                        <label class="block cursor-pointer rounded-10 border border-dashed border-bullstar/40 bg-bullstar/5 px-10 py-8 transition hover:border-bullstar">
+                                            <span class="block text-10 font-extrabold uppercase">Mockup {{ $label }}</span>
+                                            <span class="mt-2 block truncate text-10 font-semibold text-gray">{{ $currentMockup?->filename ?: 'PNG, JPG o WEBP · salvataggio automatico' }}</span>
+                                            <input wire:model="{{ $property }}.{{ $item->id }}" type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" class="sr-only">
+                                            @error($property.'.'.$item->id)<span class="mt-4 block text-10 font-bold text-red-600">{{ $message }}</span>@enderror
+                                        </label>
+                                    @endforeach
+                                </div>
+
+                                <label class="mt-6 block cursor-pointer rounded-10 border border-dashed border-gray-mid bg-gray-light px-10 py-8 transition hover:border-bullstar hover:bg-bullstar/5">
                                     <span class="flex items-center gap-8">
                                         <span class="flex h-28 w-28 shrink-0 items-center justify-center rounded-full bg-white text-16 font-black text-bullstar">+</span>
                                         <span>
-                                            <span class="block text-10 font-extrabold uppercase">Aggiungi file grafici</span>
+                                            <span class="block text-10 font-extrabold uppercase">File sorgenti per la produzione · non visibili nel PDF</span>
                                             <span class="mt-2 block text-10 font-semibold text-gray">PDF, AI, EPS, SVG, PSD, PNG, JPG o ZIP · max 10 MB</span>
                                         </span>
                                     </span>
@@ -255,10 +267,10 @@
                                         <span class="flex h-28 w-28 shrink-0 items-center justify-center rounded-full bg-white text-16 font-black text-bullstar">↕</span>
                                         <span>
                                             <span class="block text-10 font-extrabold uppercase">Tabella taglie del prodotto</span>
-                                            <span class="mt-2 block text-10 font-semibold text-gray">JPG o PNG · max 20 MB @if($item->size_chart_path) · già caricata @endif</span>
+                                            <span class="mt-2 block text-10 font-semibold text-gray">JPG, PNG o WEBP · max 20 MB @if($item->size_chart_path) · già caricata @endif</span>
                                         </span>
                                     </span>
-                                    <input wire:model="itemSizeCharts.{{ $item->id }}" type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" class="sr-only">
+                                    <input wire:model="itemSizeCharts.{{ $item->id }}" type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" class="sr-only">
                                     @error('itemSizeCharts.'.$item->id)<span class="mt-4 block text-10 font-bold text-red-600">{{ $message }}</span>@enderror
                                 </label>
 
@@ -266,7 +278,9 @@
                                     <div class="mt-8 grid gap-4 sm:grid-cols-2">
                                         @foreach($item->attachments as $attachment)
                                             <div class="flex min-w-0 items-center justify-between gap-5 rounded-10 border border-gray-mid px-8 py-6">
-                                                <span class="truncate text-10 font-bold" title="{{ $attachment->filename }}">{{ $attachment->filename }}</span>
+                                                <span class="truncate text-10 font-bold" title="{{ $attachment->filename }}">
+                                                    @if($attachment->role === 'mockup_front')Fronte · @elseif($attachment->role === 'mockup_back')Retro · @endif{{ $attachment->filename }}
+                                                </span>
                                                 <button type="button" wire:click="removeAttachment({{ $item->id }}, {{ $attachment->id }})" wire:confirm="Rimuovere questo file?" class="shrink-0 text-13 font-black text-red-600" title="Rimuovi file">×</button>
                                             </div>
                                         @endforeach
@@ -359,6 +373,31 @@
             {{-- Invio ordine --}}
             @if($salesSheet?->items?->isNotEmpty())
                 <aside class="space-y-8 lg:sticky lg:top-16">
+                    <form method="POST" action="{{ route('admin.leads.orders.proposal.store', [$leadId, $salesSheet]) }}" class="rounded-10 border border-bullstar/30 bg-bullstar/5 p-10">
+                        @csrf
+                        <div class="flex h-32 w-32 items-center justify-center rounded-full bg-black-nike text-14 font-black text-white">PDF</div>
+                        <p class="mt-8 text-13 font-black">Genera proposta</p>
+                        <p class="mt-3 text-10 font-semibold leading-relaxed text-gray">Crea il PDF usando prodotti, mockup, lavorazioni, quantità e totale di questo ordine.</p>
+
+                        <label class="mt-8 block">
+                            <span class="text-10 font-extrabold uppercase text-gray">Numero proposta</span>
+                            <input name="proposal_number" required maxlength="100" value="{{ old('proposal_number', 'PROP-'.$salesSheet->order_number) }}" class="mt-4 w-full rounded-10 border-gray-mid bg-white px-10 py-8 text-11 font-semibold focus:border-bullstar focus:ring-bullstar">
+                            @error('proposal_number')<span class="mt-4 block text-10 font-bold text-red-600">{{ $message }}</span>@enderror
+                        </label>
+                        <label class="mt-6 block">
+                            <span class="text-10 font-extrabold uppercase text-gray">Note generali</span>
+                            <textarea name="project_notes" rows="3" maxlength="1500" placeholder="Indicazioni valide per tutta la proposta…" class="mt-4 w-full rounded-10 border-gray-mid bg-white px-10 py-8 text-11 font-semibold normal-case focus:border-bullstar focus:ring-bullstar">{{ old('project_notes') }}</textarea>
+                        </label>
+                        <label class="mt-6 flex items-start gap-6 text-10 font-bold">
+                            <input name="send_google_event" value="1" type="checkbox" class="mt-1 rounded border-gray-mid text-bullstar focus:ring-bullstar">
+                            <span>Segna la proposta come inviata e registra l’evento di conversione</span>
+                        </label>
+                        <div class="mt-8 rounded-10 bg-white px-8 py-7 text-10 font-semibold text-gray">
+                            Totale PDF: <span class="font-black text-black-nike">€ {{ number_format((float)$salesSheet->revenue_total, 2, ',', '.') }}</span>
+                        </div>
+                        <button type="submit" class="mt-8 w-full rounded-10 bg-black-nike px-10 py-10 text-10 font-extrabold uppercase text-white transition hover:bg-bullstar">Genera PDF dall’ordine</button>
+                    </form>
+
                     <form wire:submit="sendOrder" class="rounded-10 border border-gray-mid bg-gray-light p-10">
                         <div class="flex h-32 w-32 items-center justify-center rounded-full bg-bullstar text-14 font-black text-white">→</div>
                         <p class="mt-8 text-13 font-black">Invia l'ordine</p>

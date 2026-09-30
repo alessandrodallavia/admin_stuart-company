@@ -9,6 +9,7 @@ class LeadQuotePdf extends Model
 {
     protected $fillable = [
         'lead_id',
+        'lead_sales_sheet_id',
         'proposal_number',
         'amount',
         'project_mockup_front_path',
@@ -31,5 +32,10 @@ class LeadQuotePdf extends Model
     public function lead(): BelongsTo
     {
         return $this->belongsTo(Lead::class);
+    }
+
+    public function salesSheet(): BelongsTo
+    {
+        return $this->belongsTo(LeadSalesSheet::class, 'lead_sales_sheet_id');
     }
 }

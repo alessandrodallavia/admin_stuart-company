@@ -26,4 +26,9 @@ class LeadSalesSheet extends Model
     {
         return $this->hasMany(LeadOrderDispatch::class);
     }
+
+    public function proposals(): HasMany
+    {
+        return $this->hasMany(LeadQuotePdf::class);
+    }
 }

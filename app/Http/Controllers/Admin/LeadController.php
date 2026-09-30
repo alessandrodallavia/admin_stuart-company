@@ -12,6 +12,7 @@ use App\Models\Lead;
 use App\Models\LeadCategory;
 use App\Models\LeadQuotePdf;
 use App\Models\LeadSalesItem;
+use App\Models\LeadSalesItemAttachment;
 use App\Models\LeadSalesItemPrint;
 use App\Models\LeadSalesSheet;
 use App\Models\WhatsappConversation;
@@ -87,7 +88,7 @@ class LeadController extends Controller
 
         $leads = $leadsQuery->paginate(14)->withQueryString();
 
-        $selectedLead = $lead?->fresh()->load(['quotePdfs', 'salesSheets.items.prints', 'createdByAdmin']);
+        $selectedLead = $lead?->fresh()->load(['quotePdfs.salesSheet', 'salesSheets.items.prints', 'createdByAdmin']);
         $selectedSalesSheet = null;
         if ($selectedLead) {
             $requestedSheetId = $request->integer('sales_sheet');
@@ -511,6 +512,10 @@ class LeadController extends Controller
             new LeadSalesItemPrint(['print_name' => 'Stampa retro']),
         ]));
         $item->size_chart_path = $this->demoProjectSizeChart();
+        $item->setRelation('attachments', collect([
+            new LeadSalesItemAttachment(['role' => 'mockup_front', 'disk' => 'local', 'path' => $this->demoProjectMockup('front')]),
+            new LeadSalesItemAttachment(['role' => 'mockup_back', 'disk' => 'local', 'path' => $this->demoProjectMockup('back')]),
+        ]));
 
         $secondItem = new LeadSalesItem([
             'configuration_name' => 'Felpa Premium - Blu',
@@ -524,18 +529,19 @@ class LeadController extends Controller
             new LeadSalesItemPrint(['print_name' => 'Ricamo lato cuore']),
         ]));
         $secondItem->size_chart_path = $this->demoProjectSizeChart();
+        $secondItem->setRelation('attachments', collect([
+            new LeadSalesItemAttachment(['role' => 'mockup_front', 'disk' => 'local', 'path' => $this->demoProjectMockup('front')]),
+            new LeadSalesItemAttachment(['role' => 'mockup_back', 'disk' => 'local', 'path' => $this->demoProjectMockup('back')]),
+        ]));
 
         $sheet = new LeadSalesSheet;
         $sheet->setRelation('items', collect([$item, $secondItem]));
 
-        $mockups = [
-            'Fronte' => $this->demoProjectMockup('front'),
-            'Retro' => $this->demoProjectMockup('back'),
-        ];
+        $mockups = [];
         try {
             $contents = $projectPdf->render($lead, $proposal, $sheet, $mockups);
         } finally {
-            collect($mockups)->each(fn (string $path) => @unlink($path));
+            collect([$item, $secondItem])->flatMap->attachments->each(fn ($attachment) => @unlink($attachment->path));
             collect([$item->size_chart_path, $secondItem->size_chart_path])->each(fn (string $path) => @unlink($path));
         }
 

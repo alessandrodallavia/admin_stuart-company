@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class LeadSalesItemAttachment extends Model
 {
-    protected $fillable = ['lead_sales_item_id', 'disk', 'path', 'filename', 'mime_type', 'size'];
+    protected $fillable = ['lead_sales_item_id', 'role', 'disk', 'path', 'filename', 'mime_type', 'size'];
 
     public function item(): BelongsTo
     {
