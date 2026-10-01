@@ -57,7 +57,6 @@ Route::name('admin.')->group(function () {
             Route::get('/leads/{lead}/mockup-files/{side}/download', [AdminLeadController::class, 'downloadMockupFile'])->name('leads.mockup-files.download');
             Route::get('/leads/{lead}/mockup-files/{side}', [AdminLeadController::class, 'showMockupFile'])->name('leads.mockup-files.show');
             Route::get('/leads/{lead}/mockup-base/{side}', [AdminLeadController::class, 'showMockupBase'])->name('leads.mockup-base.show');
-            Route::get('/tools/project-pdf-preview', [AdminLeadController::class, 'previewProjectPdf'])->name('tools.project-pdf-preview');
             Route::get('/leads/{lead?}', [AdminLeadController::class, 'index'])->name('leads.index');
         });
 

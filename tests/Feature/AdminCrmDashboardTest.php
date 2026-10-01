@@ -418,18 +418,6 @@ class AdminCrmDashboardTest extends TestCase
             ->assertSee('35100 Padova');
     }
 
-    public function test_admin_can_open_temporary_project_pdf_preview(): void
-    {
-        $response = $this->actingAs($this->owner(), 'admin')
-            ->get(route('admin.tools.project-pdf-preview'));
-
-        $response->assertOk()
-            ->assertHeader('content-type', 'application/pdf')
-            ->assertHeader('content-disposition', 'inline; filename="anteprima-progetto-stuart.pdf"');
-
-        $this->assertStringStartsWith('%PDF-', $response->getContent());
-    }
-
     public function test_admin_generates_a_proposal_from_the_selected_order_with_product_mockups(): void
     {
         Storage::fake('local');

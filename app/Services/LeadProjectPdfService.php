@@ -42,9 +42,10 @@ class LeadProjectPdfService
 
     public function render(Lead $lead, LeadQuotePdf $proposal, ?LeadSalesSheet $sheet = null, array $mockups = []): string
     {
-        $amount = round((float) $proposal->amount, 2);
-        $subtotal = round($amount / (1 + self::VAT_RATE / 100), 2);
-        $vat = round($amount - $subtotal, 2);
+        $priceBreakdown = $this->splitVatIncluded((float) $proposal->amount);
+        $amount = $priceBreakdown['gross'];
+        $subtotal = $priceBreakdown['net'];
+        $vat = $priceBreakdown['vat'];
 
         $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
         $this->registerFonts();
@@ -62,6 +63,37 @@ class LeadProjectPdfService
         $this->drawProject($pdf, $lead, $proposal, $sheet, $mockups, $subtotal, $vat, $amount);
 
         return $pdf->Output('', 'S');
+    }
+
+    /**
+     * Scorpora l'IVA da un importo già IVA inclusa.
+     *
+     * Il lordo viene prima normalizzato ai centesimi; l'imponibile viene
+     * arrotondato ai centesimi e l'IVA è calcolata come differenza, così
+     * imponibile + IVA coincide sempre con il totale cliente.
+     *
+     * @return array{gross: float, net: float, vat: float}
+     */
+    public function splitVatIncluded(float $gross): array
+    {
+        $gross = $this->roundMoney($gross);
+        $net = $this->roundMoney($gross / (1 + self::VAT_RATE / 100));
+
+        return [
+            'gross' => $gross,
+            'net' => $net,
+            'vat' => $this->roundMoney($gross - $net),
+        ];
+    }
+
+    public function netUnitPrice(float $grossUnitPrice): float
+    {
+        return $this->roundMoney($grossUnitPrice / (1 + self::VAT_RATE / 100));
+    }
+
+    public function roundMoney(float $value): float
+    {
+        return round(round($value, 3, PHP_ROUND_HALF_UP), 2, PHP_ROUND_HALF_UP);
     }
 
     private function mockups(LeadQuotePdf $proposal): array
@@ -209,7 +241,12 @@ class LeadProjectPdfService
         $sizeChart = $this->itemSizeChart($item);
         $product = $item?->configuration_name ?: $item?->product_name ?: $lead->product ?: $lead->calculator_model ?: 'Progetto personalizzato';
         $quantity = (float) ($item?->quantity ?: $lead->quantity ?: $lead->calculator_quantity ?: 1);
-        $unitPrice = $item ? (float) $item->final_unit_price : ($quantity > 0 ? $subtotal / $quantity : 0);
+        $unitPrice = $item
+            ? $this->netUnitPrice((float) $item->final_unit_price)
+            : ($quantity > 0 ? round($subtotal / $quantity, 2) : 0);
+        $lineTotal = $item
+            ? $this->splitVatIncluded((float) $item->revenue_total)['net']
+            : $subtotal;
         $colors = collect($item?->colors)->filter()->join(', ') ?: ($lead->live_mockup_color ?: '-');
         $prints = $item?->prints?->pluck('print_name')->filter()->join(', ') ?: 'Personalizzazione inclusa';
 
@@ -247,7 +284,7 @@ class LeadProjectPdfService
         $pdf->Cell(31, 5, $money($unitPrice).' + IVA', 0, 0, 'R');
         $pdf->SetFont('roboto', 'B', 8);
         $pdf->SetXY($x + 146, 165);
-        $pdf->Cell(28, 5, $money((float) ($item?->revenue_total ?: $subtotal)).' + IVA', 0, 0, 'R');
+        $pdf->Cell(28, 5, $money($lineTotal).' + IVA', 0, 0, 'R');
 
         if ($sizeChart && file_exists($sizeChart)) {
             $pdf->SetTextColor(...$muted);
@@ -334,6 +371,8 @@ class LeadProjectPdfService
             $y += 7;
             $product = $item->configuration_name ?: $item->product_name ?: 'Prodotto personalizzato';
             $quantity = (float) ($item->quantity ?: 1);
+            $unitPrice = $this->netUnitPrice((float) $item->final_unit_price);
+            $lineTotal = $this->splitVatIncluded((float) $item->revenue_total)['net'];
             $colors = collect($item->colors)->filter()->join(', ') ?: ($lead->live_mockup_color ?: '-');
             $prints = $item->prints?->pluck('print_name')->filter()->join(', ') ?: 'Personalizzazione inclusa';
 
@@ -354,8 +393,8 @@ class LeadProjectPdfService
             $pdf->MultiCell(92, 8, 'Colore: '.$colors."\n".$prints, 0, 'L', false, 0);
             foreach ([
                 [$x + 108, 18, 'Q.TÀ', number_format($quantity, 0, ',', '.')],
-                [$x + 128, 22, 'PREZZO/PZ', $money((float) $item->final_unit_price)],
-                [$x + 152, 21, 'TOTALE', $money((float) $item->revenue_total)],
+                [$x + 128, 22, 'PREZZO/PZ + IVA', $money($unitPrice)],
+                [$x + 152, 21, 'TOTALE + IVA', $money($lineTotal)],
             ] as [$cellX, $cellWidth, $label, $value]) {
                 $pdf->SetTextColor(...$muted);
                 $pdf->SetFont('roboto', 'B', 6);
@@ -428,6 +467,8 @@ class LeadProjectPdfService
 
             $product = $item->configuration_name ?: $item->product_name ?: 'Prodotto personalizzato';
             $quantity = (float) ($item->quantity ?: 1);
+            $unitPrice = $this->netUnitPrice((float) $item->final_unit_price);
+            $lineTotal = $this->splitVatIncluded((float) $item->revenue_total)['net'];
             $colors = collect($item->colors)->filter()->join(', ') ?: ($lead->live_mockup_color ?: '-');
             $prints = $item->prints?->pluck('print_name')->filter()->join(', ') ?: 'Personalizzazione inclusa';
 
@@ -453,8 +494,8 @@ class LeadProjectPdfService
 
             foreach ([
                 [$x + 93, 20, 'Q.TÀ', number_format($quantity, 0, ',', '.'), 'C'],
-                [$x + 116, 29, 'PREZZO/PZ', $money((float) $item->final_unit_price).' + IVA', 'R'],
-                [$x + 148, 26, 'TOTALE', $money((float) $item->revenue_total).' + IVA', 'R'],
+                [$x + 116, 29, 'PREZZO/PZ', $money($unitPrice).' + IVA', 'R'],
+                [$x + 148, 26, 'TOTALE', $money($lineTotal).' + IVA', 'R'],
             ] as [$cellX, $cellWidth, $label, $value, $align]) {
                 $pdf->SetTextColor(...$muted);
                 $pdf->SetFont('roboto', 'B', 6);
