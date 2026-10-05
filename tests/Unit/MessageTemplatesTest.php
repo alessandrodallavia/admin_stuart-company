@@ -49,6 +49,27 @@ class MessageTemplatesTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_hoodie_replies_are_separate_in_both_time_periods(): void
+    {
+        foreach (['10:00:00', '19:00:00'] as $time) {
+            Carbon::setTestNow('2026-10-05 '.$time);
+            $this->assertStringContainsString('ordine minimo 10 pezzi', MessageTemplates::initialReply(false, false, true));
+            $this->assertStringContainsString('ordine minimo 15 pezzi', MessageTemplates::initialReply(false));
+            $this->assertStringContainsString('colore della felpa', MessageTemplates::initialReply(true, false, true));
+            $this->assertStringContainsString('colore della t-shirt', MessageTemplates::initialReply(true));
+            $this->assertStringContainsString('grafiche caricate', MessageTemplates::initialReply(true, true, true));
+        }
+        Carbon::setTestNow();
+    }
+
+    public function test_hoodie_requests_are_identified_by_origin_page_or_email(): void
+    {
+        foreach ([['cta_origin' => 'felpe_live_mockup'], ['landing_page' => 'https://stuart-company.com/felpe-personalizzate?utm_source=test'], ['message' => 'Richiesta contatto via email dalla landing felpe.']] as $attributes) {
+            $this->assertTrue((new \App\Models\Lead($attributes))->isHoodieRequest());
+        }
+        $this->assertFalse((new \App\Models\Lead(['cta_origin' => 'live_mockup']))->isHoodieRequest());
+    }
+
     public function test_price_communication_uses_the_complete_forty_piece_standard(): void
     {
         $message = collect(MessageTemplates::current())->firstWhere('title', 'Comunicazione del prezzo')['message'];

@@ -4,13 +4,17 @@ namespace App\Support;
 
 class MessageTemplates
 {
-    public static function initialReply(bool $calculatorUsed = false, bool $liveMockupUsed = false): ?string
+    public static function initialReply(bool $calculatorUsed = false, bool $liveMockupUsed = false, bool $hoodie = false): ?string
     {
         $title = match (true) {
             $liveMockupUsed => 'Risposta iniziale anteprima live',
             $calculatorUsed => 'Risposta iniziale calcolatore',
             default => 'Risposta iniziale',
         };
+
+        if ($hoodie) {
+            $title .= ' felpe';
+        }
 
         $message = collect(self::current())->firstWhere('title', $title)['message'] ?? null;
 

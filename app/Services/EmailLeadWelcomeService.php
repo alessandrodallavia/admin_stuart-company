@@ -29,7 +29,7 @@ class EmailLeadWelcomeService
         }
 
         $template = MessageTemplates::current()[0] ?? null;
-        $body = $template['message'] ?? 'Ciao, sono Andrea di Stuart. Ho ricevuto la tua richiesta e ti scrivo per approfondire il progetto.';
+        $body = ($lead->isHoodieRequest() ? MessageTemplates::initialReply(false, false, true) : ($template['message'] ?? null)) ?? 'Ciao, sono Andrea di Stuart. Ho ricevuto la tua richiesta e ti scrivo per approfondire il progetto.';
         $conversation = EmailConversation::firstOrCreate(
             [
                 'email_account_id' => $account->id,

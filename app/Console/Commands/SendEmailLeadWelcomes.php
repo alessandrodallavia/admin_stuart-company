@@ -18,7 +18,7 @@ class SendEmailLeadWelcomes extends Command
 
         Lead::query()
             ->where('is_training', false)
-            ->where('message', 'Richiesta contatto via email dalla homepage.')
+            ->whereIn('message', ['Richiesta contatto via email dalla homepage.', 'Richiesta contatto via email dalla landing felpe.'])
             ->whereNotNull('email')
             ->whereNull('email_welcome_sent_at')
             ->orderBy('id')

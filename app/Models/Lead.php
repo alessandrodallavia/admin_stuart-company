@@ -12,6 +12,13 @@ class Lead extends Model
 {
     use TrainingScoped;
 
+    public function isHoodieRequest(): bool
+    {
+        return str_starts_with((string) $this->cta_origin, 'felpe_')
+            || rtrim((string) parse_url((string) $this->landing_page, PHP_URL_PATH), '/') === '/felpe-personalizzate'
+            || $this->message === 'Richiesta contatto via email dalla landing felpe.';
+    }
+
     protected $fillable = [
 
         'uuid',

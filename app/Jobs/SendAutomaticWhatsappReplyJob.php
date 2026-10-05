@@ -63,15 +63,19 @@ class SendAutomaticWhatsappReplyJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $isLiveMockupRequest = (bool) $lead->live_mockup_used && $lead->cta_origin === 'live_mockup';
+        $isLiveMockupRequest = (bool) $lead->live_mockup_used && in_array($lead->cta_origin, ['live_mockup', 'felpe_live_mockup'], true);
         $templateTitle = match (true) {
             $isLiveMockupRequest => 'Risposta iniziale anteprima live',
             (bool) $lead->calculator_used => 'Risposta iniziale calcolatore',
             default => 'Risposta iniziale',
         };
+        if ($lead->isHoodieRequest()) {
+            $templateTitle .= ' felpe';
+        }
         $body = MessageTemplates::initialReply(
             (bool) $lead->calculator_used,
             $isLiveMockupRequest,
+            $lead->isHoodieRequest(),
         );
 
         if (! is_string($body) || trim($body) === '') {

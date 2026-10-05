@@ -37,7 +37,26 @@ $templatesEvening = [
     ['title' => 'Richiesta recensione', 'message' => "Buonasera!\nSpero che i prodotti siano arrivati e che siano di suo gradimento.\nSe ha qualche minuto, mi farebbe molto piacere ricevere una sua recensione. È un aiuto prezioso per far conoscere Stuart a nuovi clienti.\nPuò lasciarla qui:\n[link recensione]\nLa ringrazio davvero per la fiducia e spero di poter collaborare nuovamente con lei."],
 ];
 
+// Varianti dedicate alle felpe; i testi T-shirt restano invariati.
+$hoodieTemplates = static function (array $templates): array {
+    $dedicated = [];
+    foreach ($templates as $template) {
+        if (! in_array($template['title'], ['Risposta iniziale', 'Risposta iniziale calcolatore', 'Risposta iniziale anteprima live'], true)) {
+            continue;
+        }
+        $dedicated[] = [
+            'title' => $template['title'].' felpe',
+            'message' => str_replace(
+                ['ordine minimo 15 pezzi', 'della t-shirt', 'il capo più adatto', 'del capo scelto'],
+                ['ordine minimo 10 pezzi', 'della felpa', 'la felpa più adatta', 'della felpa scelta'],
+                $template['message'],
+            ),
+        ];
+    }
+    return [...$templates, ...$dedicated];
+};
+
 return [
-    'morning' => $templatesMorning,
-    'evening' => $templatesEvening,
+    'morning' => $hoodieTemplates($templatesMorning),
+    'evening' => $hoodieTemplates($templatesEvening),
 ];
