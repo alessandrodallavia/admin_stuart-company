@@ -396,7 +396,50 @@ class TrainingModeTest extends TestCase
         ), 'handle']);
 
         Http::assertSent(function ($request): bool {
-            return str_contains($request['text']['body'], 'Perfetto, ho ricevuto la sua richiesta.')
+            return str_contains($request['text']['body'], 'ordine minimo 15 pezzi')
+                && ! str_contains($request['text']['body'], 'grafiche caricate');
+        });
+
+        Carbon::setTestNow();
+    }
+
+    public function test_generic_hoodie_cta_uses_general_reply_even_with_saved_calculator_data(): void
+    {
+        Carbon::setTestNow('2026-09-16 10:00:00');
+        Http::fake([
+            'https://graph.facebook.com/*' => Http::response([
+                'messages' => [['id' => 'calculator-auto-response']],
+            ]),
+        ]);
+
+        $operator = $this->operator();
+        $lead = $this->lead([
+            'status' => 'confirmed',
+            'phone' => '393331234567',
+            'calculator_used' => true,
+            'live_mockup_used' => true,
+            'cta_origin' => 'felpe_hero',
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+        ]);
+        $conversation = WhatsappConversation::withoutGlobalScope('training')->create([
+            'lead_id' => $lead->id,
+            'contact_phone' => $lead->phone,
+            'mode' => 'auto',
+            'status' => 'open',
+            'is_training' => true,
+            'training_owner_id' => $operator->id,
+        ]);
+
+        app()->call([new SendAutomaticWhatsappReplyJob(
+            $lead->id,
+            $conversation->id,
+            $lead->phone,
+        ), 'handle']);
+
+        Http::assertSent(function ($request): bool {
+            return str_contains($request['text']['body'], 'ordine minimo 10 pezzi')
+                && ! str_contains($request['text']['body'], 'Perfetto, ho ricevuto la sua richiesta.')
                 && ! str_contains($request['text']['body'], 'grafiche caricate');
         });
 
@@ -1045,6 +1088,79 @@ class TrainingModeTest extends TestCase
 
         $this->assertSame('order_completed', $lead->fresh()->status);
         $this->assertSame(420.0, (float) $lead->fresh()->payment_amount);
+    }
+
+    public function test_queued_reply_keeps_received_request_text_after_lead_changes(): void
+    {
+        Http::fake(['https://graph.facebook.com/*' => Http::response(['messages' => [['id' => 'frozen-reply']]])]);
+        $operator = $this->operator();
+        $lead = $this->lead(['cta_origin' => 'felpe_hero', 'is_training' => true, 'training_owner_id' => $operator->id]);
+        $conversation = WhatsappConversation::withoutGlobalScope('training')->create([
+            'lead_id' => $lead->id, 'contact_phone' => $lead->phone, 'mode' => 'auto', 'status' => 'open',
+            'is_training' => true, 'training_owner_id' => $operator->id,
+        ]);
+        $body = \App\Support\MessageTemplates::forLead($lead);
+        $job = unserialize(serialize(new SendAutomaticWhatsappReplyJob($lead->id, $conversation->id, $lead->phone, $body)));
+        $lead->forceFill(['cta_origin' => 'felpe_live_mockup', 'live_mockup_used' => true, 'calculator_used' => true])->save();
+        app()->call([$job, 'handle']);
+        Http::assertSent(fn ($request) => $request['text']['body'] === $body);
+    }
+
+    public function test_two_distinct_received_requests_cancel_pending_automatic_reply(): void
+    {
+        Queue::fake();
+        Http::fake();
+        $operator = $this->operator();
+        $first = $this->lead(['uuid' => 'FIRST1', 'status' => 'pre', 'cta_origin' => 'felpe_hero', 'is_training' => true, 'training_owner_id' => $operator->id]);
+        $second = $this->lead(['uuid' => 'SECOND', 'status' => 'pre', 'cta_origin' => 'felpe_calculator', 'calculator_used' => true, 'is_training' => true, 'training_owner_id' => $operator->id]);
+        $payload = $this->whatsappWebhook($first->phone, 'Vorrei il prezzo delle felpe. ID richiesta: FIRST1');
+        app()->call([new ProcessWhatsappWebhookJob($payload), 'handle']);
+        $pending = null;
+        Queue::assertPushed(SendAutomaticWhatsappReplyJob::class, function ($job) use (&$pending) {
+            $pending = $job;
+            return $job->replyBody !== null;
+        });
+        // Meta retries the same webhook: it must not enqueue a second reply.
+        app()->call([new ProcessWhatsappWebhookJob($payload), 'handle']);
+        Queue::assertPushed(SendAutomaticWhatsappReplyJob::class, 1);
+        app()->call([new ProcessWhatsappWebhookJob($this->whatsappWebhook($first->phone, 'Ho calcolato il prezzo. ID richiesta: SECOND')), 'handle']);
+        $conversation = WhatsappConversation::withoutGlobalScope('training')->firstOrFail();
+        $this->assertSame('manual', $conversation->mode);
+        $this->assertTrue($conversation->needs_human);
+        $this->assertSame($first->id, $conversation->lead_id);
+        $this->assertSame('confirmed', $second->fresh()->status);
+        $this->assertStringContainsString('SECOND', $second->fresh()->message);
+        app()->call([$pending, 'handle']);
+        Http::assertNothingSent();
+        Queue::assertPushed(SendAutomaticWhatsappReplyJob::class, 1);
+    }
+
+    public function test_reference_already_bound_to_another_phone_is_not_reassigned(): void
+    {
+        Queue::fake();
+        Http::fake();
+        $lead = $this->lead(['uuid' => 'BOUND1', 'status' => 'pre']);
+        app()->call([new ProcessWhatsappWebhookJob($this->whatsappWebhook('393330000099', 'Felpe. ID richiesta: BOUND1')), 'handle']);
+        $this->assertSame('393330000001', $lead->fresh()->phone);
+        $this->assertSame('pre', $lead->fresh()->status);
+        $conversation = WhatsappConversation::withoutGlobalScope('training')->firstOrFail();
+        $this->assertNull($conversation->lead_id);
+        $this->assertSame('manual', $conversation->mode);
+        Queue::assertNotPushed(SendAutomaticWhatsappReplyJob::class);
+    }
+
+    public function test_unknown_request_id_does_not_trigger_reply_from_phone_fallback(): void
+    {
+        Queue::fake();
+        Http::fake();
+        $lead = $this->lead(['status' => 'pre']);
+        $conversation = WhatsappConversation::withoutGlobalScope('training')->create([
+            'lead_id' => $lead->id, 'contact_phone' => $lead->phone, 'mode' => 'auto', 'status' => 'open',
+        ]);
+        app()->call([new ProcessWhatsappWebhookJob($this->whatsappWebhook($lead->phone, 'Felpe. ID richiesta: MISSING')), 'handle']);
+        $this->assertSame('manual', $conversation->fresh()->mode);
+        $this->assertSame('pre', $lead->fresh()->status);
+        Queue::assertNotPushed(SendAutomaticWhatsappReplyJob::class);
     }
 
     private function operator(): AdminUser

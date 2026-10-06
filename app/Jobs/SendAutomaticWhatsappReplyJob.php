@@ -28,6 +28,7 @@ class SendAutomaticWhatsappReplyJob implements ShouldBeUnique, ShouldQueue
         public int $leadId,
         public int $conversationId,
         public string $to,
+        public ?string $replyBody = null,
     ) {}
 
     public function uniqueId(): string
@@ -43,7 +44,8 @@ class SendAutomaticWhatsappReplyJob implements ShouldBeUnique, ShouldQueue
     public function middleware(): array
     {
         return [
-            (new WithoutOverlapping("whatsapp-auto-reply:{$this->conversationId}"))
+            (new WithoutOverlapping("whatsapp-contact:{$this->to}"))
+                ->shared()
                 ->releaseAfter(10)
                 ->expireAfter(300),
         ];
@@ -63,23 +65,10 @@ class SendAutomaticWhatsappReplyJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $isLiveMockupRequest = (bool) $lead->live_mockup_used && in_array($lead->cta_origin, ['live_mockup', 'felpe_live_mockup'], true);
-        $templateTitle = match (true) {
-            $isLiveMockupRequest => 'Risposta iniziale anteprima live',
-            (bool) $lead->calculator_used => 'Risposta iniziale calcolatore',
-            default => 'Risposta iniziale',
-        };
-        if ($lead->isHoodieRequest()) {
-            $templateTitle .= ' felpe';
-        }
-        $body = MessageTemplates::initialReply(
-            (bool) $lead->calculator_used,
-            $isLiveMockupRequest,
-            $lead->isHoodieRequest(),
-        );
-
+        // The received request determines the reply, even if the lead changes in the delay.
+        $body = $this->replyBody ?? MessageTemplates::forLead($lead);
         if (! is_string($body) || trim($body) === '') {
-            throw new RuntimeException("Template \"{$templateTitle}\" non configurato per il periodo corrente.");
+            throw new RuntimeException('Template di risposta iniziale non configurato.');
         }
         $payload = [
             'messaging_product' => 'whatsapp',

@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\Lead;
 use App\Models\WhatsappConversation;
 use App\Models\WhatsappMessage;
+use App\Support\MessageTemplates;
 use App\Services\AdminNotificationService;
 use App\Services\GoogleAdsConversionService;
 use App\Services\MetaConversionsApiService;
@@ -16,12 +17,24 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 
 class ProcessWhatsappWebhookJob implements ShouldQueue
 {
     use Dispatchable, Queueable;
 
+    public int $tries = 5;
+
     public function __construct(public $data) {}
+
+    public function middleware(): array
+    {
+        $phones = array_unique(array_filter(array_column($this->data['entry'][0]['changes'][0]['value']['messages'] ?? [], 'from')));
+        sort($phones);
+
+        return array_map(fn ($phone) => (new WithoutOverlapping("whatsapp-contact:{$phone}"))
+            ->shared()->releaseAfter(10)->expireAfter(300), $phones);
+    }
 
     public function handle(
         AdminNotificationService $adminNotifications,
@@ -56,7 +69,16 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
                 continue;
             }
 
-            $referencedLead = $this->findLeadByReference($message) ?: $this->findTrainingLeadByPhone($from);
+            $hasRequestReference = (bool) preg_match('/ID richiesta:\s*([A-Z0-9]+)/i', $this->extractAutomationText($message) ?? '');
+            $referencedLead = $this->findLeadByReference($message);
+            $missingReference = $hasRequestReference && ! $referencedLead;
+            if (! $hasRequestReference) {
+                $referencedLead ??= $this->findTrainingLeadByPhone($from);
+            }
+            $referencePhoneConflict = $referencedLead && filled($referencedLead->phone) && $referencedLead->phone !== $from;
+            if ($referencePhoneConflict) {
+                $referencedLead = null;
+            }
             $conversation = $this->getConversation($from, $referencedLead);
             $lead = $referencedLead ?: $conversation->lead ?: $this->findRealLeadByPhone($from);
 
@@ -70,6 +92,25 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
             }
 
             $storedMessage = $this->storeIncomingMessage($conversation, $message, $from);
+            if (! $storedMessage->wasRecentlyCreated) {
+                continue;
+            }
+            if ($referencePhoneConflict || $missingReference) {
+                $this->requestHumanHandoff($conversation, $missingReference ? 'ID richiesta non trovato: verificare manualmente.' : 'ID richiesta associato a un altro numero: verificare manualmente.');
+                if (! $conversation->is_training) {
+                    $adminNotifications->notifyWhatsappMessage($conversation->fresh(['lead']), $storedMessage);
+                }
+                continue;
+            }
+            if ($referencedLead && $referencedLead->status === 'pre') {
+                $referencedLead->forceFill([
+                    'status' => 'confirmed',
+                    'message' => $this->extractAutomationText($message),
+                ])->save();
+            }
+            if ($referencedLead && $conversation->lead_id && $conversation->lead_id !== $referencedLead->id && $conversation->mode === 'auto') {
+                $this->requestHumanHandoff($conversation, 'Ricevute richieste diverse nella stessa chat: verificare prima di rispondere.');
+            }
             $this->deleteAutomaticFollowUpsAfterCustomerReply($conversation);
             $this->uploadWhatsappConversion($lead, $storedMessage, $googleAdsConversions);
             $this->uploadMetaContact($lead, $storedMessage, $metaConversions);
@@ -306,7 +347,7 @@ class ProcessWhatsappWebhookJob implements ShouldQueue
                 // no break: programma la stessa risposta prevista per i lead confermati.
 
             case 'confirmed':
-                SendAutomaticWhatsappReplyJob::dispatch($lead->id, $conversation->id, $from)
+                SendAutomaticWhatsappReplyJob::dispatch($lead->id, $conversation->id, $from, MessageTemplates::forLead($lead))
                     ->delay(now()->addSeconds(45))
                     ->onQueue('admin');
 

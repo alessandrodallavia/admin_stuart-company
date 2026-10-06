@@ -4,6 +4,17 @@ namespace App\Support;
 
 class MessageTemplates
 {
+    public static function forLead(\App\Models\Lead $lead): ?string
+    {
+        $live = (bool) $lead->live_mockup_used
+            && in_array($lead->cta_origin, ['live_mockup', 'felpe_live_mockup'], true);
+        $calculator = (bool) $lead->calculator_used
+            && ! $lead->calculator_requires_quote
+            && in_array($lead->cta_origin, ['calculator', 'felpe_calculator'], true);
+
+        return self::initialReply($calculator, $live, $lead->isHoodieRequest());
+    }
+
     public static function initialReply(bool $calculatorUsed = false, bool $liveMockupUsed = false, bool $hoodie = false): ?string
     {
         $title = match (true) {

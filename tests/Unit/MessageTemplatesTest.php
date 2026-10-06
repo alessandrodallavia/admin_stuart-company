@@ -70,6 +70,20 @@ class MessageTemplatesTest extends TestCase
         $this->assertFalse((new \App\Models\Lead(['cta_origin' => 'live_mockup']))->isHoodieRequest());
     }
 
+    public function test_request_origin_and_quote_status_determine_the_initial_reply(): void
+    {
+        foreach (['hero', 'felpe_hero', 'felpe_modulo', 'felpe_progetto_grafico'] as $origin) {
+            $lead = new \App\Models\Lead(['cta_origin' => $origin, 'calculator_used' => true, 'live_mockup_used' => true]);
+            $this->assertStringContainsString('la quantità indicativa', MessageTemplates::forLead($lead));
+        }
+        foreach (['calculator', 'felpe_calculator'] as $origin) {
+            $lead = new \App\Models\Lead(['cta_origin' => $origin, 'calculator_used' => true]);
+            $this->assertStringContainsString('ho ricevuto la sua richiesta', MessageTemplates::forLead($lead));
+            $lead->calculator_requires_quote = true;
+            $this->assertStringContainsString('la quantità indicativa', MessageTemplates::forLead($lead));
+        }
+    }
+
     public function test_price_communication_uses_the_complete_forty_piece_standard(): void
     {
         $message = collect(MessageTemplates::current())->firstWhere('title', 'Comunicazione del prezzo')['message'];
