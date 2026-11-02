@@ -54,6 +54,10 @@ class MessageTemplatesTest extends TestCase
         foreach (['10:00:00', '19:00:00'] as $time) {
             Carbon::setTestNow('2026-10-05 '.$time);
             $this->assertStringContainsString('ordine minimo 10 pezzi', MessageTemplates::initialReply(false, false, true));
+            $this->assertStringContainsString('quale modello preferisce (cappuccio, girocollo o zip)', MessageTemplates::initialReply(false, false, true));
+            $this->assertStringNotContainsString('per quale utilizzo', MessageTemplates::initialReply(false, false, true));
+            $this->assertStringContainsString('per quale utilizzo sono destinati i capi', MessageTemplates::initialReply(false));
+            $this->assertStringNotContainsString('quale modello preferisce', MessageTemplates::initialReply(false));
             $this->assertStringContainsString('ordine minimo 15 pezzi', MessageTemplates::initialReply(false));
             $this->assertStringContainsString('colore della felpa', MessageTemplates::initialReply(true, false, true));
             $this->assertStringContainsString('colore della t-shirt', MessageTemplates::initialReply(true));
@@ -95,4 +99,24 @@ class MessageTemplatesTest extends TestCase
         $this->assertStringContainsString('https://stuart-company.com/#calcolatore-prezzo', $message);
         $this->assertStringNotContainsString('100 pezzi', $message);
     }
+
+    public function test_hoodie_price_communication_is_dedicated_in_both_periods(): void
+    {
+        foreach (['morning', 'evening'] as $period) {
+            $templates = collect(config("message_templates.$period"));
+            $message = $templates->firstWhere('title', 'Comunicazione del prezzo felpe')['message'];
+            $this->assertStringContainsString('20 felpe con cappuccio', $message);
+            $this->assertStringContainsString('Economic - EUR 18,85 / pz + IVA', $message);
+            $this->assertStringContainsString('Basic - EUR 21,48 / pz + IVA', $message);
+            $this->assertStringContainsString('60% cotone, 40% poliestere', $message);
+            $this->assertStringContainsString('70% cotone, 30% poliestere', $message);
+            $this->assertStringContainsString('EUR 377,00 + IVA - EUR 459,94 IVA inclusa', $message);
+            $this->assertStringContainsString('EUR 429,60 + IVA - EUR 524,11 IVA inclusa', $message);
+            $this->assertStringContainsString('https://stuart-company.com/felpe-personalizzate#calcolatore-prezzo', $message);
+            $this->assertStringNotContainsString('40 pezzi', $message);
+            $this->assertStringNotContainsString('Premium', $message);
+            $this->assertStringContainsString('Totale 40 pz: EUR 219,60', $templates->firstWhere('title', 'Comunicazione del prezzo')['message']);
+        }
+    }
+
 }

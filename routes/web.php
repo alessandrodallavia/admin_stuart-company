@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\CrmCatalogController as AdminCrmCatalogController
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\DocumentController as AdminDocumentController;
 use App\Http\Controllers\Admin\EmailController as AdminEmailController;
+use App\Http\Controllers\Admin\HoodieQuoteController as AdminHoodieQuoteController;
 use App\Http\Controllers\Admin\LeadController as AdminLeadController;
 use App\Http\Controllers\Admin\LeadSalesSheetController as AdminLeadSalesSheetController;
 use App\Http\Controllers\Admin\NotificationController as AdminNotificationController;
@@ -46,6 +47,8 @@ Route::name('admin.')->group(function () {
             Route::patch('/conversations/{conversation}/follow-up-exclusion', [AdminWhatsappConversationController::class, 'updateFollowUpExclusion'])->name('conversations.follow-up-exclusion');
             Route::post('/conversations/{conversation}/follow-ups', [AdminWhatsappConversationController::class, 'storeFollowUp'])->name('conversations.follow-ups.store');
             Route::patch('/conversations/{conversation}/follow-ups/{followUp}/cancel', [AdminWhatsappConversationController::class, 'cancelFollowUp'])->name('conversations.follow-ups.cancel');
+            Route::get('/conversations/{conversation}/hoodie-quote', [AdminHoodieQuoteController::class, 'catalog'])->name('conversations.hoodie-quote.catalog');
+            Route::post('/conversations/{conversation}/hoodie-quote', [AdminHoodieQuoteController::class, 'preview'])->name('conversations.hoodie-quote.preview');
             Route::post('/conversations/{conversation}/messages', [AdminWhatsappConversationController::class, 'sendMessage'])->name('conversations.messages.store');
         });
 

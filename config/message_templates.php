@@ -2,6 +2,9 @@
 
 $priceCommunication = "Perfetto, grazie!\n\nPer il suo progetto ci sono diverse soluzioni in base alla qualità del capo. I prezzi si riferiscono a 40 pezzi con personalizzazione lato cuore e retro inclusa. Per quantità superiori il costo unitario diminuisce.\n\nEconomic - EUR 5,49 / pz + IVA\n100% cotone. Ideale per eventi e utilizzi occasionali.\nTotale 40 pz: EUR 219,60 + IVA - EUR 267,91 IVA inclusa\n\nBasic - EUR 6,89 / pz + IVA\n100% cotone. Il miglior equilibrio tra qualità, vestibilità e durata.\nTotale 40 pz: EUR 275,60 + IVA - EUR 336,23 IVA inclusa\n\nPremium - EUR 9,85 / pz + IVA\n100% cotone biologico. Pensata per merchandising e utilizzi continuativi.\nTotale 40 pz: EUR 394,00 + IVA - EUR 480,68 IVA inclusa\n\nI prezzi comprendono le personalizzazioni indicate. La consegna è gratuita da EUR 250,00; altrimenti il costo è di EUR 9,90.\n\nTempi: spedizione entro 6 giorni lavorativi dalla conferma dell'ordine, con consegna normalmente in 24/48 ore lavorative dalla spedizione.\n\nSe desidera confrontare altre quantità o configurazioni può calcolare direttamente il prezzo qui:\nCalcola il tuo prezzo -> https://stuart-company.com/#calcolatore-prezzo\n\nSe il prezzo è in linea con quello che aveva in mente, preparerò gratuitamente il mockup del capo scelto e le invierò anche la relativa scheda prodotto, così potrà valutarne caratteristiche, colori e taglie senza alcun impegno.\n\nSe preferisce parlarne direttamente, può chiamarmi o scrivermi al 345 8007031 e sarò felice di aiutarla.";
 
+// Felpe con cappuccio: 20 pezzi, logo cuore + retro, fascia 10-24.
+$hoodiePriceCommunication = "Perfetto, grazie!\n\nPer il suo progetto ci sono diverse soluzioni in base alla qualità della felpa. I prezzi si riferiscono a 20 felpe con cappuccio con personalizzazione lato cuore e stampa sul retro (max 25 × 30 cm) incluse. Per quantità superiori il costo unitario diminuisce.\n\nEconomic - EUR 18,85 / pz + IVA\n60% cotone, 40% poliestere. Ideale per eventi e utilizzi occasionali.\nTotale 20 pz: EUR 377,00 + IVA - EUR 459,94 IVA inclusa\n\nBasic - EUR 21,48 / pz + IVA\n70% cotone, 30% poliestere. Il miglior equilibrio tra qualità, vestibilità e durata.\nTotale 20 pz: EUR 429,60 + IVA - EUR 524,11 IVA inclusa\n\nI prezzi comprendono le personalizzazioni indicate. La spedizione è gratuita da EUR 250,00 IVA inclusa; altrimenti il costo è di EUR 9,90.\n\nTempi: spedizione entro 6 giorni lavorativi dalla conferma dell'ordine, con consegna normalmente in 24/48 ore lavorative dalla spedizione.\n\nSe desidera confrontare altre quantità o configurazioni può calcolare direttamente il prezzo qui:\nCalcola il tuo prezzo -> https://stuart-company.com/felpe-personalizzate#calcolatore-prezzo\n\nSe il prezzo è in linea con quello che aveva in mente, preparerò gratuitamente il mockup della felpa scelta e le invierò anche la relativa scheda prodotto, così potrà valutarne caratteristiche, colori e taglie senza alcun impegno.\n\nSe preferisce parlarne direttamente, può chiamarmi o scrivermi al 345 8007031 e sarò felice di aiutarla.";
+
 $templatesMorning = [
     ['title' => 'Risposta iniziale', 'message' => "Buongiorno! 👋 Sono Andrea di Stuart.\n\nPer poterle consigliare il capo più adatto e comunicarle subito il prezzo, mi scriva semplicemente:\n\n- la quantità indicativa (ordine minimo 15 pezzi)\n- come immagina la personalizzazione (ad esempio: logo sul cuore, stampa fronte e retro, nomi e numeri...)\n- per quale utilizzo sono destinati i capi (ad esempio: azienda, evento, squadra sportiva, merchandising...)\n\nIn base a queste informazioni le consiglierò il prodotto più adatto e le comunicherò subito il prezzo.\n\nSe il prezzo sarà in linea con le sue aspettative, preparerò gratuitamente il mockup del capo scelto."],
     ['title' => 'Risposta iniziale calcolatore', 'message' => "Buongiorno! 👋 Sono Andrea di Stuart.\n\nPerfetto, ho ricevuto la sua richiesta.\n\nPer prepararle gratuitamente l'anteprima grafica mi invii semplicemente:\n\n- il logo o la grafica da utilizzare\n- il colore della t-shirt che preferisce\n\nAppena ricevo il materiale preparo il mockup e glielo invio insieme alla scheda prodotto, così potrà vedere il risultato prima di confermare l'ordine."],
@@ -38,7 +41,7 @@ $templatesEvening = [
 ];
 
 // Varianti dedicate alle felpe; i testi T-shirt restano invariati.
-$hoodieTemplates = static function (array $templates): array {
+$hoodieTemplates = static function (array $templates) use ($hoodiePriceCommunication): array {
     $dedicated = [];
     foreach ($templates as $template) {
         if (! in_array($template['title'], ['Risposta iniziale', 'Risposta iniziale calcolatore', 'Risposta iniziale anteprima live'], true)) {
@@ -47,12 +50,14 @@ $hoodieTemplates = static function (array $templates): array {
         $dedicated[] = [
             'title' => $template['title'].' felpe',
             'message' => str_replace(
-                ['ordine minimo 15 pezzi', 'della t-shirt', 'il capo più adatto', 'del capo scelto'],
-                ['ordine minimo 10 pezzi', 'della felpa', 'la felpa più adatta', 'della felpa scelta'],
+                ['ordine minimo 15 pezzi', 'della t-shirt', 'il capo più adatto', 'del capo scelto', '- per quale utilizzo sono destinati i capi (ad esempio: azienda, evento, squadra sportiva, merchandising...)'],
+                ['ordine minimo 10 pezzi', 'della felpa', 'la felpa più adatta', 'della felpa scelta', '- quale modello preferisce (cappuccio, girocollo o zip)'],
                 $template['message'],
             ),
         ];
     }
+    $dedicated[] = ['title' => 'Comunicazione del prezzo felpe', 'message' => $hoodiePriceCommunication];
+
     return [...$templates, ...$dedicated];
 };
 

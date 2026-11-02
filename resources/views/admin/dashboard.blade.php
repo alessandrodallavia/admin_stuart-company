@@ -546,6 +546,8 @@
                                             </label>
                                         @endif
 
+                                        @include('admin.partials.hoodie-quote-calculator')
+
                                         <textarea
                                             id="message-composer"
                                             name="message"
