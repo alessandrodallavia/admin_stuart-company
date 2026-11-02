@@ -67,6 +67,7 @@ Route::name('admin.')->group(function () {
             Route::post('/leads', [AdminLeadController::class, 'store'])->name('leads.store');
             Route::post('/leads/{lead}/orders', [AdminLeadSalesSheetController::class, 'storeOrder'])->name('leads.orders.store');
             Route::post('/leads/{lead}/orders/{sheet}/proposal', [AdminLeadSalesSheetController::class, 'storeProposal'])->name('leads.orders.proposal.store');
+            Route::post('/leads/{lead}/orders/{sheet}/checkout', [AdminLeadSalesSheetController::class, 'storeCheckout'])->name('leads.orders.checkout.store');
             Route::delete('/leads/{lead}/orders/{sheet}', [AdminLeadSalesSheetController::class, 'destroyOrder'])->name('leads.orders.destroy');
             Route::patch('/leads/{lead}', [AdminLeadController::class, 'update'])->name('leads.update');
             Route::post('/leads/{lead}/quote-pdfs', [AdminLeadController::class, 'storeQuotePdfs'])->name('leads.quote-pdfs.store');

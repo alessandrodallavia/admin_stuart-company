@@ -36,7 +36,7 @@ class LeadSalesSheet extends Component
 
     public string $finalUnitPrice = '';
 
-    public string $shippingFee = '9.90';
+    public string $shippingFee = '8.12';
 
     public string $freeShippingThreshold = '250.00';
 
@@ -398,7 +398,7 @@ class LeadSalesSheet extends Component
     public function render(LeadEconomicMetricsService $economicMetrics)
     {
         $lead = $this->lead();
-        $sheet = $this->sheet()?->load(['items.prints', 'items.attachments', 'dispatches']);
+        $sheet = $this->sheet()?->load(['items.prints', 'items.attachments', 'dispatches', 'proposals', 'checkouts']);
         $isReorder = $sheet !== null && $lead->salesSheets()->whereKeyNot($sheet->id)->where('id', '<', $sheet->id)->exists();
         $cac = $isReorder ? 0.0 : $economicMetrics->currentCac();
         $margin = $sheet?->items?->isNotEmpty() ? (float) $sheet->margin_total : null;
@@ -460,7 +460,7 @@ class LeadSalesSheet extends Component
 
     private function syncOrderFields(?\App\Models\LeadSalesSheet $sheet): void
     {
-        $this->shippingFee = number_format((float) ($sheet?->shipping_fee ?? 9.90), 2, '.', '');
+        $this->shippingFee = number_format((float) ($sheet?->shipping_fee ?? 8.12), 2, '.', '');
         $this->freeShippingThreshold = number_format((float) ($sheet?->free_shipping_threshold ?? 250), 2, '.', '');
         $this->discountType = $sheet?->discount_type ?? '';
         $this->discountValue = number_format((float) ($sheet?->discount_value ?? 0), 2, '.', '');
@@ -607,7 +607,8 @@ class LeadSalesSheet extends Component
         $sheet = $this->lead()->salesSheets()->create([
             'name' => 'Nuovo ordine',
             'status' => 'draft',
-            'shipping_fee' => 9.90,
+            'prices_include_vat' => false,
+            'shipping_fee' => 8.12,
             'free_shipping_threshold' => 250,
             'revenue_total' => 0,
             'cost_total' => 0,

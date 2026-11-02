@@ -55,7 +55,7 @@
 
                 <div class="mt-10 grid gap-8 sm:grid-cols-2">
                     <label>
-                        <span class="text-10 font-extrabold uppercase text-gray">Tariffa spedizione</span>
+                        <span class="text-10 font-extrabold uppercase text-gray">Tariffa spedizione · IVA esclusa</span>
                         <div class="mt-4 flex overflow-hidden rounded-10 border border-gray-mid bg-white focus-within:border-bullstar focus-within:ring-1 focus-within:ring-bullstar">
                             <span class="flex shrink-0 items-center border-r border-gray-mid bg-white px-10 text-12 font-bold text-gray">€</span>
                             <input wire:model="shippingFee" required type="number" min="0" step="0.01" class="min-w-0 flex-1 border-0 bg-white px-10 py-8 text-12 font-semibold focus:border-0 focus:ring-0">
@@ -74,7 +74,7 @@
 
                 <div class="mt-10 grid grid-cols-3 gap-4 rounded-10 border border-gray-mid bg-white p-8 text-center">
                     <div><p class="text-10 font-extrabold uppercase text-gray">Prodotti</p><p class="mt-3 text-12 font-black">€ {{ number_format((float)($salesSheet?->product_revenue_total ?? 0), 2, ',', '.') }}</p></div>
-                    <div><p class="text-10 font-extrabold uppercase text-gray">Spedizione cliente</p><p class="mt-3 text-12 font-black">€ {{ number_format((float)($salesSheet?->shipping_charge ?? 0), 2, ',', '.') }}</p></div>
+                    <div><p class="text-10 font-extrabold uppercase text-gray">Spedizione cliente IVA escl.</p><p class="mt-3 text-12 font-black">€ {{ number_format((float)($salesSheet?->shipping_charge ?? 0), 2, ',', '.') }}</p></div>
                     <div><p class="text-10 font-extrabold uppercase text-gray">Costo spedizione</p><p class="mt-3 text-12 font-black">€ {{ number_format((float)($salesSheet?->shipping_cost ?? 0), 2, ',', '.') }}</p></div>
                 </div>
 
@@ -196,8 +196,15 @@
                                 <div class="flex min-w-0 items-center gap-8">
                                     <span class="flex h-28 w-28 shrink-0 items-center justify-center rounded-full bg-black-nike text-10 font-black text-white">{{ $loop->iteration }}</span>
                                     <div class="min-w-0">
-                                        <h3 class="truncate text-14 font-black">{{ $item->configuration_name ?: $item->product_name }}</h3>
-                                        <p class="mt-3 text-10 font-bold text-gray">{{ $item->product_code }} · {{ $item->product_name }} · {{ number_format((float)$item->quantity, 2, ',', '.') }} pz @if($groupQuantity != $item->quantity) · fascia calcolata su {{ number_format((float)$groupQuantity, 0, ',', '.') }} pz @endif</p>
+                                        <div class="flex min-w-0 items-center gap-4">
+                                            <h3 class="truncate text-14 font-black">{{ $item->configuration_name ?: $item->product_name }}</h3>
+                                            <span class="shrink-0 text-10 font-semibold text-bullstar">· Visibile nel carrello</span>
+                                        </div>
+                                        <p class="mt-3 text-10 font-bold text-gray">
+                                            {{ $item->product_code }} · {{ $item->product_name }}
+                                            · {{ number_format((float)$item->quantity, 2, ',', '.') }} pz
+                                            @if($groupQuantity != $item->quantity) · fascia calcolata su {{ number_format((float)$groupQuantity, 0, ',', '.') }} pz @endif
+                                        </p>
                                     </div>
                                 </div>
                                 <div class="flex items-center justify-between gap-10 sm:justify-end">
@@ -226,12 +233,12 @@
 
                                 <div class="mt-8 grid gap-8 sm:grid-cols-2">
                                     <label>
-                                        <span class="text-10 font-extrabold uppercase text-gray">Colori e quantità</span>
+                                        <span class="flex min-h-16 items-center gap-4 text-10 font-extrabold uppercase text-gray">Colori e quantità <span class="font-semibold normal-case text-bullstar">· Visibile nel carrello</span></span>
                                         <textarea wire:model="itemColors.{{ $item->id }}" rows="4" maxlength="2000" placeholder="Blu navy — 50 pz&#10;Bianco — 30 pz" class="mt-4 w-full rounded-10 border-gray-mid bg-white px-10 py-8 text-11 font-semibold focus:border-bullstar focus:ring-bullstar"></textarea>
                                         @error('itemColors.'.$item->id)<span class="mt-4 block text-10 font-bold text-red-600">{{ $message }}</span>@enderror
                                     </label>
                                     <label>
-                                        <span class="text-10 font-extrabold uppercase text-gray">Note operative</span>
+                                        <span class="flex min-h-16 items-center text-10 font-extrabold uppercase text-gray">Note operative</span>
                                         <textarea wire:model="itemNotes.{{ $item->id }}" rows="4" maxlength="10000" placeholder="Posizione stampa, riferimenti, urgenze…" class="mt-4 w-full rounded-10 border-gray-mid bg-white px-10 py-8 text-11 font-semibold focus:border-bullstar focus:ring-bullstar"></textarea>
                                         @error('itemNotes.'.$item->id)<span class="mt-4 block text-10 font-bold text-red-600">{{ $message }}</span>@enderror
                                     </label>
@@ -393,10 +400,62 @@
                             <span>Segna la proposta come inviata e registra l’evento di conversione</span>
                         </label>
                         <div class="mt-8 rounded-10 bg-white px-8 py-7 text-10 font-semibold text-gray">
-                            Totale PDF: <span class="font-black text-black-nike">€ {{ number_format((float)$salesSheet->revenue_total, 2, ',', '.') }}</span>
+                            Totale PDF IVA inclusa: <span class="font-black text-black-nike">€ {{ number_format($salesSheet->prices_include_vat ? (float) $salesSheet->revenue_total : round((float) $salesSheet->revenue_total * 1.22, 2), 2, ',', '.') }}</span>
                         </div>
                         <button type="submit" class="mt-8 w-full rounded-10 bg-black-nike px-10 py-10 text-10 font-extrabold uppercase text-white transition hover:bg-bullstar">Genera PDF dall’ordine</button>
                     </form>
+
+                    <?php
+                        $orderCheckouts = $salesSheet->checkouts->sortBy('id');
+                        $hasFullCheckout = $orderCheckouts->contains('payment_type', 'full');
+                        $hasDepositCheckout = $orderCheckouts->contains('payment_type', 'deposit');
+                        $hasBalanceCheckout = $orderCheckouts->contains('payment_type', 'balance');
+                    ?>
+                    @foreach ($orderCheckouts as $orderCheckout)
+                        <?php $checkoutUrl = rtrim(config('services.public_site.url'), '/').'/checkout/'.$orderCheckout->token; ?>
+                        <div class="rounded-10 border border-bullstar bg-bullstar/5 p-10" x-data="{ copied: false }">
+                            <div class="flex items-start justify-between gap-8">
+                                <div>
+                                    <p class="text-10 font-extrabold uppercase text-gray">{{ $orderCheckout->payment_label }}</p>
+                                    <p class="mt-4 text-13 font-black">€ {{ number_format((float) $orderCheckout->total_amount, 2, ',', '.') }}</p>
+                                    <p class="mt-3 text-10 font-semibold text-gray">Ordine {{ $orderCheckout->order_number }}.</p>
+                                </div>
+                                <span class="shrink-0 rounded-full bg-bullstar px-8 py-5 text-10 font-extrabold uppercase text-white">{{ $orderCheckout->status === 'details_completed' ? 'Completato' : 'Bozza' }}</span>
+                            </div>
+                            <div class="mt-8 grid gap-6">
+                                <a href="{{ $checkoutUrl }}" target="_blank" rel="noopener" class="inline-flex w-full items-center justify-center rounded-10 bg-black-nike px-10 py-10 text-10 font-extrabold uppercase text-white transition hover:bg-bullstar">Apri checkout</a>
+                                <button type="button" @click="navigator.clipboard.writeText(@js($checkoutUrl)); copied = true; setTimeout(() => copied = false, 1800)" class="w-full rounded-10 border border-bullstar bg-white px-10 py-10 text-10 font-extrabold uppercase text-bullstar transition hover:bg-bullstar hover:text-white">
+                                    <span x-text="copied ? 'Copiato' : 'Copia link'">Copia link</span>
+                                </button>
+                            </div>
+                        </div>
+                    @endforeach
+
+                    @if (! $hasFullCheckout && ! $hasBalanceCheckout)
+                        <form method="POST" action="{{ route('admin.leads.orders.checkout.store', [$leadId, $salesSheet]) }}" class="rounded-10 border border-black-nike bg-gray-light p-10" x-data="{ paymentType: @js(old('payment_type', $hasDepositCheckout ? 'balance' : 'full')) }">
+                            @csrf
+                            <div class="flex h-32 w-32 items-center justify-center rounded-full bg-black-nike text-14 font-black text-white">✓</div>
+                            <p class="mt-8 text-13 font-black">Nuovo checkout</p>
+                            <p class="mt-3 text-10 font-semibold leading-relaxed text-gray">Puoi creare il pagamento completo oppure due link separati per acconto e saldo.</p>
+                            <label class="mt-8 block">
+                                <span class="text-10 font-extrabold uppercase text-gray">Tipo pagamento</span>
+                                <select name="payment_type" x-model="paymentType" class="mt-4 w-full rounded-10 border-gray-mid bg-white px-10 py-8 text-11 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                    @if (! $hasDepositCheckout)<option value="full">Pagamento completo</option>@endif
+                                    @if (! $hasDepositCheckout)<option value="deposit">Acconto</option>@endif
+                                    @if ($hasDepositCheckout)<option value="balance">Saldo rimanente</option>@endif
+                                </select>
+                            </label>
+                            <label class="mt-6 block" x-show="paymentType === 'deposit'" x-cloak>
+                                <span class="text-10 font-extrabold uppercase text-gray">Importo acconto IVA inclusa</span>
+                                <input name="deposit_amount" type="number" min="0.01" step="0.01" value="{{ old('deposit_amount') }}" placeholder="Es. 200,00" class="mt-4 w-full rounded-10 border-gray-mid bg-white px-10 py-8 text-11 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                @error('deposit_amount')<span class="mt-4 block text-10 font-bold text-red-600">{{ $message }}</span>@enderror
+                            </label>
+                            <button type="submit" class="mt-8 w-full rounded-10 bg-black-nike px-10 py-10 text-10 font-extrabold uppercase text-white transition hover:bg-bullstar">
+                                Genera link checkout
+                            </button>
+                            @error('checkout')<span class="mt-5 block text-10 font-bold text-red-600">{{ $message }}</span>@enderror
+                        </form>
+                    @endif
 
                     <form wire:submit="sendOrder" class="rounded-10 border border-gray-mid bg-gray-light p-10">
                         <div class="flex h-32 w-32 items-center justify-center rounded-full bg-bullstar text-14 font-black text-white">→</div>

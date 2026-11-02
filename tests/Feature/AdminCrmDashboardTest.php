@@ -435,6 +435,7 @@ class AdminCrmDashboardTest extends TestCase
             $item = $sheet->items()->create([
                 'product_code' => 'DEMO-'.($index + 1),
                 'product_name' => $name,
+                'configuration_name' => $index === 0 ? 'Maglia BS052' : null,
                 'quantity' => $quantity,
                 'product_unit_cost' => 5,
                 'product_unit_price' => $index === 0 ? 9.50 : 16.55,
@@ -469,6 +470,35 @@ class AdminCrmDashboardTest extends TestCase
         $this->assertSame('512.40', $proposal->amount);
         Storage::disk('local')->assertExists($proposal->path);
         $this->assertStringStartsWith('%PDF-', Storage::disk('local')->get($proposal->path));
+
+        $proposal->delete();
+
+        $this->post(route('admin.leads.orders.checkout.store', [$lead, $sheet]), [
+            'payment_type' => 'deposit',
+            'deposit_amount' => 100,
+        ])
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('status');
+
+        $deposit = $sheet->fresh()->checkouts()->firstOrFail();
+        $this->assertSame(64, strlen($deposit->token));
+        $this->assertNull($deposit->lead_quote_pdf_id);
+        $this->assertSame('deposit', $deposit->payment_type);
+        $this->assertSame('81.97', $deposit->taxable_amount);
+        $this->assertSame('18.03', $deposit->vat_amount);
+        $this->assertSame('100.00', $deposit->total_amount);
+        $this->assertSame('512.40', $deposit->order_total_amount);
+        $this->assertCount(2, $deposit->items);
+        $this->assertSame('Maglia BS052', $deposit->items[0]['name']);
+        $this->assertStringNotContainsString('Maglia BS052', $deposit->items[0]['details']);
+
+        $this->post(route('admin.leads.orders.checkout.store', [$lead, $sheet]), [
+            'payment_type' => 'balance',
+        ])->assertSessionHasNoErrors();
+
+        $balance = $sheet->fresh()->checkouts()->where('payment_type', 'balance')->firstOrFail();
+        $this->assertSame('412.40', $balance->total_amount);
+        $this->assertCount(2, $sheet->fresh()->checkouts);
     }
 
     public function test_product_mockup_accepts_webp_and_normalizes_it_for_the_pdf(): void
@@ -552,8 +582,8 @@ class AdminCrmDashboardTest extends TestCase
         $item = $lead->fresh()->salesSheet->items()->firstOrFail();
         $sheet = $lead->fresh()->salesSheet;
         $this->assertSame('250.00', $sheet->product_revenue_total);
-        $this->assertSame('9.90', $sheet->shipping_charge);
-        $this->assertSame('259.90', $sheet->revenue_total);
+        $this->assertSame('8.12', $sheet->shipping_charge);
+        $this->assertSame('258.12', $sheet->revenue_total);
         $this->assertSame('200.00', $sheet->margin_total);
 
         Livewire::test(LeadSalesSheetComponent::class, ['leadId' => $lead->id])
@@ -564,8 +594,8 @@ class AdminCrmDashboardTest extends TestCase
         $sheet = $lead->fresh()->salesSheet;
         $this->assertSame('260.00', $sheet->product_revenue_total);
         $this->assertSame('0.00', $sheet->shipping_charge);
-        $this->assertSame('9.90', $sheet->shipping_cost);
-        $this->assertSame('200.10', $sheet->margin_total);
+        $this->assertSame('8.12', $sheet->shipping_cost);
+        $this->assertSame('201.88', $sheet->margin_total);
 
         Livewire::test(LeadSalesSheetComponent::class, ['leadId' => $lead->id])
             ->set('shippingFee', '12.50')
@@ -600,8 +630,8 @@ class AdminCrmDashboardTest extends TestCase
             ->assertSee('Questo è il primo ordine del cliente: il CAC medio degli ultimi 30 giorni viene sottratto qui una sola volta.')
             ->assertSee('€ 20,00')
             ->assertSee('€ 30,00')
-            ->assertSee('€ 17,03')
-            ->assertSee('27,3%')
+            ->assertSee('€ 17,56')
+            ->assertSee('27,7%')
             ->assertSee('Non sostenibile');
     }
 
@@ -933,7 +963,7 @@ class AdminCrmDashboardTest extends TestCase
         $print = CrmPrintType::create(['code' => 'ST', 'name' => 'Stampa', 'is_active' => true]);
         $print->priceTiers()->create(['min_quantity' => 1, 'max_quantity' => 19, 'unit_cost' => 3, 'unit_price' => 5]);
         $print->priceTiers()->create(['min_quantity' => 20, 'max_quantity' => null, 'unit_cost' => 1, 'unit_price' => 2]);
-        $sheet = $lead->salesSheets()->create(['order_number' => 'ORD-TEST', 'name' => 'Test gruppi']);
+        $sheet = $lead->salesSheets()->create(['order_number' => 'ORD-TEST', 'name' => 'Test gruppi', 'prices_include_vat' => false]);
 
         foreach (range(1, 4) as $variant) {
             $item = $sheet->items()->create([
