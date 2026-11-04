@@ -4,206 +4,81 @@
 @section('active_nav', 'crm-catalog')
 
 @section('content')
-@php($canManageCatalog = auth('admin')->user()?->hasAdminPermission('crm_catalog.manage'))
-<div data-crm-catalog class="space-y-12">
-    <header class="overflow-hidden rounded-10 border border-gray-mid bg-black-nike p-12 text-white sm:p-16">
-        <div class="flex flex-col gap-10 lg:flex-row lg:items-end lg:justify-between">
-            <div><p class="text-10 font-extrabold uppercase tracking-wider text-white/60">Configurazione CRM</p><h1 class="mt-4 text-24 font-black">Catalogo commerciale</h1><p class="mt-4 text-11 font-semibold text-white/60">Prodotti, costi, prezzi e lavorazioni organizzati per fascia quantità. Tutti i costi e i prezzi sono IVA esclusa.</p></div>
-            <form method="GET" class="flex w-full gap-5 lg:max-w-[440px]"><input name="q" value="{{ $search }}" placeholder="Cerca codice o nome…" class="min-w-0 flex-1 rounded-10 border-white/20 bg-white px-10 py-9 text-12 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar"><button class="rounded-10 bg-bullstar px-12 text-10 font-extrabold uppercase text-white">Cerca</button>@if($search)<a href="{{ route('admin.crm-catalog.index') }}" class="flex items-center rounded-10 border border-white/30 px-10 text-10 font-extrabold uppercase">Azzera</a>@endif</form>
-        </div>
-        <div class="mt-10 grid grid-cols-3 gap-6"><div class="rounded-10 bg-white/10 p-8"><p class="text-10 font-extrabold uppercase text-white/50">Categorie</p><p class="mt-3 text-18 font-black">{{ $categories->count() }}</p></div><div class="rounded-10 bg-white/10 p-8"><p class="text-10 font-extrabold uppercase text-white/50">Prodotti</p><p class="mt-3 text-18 font-black">{{ $products->count() }}</p></div><div class="rounded-10 bg-white/10 p-8"><p class="text-10 font-extrabold uppercase text-white/50">Lavorazioni</p><p class="mt-3 text-18 font-black">{{ $printTypes->count() }}</p></div></div>
+@php
+    $canManageCatalog = auth('admin')->user()?->hasAdminPermission('crm_catalog.manage');
+    $catalogTabs = ['products' => ['Prodotti', $products->count()], 'prints' => ['Stampe', $printTypes->count()], 'brands' => ['Brand', $brands->count()], 'suppliers' => ['Fornitori', $suppliers->count()], 'categories' => ['Categorie lead', $categories->count()]];
+    $catalogSection = old('catalog_section', request('section', 'products'));
+    if (!is_string($catalogSection) || !array_key_exists($catalogSection, $catalogTabs)) $catalogSection = 'products';
+    $restoreDialog = old('catalog_dialog', '');
+    if (!is_string($restoreDialog)) $restoreDialog = '';
+@endphp
+<div data-crm-catalog data-restore-dialog="{{ $restoreDialog }}" class="catalog-workspace">
+    <header class="catalog-page-header">
+        <div><p class="catalog-eyebrow">Vendite e anagrafiche</p><h1>Catalogo commerciale</h1><p>Gestisci prodotti, listini e fornitori da un unico spazio.</p></div>
+        <span class="catalog-tax-note">Costi e prezzi IVA esclusa</span>
     </header>
-    <section class="rounded-10 border border-gray-mid bg-white">
-        <div class="border-b border-gray-mid px-12 py-10">
-            <p class="text-10 font-extrabold uppercase tracking-normal text-gray">Classificazione lead</p>
-            <h2 class="mt-4 text-18 font-black">Categorie</h2>
-        </div>
-        <div class="grid gap-12 p-12 lg:grid-cols-[420px_minmax(0,1fr)] lg:items-start">
-            @if ($canManageCatalog)
-            <form method="POST" action="{{ route('admin.crm-catalog.categories.store') }}" class="grid gap-8 rounded-10 border border-gray-mid bg-gray-light p-10">@csrf
-                <label><span class="text-10 font-extrabold uppercase text-gray">Nome categoria</span><input name="name" required placeholder="Es. Squadre sportive" class="mt-4 w-full bg-white"></label>
-                <label>
-                    <span class="text-10 font-extrabold uppercase text-gray">Ordine di visualizzazione</span>
-                    <input name="sort_order" type="number" min="0" value="0" class="mt-4 w-full bg-white">
-                    <span class="mt-4 block text-10 font-semibold leading-[14px] text-gray">Le categorie con il numero più basso vengono mostrate per prime nel menu del lead.</span>
-                </label>
-                <button class="rounded-10 bg-black-nike px-12 text-10 font-extrabold uppercase text-white">Aggiungi categoria</button>
-            </form>
-            @endif
-            <div class="grid gap-6">
-                @error('category')<div class="rounded-10 border border-red-200 bg-red-50 px-10 py-8 text-11 font-bold text-red-700">{{ $message }}</div>@enderror
-                @forelse($categories as $category)
-                    <div class="flex flex-wrap items-center justify-between gap-8 rounded-10 border border-gray-mid px-10 py-8 {{ $category->is_active ? 'bg-white' : 'bg-gray-light opacity-70' }}">
-                        <div class="min-w-0">
-                            <p class="truncate text-12 font-bold">{{ $category->name }}</p>
-                            <p class="mt-3 text-10 font-semibold text-gray">Ordine: {{ $category->sort_order }} · {{ $category->is_active ? 'Attiva' : 'Disattivata' }}</p>
-                        </div>
-                        @if ($canManageCatalog)
-                        <div class="flex items-center gap-5">
-                            <form method="POST" action="{{ route('admin.crm-catalog.categories.toggle', $category) }}" class="h-32">@csrf @method('PATCH')
-                                <button class="h-full rounded-10 border border-black-nike px-8 text-10 font-extrabold uppercase">{{ $category->is_active ? 'Disattiva' : 'Riattiva' }}</button>
-                            </form>
-                            <form method="POST" action="{{ route('admin.crm-catalog.categories.destroy', $category) }}" onsubmit="return confirm('Eliminare definitivamente questa categoria?')" class="h-32">@csrf @method('DELETE')
-                                <button class="h-full rounded-10 border border-red-600 px-8 text-10 font-extrabold uppercase text-red-600">Elimina</button>
-                            </form>
-                        </div>
-                        @endif
-                    </div>
-                @empty
-                    <p class="text-12 font-semibold text-gray">Nessuna categoria configurata.</p>
-                @endforelse
+
+    <div class="catalog-surface">
+        <nav class="catalog-tabs" role="tablist" aria-label="Sezioni del catalogo">
+            @foreach($catalogTabs as $key => [$label, $count])
+                <button type="button" id="catalog-tab-{{ $key }}" role="tab" data-catalog-tab="catalog-panel-{{ $key }}" aria-controls="catalog-panel-{{ $key }}" aria-selected="{{ $catalogSection === $key ? 'true' : 'false' }}" tabindex="{{ $catalogSection === $key ? '0' : '-1' }}">{{ $label }}<span>{{ $count }}</span></button>
+            @endforeach
+        </nav>
+
+        <section id="catalog-panel-products" data-catalog-panel role="tabpanel" aria-labelledby="catalog-tab-products" @if($catalogSection !== 'products') hidden @endif>
+            <div class="catalog-section-heading"><div><h2>Prodotti</h2><p>Consulta l’anagrafica o apri la scheda per modificare dettagli e prezzi.</p></div>@if($canManageCatalog)<button type="button" data-catalog-open="product-new" class="catalog-button catalog-button-primary"><span aria-hidden="true">＋</span> Nuovo prodotto</button>@endif</div>
+            <div class="catalog-toolbar">
+                <form method="GET" class="catalog-search" role="search"><input type="hidden" name="section" value="{{ $catalogSection }}"><input name="q" value="{{ $search }}" aria-label="Cerca nel catalogo" placeholder="Cerca codice, prodotto, brand o fornitore"><button class="catalog-button catalog-button-secondary">Cerca</button>@if($search)<a href="{{ route('admin.crm-catalog.index', ['section' => 'products']) }}" class="catalog-text-button">Azzera</a>@endif</form>
+                <div class="catalog-filters"><select aria-label="Filtra per brand" data-catalog-brand-filter><option value="">Tutti i brand</option>@foreach($brands as $brand)<option value="{{ $brand->id }}">{{ $brand->name }}</option>@endforeach</select><select aria-label="Filtra per visibilità" data-catalog-visibility-filter><option value="">Ogni visibilità</option><option value="visible">Visibilità abilitata</option><option value="hidden">Nascosti sul sito</option></select></div>
             </div>
-        </div>
-    </section>
+            <div class="catalog-list-caption"><span data-catalog-product-count aria-live="polite" aria-atomic="true">{{ $products->count() }} prodotti</span><span>Importi unitari · IVA esclusa</span></div>
+            <div class="catalog-table-scroll"><table class="catalog-table catalog-products-table"><thead><tr><th scope="col">Prodotto</th><th scope="col">Brand</th><th scope="col">Fornitori</th><th scope="col" class="catalog-number">Costo unitario</th><th scope="col">Varianti</th><th scope="col">Sito</th><th scope="col"><span class="sr-only">Azioni</span></th></tr></thead><tbody>
+                @foreach($products as $product)
+                    <tr data-catalog-product-row data-brand="{{ $product->crm_brand_id }}" data-visibility="{{ $product->is_visible_on_site ? 'visible' : 'hidden' }}">
+                        <td><strong>{{ $product->name }}</strong><span class="catalog-secondary catalog-code">{{ $product->code }}</span></td>
+                        <td data-label="Brand">{{ $product->brand?->name ?: '—' }}</td>
+                        <td data-label="Fornitori" class="catalog-supplier-cell">{{ $product->suppliers->pluck('name')->implode(', ') ?: '—' }}</td>
+                        <td data-label="Costo unitario" class="catalog-number"><strong>€ {{ number_format((float)$product->unit_cost, 2, ',', '.') }}</strong><span class="catalog-secondary">{{ $product->priceTiers->count() }} {{ $product->priceTiers->count() === 1 ? 'fascia prezzo' : 'fasce prezzo' }}</span></td>
+                        <td data-label="Varianti"><span>{{ $product->colors->count() }} {{ $product->colors->count() === 1 ? 'colore' : 'colori' }}</span>@if($product->colors->isNotEmpty())<span class="catalog-mini-swatches" aria-label="Anteprima colori">@foreach($product->colors->take(5) as $color)<i class="{{ $color->hex ? '' : 'catalog-color-unset' }}" @if($color->hex) style="background-color: {{ $color->hex }}" @endif title="{{ $color->name }}"></i>@endforeach</span>@endif<span class="catalog-secondary">{{ $product->sizes->count() }} {{ $product->sizes->count() === 1 ? 'taglia' : 'taglie' }}</span></td>
+                        <td data-label="Sito"><span class="catalog-badge {{ $product->is_visible_on_site ? 'catalog-badge-green' : '' }}">{{ $product->is_visible_on_site ? 'Abilitato' : 'Nascosto' }}</span></td>
+                        <td class="catalog-row-actions"><button type="button" data-catalog-open="product-{{ $product->id }}" class="catalog-button catalog-button-secondary">Apri scheda <span aria-hidden="true">↗</span></button></td>
+                    </tr>
+                @endforeach
+            </tbody></table></div>
+            <div data-catalog-filter-empty @if($products->isNotEmpty()) hidden @endif class="catalog-empty"><strong>Nessun prodotto trovato</strong><p>Modifica la ricerca o i filtri, oppure aggiungi un prodotto al catalogo.</p></div>
+        </section>
 
-    <section class="rounded-10 border border-gray-mid bg-white">
-        <div class="border-b border-gray-mid px-12 py-10">
-            <p class="text-10 font-extrabold uppercase tracking-normal text-gray">Listino articoli</p>
-            <h2 class="mt-4 text-18 font-black">Prodotti</h2>
-            <p class="mt-4 text-11 font-semibold text-gray">Costi e prezzi unitari IVA esclusa.</p>
-        </div>
-        <div class="p-12">
-            @if ($canManageCatalog)
-            <form method="POST" action="{{ route('admin.crm-catalog.products.store') }}" class="grid gap-6 rounded-10 border border-gray-mid bg-gray-light p-10 md:grid-cols-[150px_minmax(220px,1fr)_150px_auto] md:items-end">@csrf
-                <label><span class="text-10 font-extrabold uppercase text-gray">Codice</span><input name="code" required placeholder="TS01" class="mt-4 w-full bg-white"></label>
-                <label><span class="text-10 font-extrabold uppercase text-gray">Nome prodotto</span><input name="name" required placeholder="T-shirt Premium" class="mt-4 w-full bg-white"></label>
-                <label><span class="text-10 font-extrabold uppercase text-gray">Costo unitario</span><input name="unit_cost" required type="number" min="0" step="0.01" placeholder="0,00" class="mt-4 w-full bg-white"></label>
-                <button class="rounded-10 bg-black-nike px-12 text-10 font-extrabold uppercase text-white">Salva prodotto</button>
+        <section id="catalog-panel-prints" data-catalog-panel role="tabpanel" aria-labelledby="catalog-tab-prints" @if($catalogSection !== 'prints') hidden @endif>
+            <div class="catalog-section-heading"><div><h2>Stampe e lavorazioni</h2><p>Tariffe di costo e vendita per applicazione, suddivise per quantità.</p></div>@if($canManageCatalog)<button type="button" data-catalog-open="print-new" class="catalog-button catalog-button-primary">＋ Nuova stampa</button>@endif</div>
+            <form method="GET" class="catalog-search catalog-search-inset" role="search"><input type="hidden" name="section" value="prints"><input name="q" value="{{ $search }}" aria-label="Cerca stampe" placeholder="Cerca codice o nome della stampa"><button class="catalog-button catalog-button-secondary">Cerca</button>@if($search)<a href="{{ route('admin.crm-catalog.index', ['section' => 'prints']) }}" class="catalog-text-button">Azzera</a>@endif</form>
+            <div class="catalog-table-scroll"><table class="catalog-table"><thead><tr><th scope="col">Lavorazione</th><th scope="col">Codice</th><th scope="col">Fasce configurate</th><th scope="col"><span class="sr-only">Azioni</span></th></tr></thead><tbody>
+                @forelse($printTypes as $printType)<tr><td><strong>{{ $printType->name }}</strong></td><td class="catalog-code">{{ $printType->code }}</td><td>{{ $printType->priceTiers->count() }} fasce</td><td class="catalog-row-actions"><button type="button" data-catalog-open="print-{{ $printType->id }}" class="catalog-button catalog-button-secondary">Apri listino ↗</button></td></tr>@empty<tr><td colspan="4" class="catalog-empty">Nessuna stampa trovata.</td></tr>@endforelse
+            </tbody></table></div>
+        </section>
+
+        @include('admin.crm-catalog.directories')
+
+        <section id="catalog-panel-categories" data-catalog-panel role="tabpanel" aria-labelledby="catalog-tab-categories" @if($catalogSection !== 'categories') hidden @endif>
+            <div class="catalog-section-heading"><div><h2>Categorie lead</h2><p>Classificazione dei clienti nel CRM. Queste categorie non classificano i prodotti.</p></div>@if($canManageCatalog)<button type="button" data-catalog-open="category-new" class="catalog-button catalog-button-primary">＋ Nuova categoria</button>@endif</div>
+            <div class="catalog-table-scroll"><table class="catalog-table"><thead><tr><th scope="col">Categoria</th><th scope="col">Ordine di visualizzazione</th><th scope="col">Stato</th><th scope="col"><span class="sr-only">Azioni</span></th></tr></thead><tbody>
+                @forelse($categories as $category)<tr><td><strong>{{ $category->name }}</strong></td><td>{{ $category->sort_order }}</td><td><span class="catalog-badge {{ $category->is_active ? 'catalog-badge-green' : '' }}">{{ $category->is_active ? 'Attiva' : 'Disattivata' }}</span></td><td><div class="catalog-actions">@if($canManageCatalog)<form method="POST" action="{{ route('admin.crm-catalog.categories.toggle', $category) }}">@csrf @method('PATCH')<button class="catalog-button catalog-button-secondary">{{ $category->is_active ? 'Disattiva' : 'Riattiva' }}</button></form><form method="POST" action="{{ route('admin.crm-catalog.categories.destroy', $category) }}" data-catalog-delete="Eliminare la categoria {{ $category->name }}? Le categorie già associate ai lead non possono essere eliminate.">@csrf @method('DELETE')<button class="catalog-text-button catalog-text-danger">Elimina</button></form>@endif</div></td></tr>@empty<tr><td colspan="4" class="catalog-empty">Nessuna categoria configurata.</td></tr>@endforelse
+            </tbody></table></div>
+        </section>
+    </div>
+
+    @include('admin.crm-catalog.product-dialogs')
+    @include('admin.crm-catalog.print-dialogs')
+    @include('admin.crm-catalog.directory-dialogs')
+    @if($canManageCatalog)
+        <x-catalog-dialog id="category-new" title="Nuova categoria lead" description="Organizza i lead con una classificazione condivisa.">
+            <form method="POST" action="{{ route('admin.crm-catalog.categories.store') }}" class="catalog-form">@csrf<input type="hidden" name="catalog_dialog" value="category-new"><input type="hidden" name="catalog_section" value="categories">
+                <div class="catalog-modal-body catalog-form-grid"><label class="catalog-field catalog-span-full"><span>Nome categoria</span><input name="name" value="{{ old('catalog_dialog') === 'category-new' ? old('name') : '' }}" required maxlength="255" placeholder="Es. Associazioni sportive"></label><label class="catalog-field"><span>Ordine di visualizzazione</span><input name="sort_order" value="{{ old('catalog_dialog') === 'category-new' ? old('sort_order', 0) : 0 }}" type="number" min="0"><small>Le categorie con il numero più basso appaiono per prime.</small></label></div>
+                <footer class="catalog-modal-footer"><button type="button" data-catalog-close class="catalog-button catalog-button-secondary">Annulla</button><button class="catalog-button catalog-button-primary">Aggiungi categoria</button></footer>
             </form>
-            @endif
-
-            <div class="{{ $canManageCatalog ? 'mt-12' : '' }} space-y-10">
-                @forelse($products as $product)
-                    <details class="group overflow-hidden rounded-10 border border-gray-mid bg-white">
-                        <summary class="flex cursor-pointer list-none flex-wrap items-start justify-between gap-8 bg-gray-light px-10 py-8 sm:grid sm:grid-cols-[minmax(0,1fr)_220px_16px]">
-                            <div class="min-w-0"><p class="truncate text-14 font-black">{{ $product->code }} · {{ $product->name }}</p><p class="mt-3 text-11 font-bold text-gray">Costo unitario € {{ number_format((float)$product->unit_cost, 2, ',', '.') }} · {{ $product->priceTiers->count() }} {{ $product->priceTiers->count() === 1 ? 'fascia' : 'fasce' }}</p></div>
-                            @if ($canManageCatalog)
-                            <div class="grid w-full grid-cols-2 items-start gap-5 sm:w-full">
-                                <button type="button" data-catalog-toggle="product-edit-{{ $product->id }}" aria-expanded="false" class="h-32 w-full rounded-10 border border-black-nike text-10 font-extrabold uppercase">Modifica</button>
-                                <form method="POST" action="{{ route('admin.crm-catalog.products.destroy', $product) }}" onsubmit="return confirm('Eliminare il prodotto e tutte le sue fasce prezzo? Lo storico delle schede vendita resterà invariato.')" class="h-32">@csrf @method('DELETE')
-                                    <button class="h-full w-full rounded-10 border border-red-600 text-10 font-extrabold uppercase text-red-600">Elimina</button>
-                                </form>
-                            </div>
-                            @endif
-                            <span class="pt-6 text-center text-16 font-black leading-none text-gray transition group-open:rotate-180 sm:col-start-3">⌄</span>
-                        </summary>
-                        @if ($canManageCatalog)
-                        <form id="product-edit-{{ $product->id }}" hidden method="POST" action="{{ route('admin.crm-catalog.products.update', $product) }}" class="grid gap-6 border-t border-gray-mid bg-white p-10 md:grid-cols-[130px_minmax(220px,1fr)_150px_auto] md:items-end">@csrf @method('PATCH')
-                            <label><span class="text-10 font-bold text-gray">Codice</span><input name="code" required value="{{ $product->code }}" class="mt-4 w-full"></label>
-                            <label><span class="text-10 font-bold text-gray">Nome prodotto</span><input name="name" required value="{{ $product->name }}" class="mt-4 w-full"></label>
-                            <label><span class="text-10 font-bold text-gray">Costo unitario €</span><input name="unit_cost" required type="number" min="0" step="0.01" value="{{ $product->unit_cost }}" class="mt-4 w-full"></label>
-                            <button class="rounded-10 bg-black-nike px-10 text-10 font-extrabold uppercase text-white">Salva modifiche</button>
-                        </form>
-                        @endif
-                        <div class="border-t border-gray-mid p-10">
-                            <div class="overflow-hidden rounded-10 border border-gray-mid">
-                            <div class="grid grid-cols-[minmax(0,1fr)_90px_90px_180px] bg-gray-light px-8 py-6 text-10 font-extrabold uppercase text-gray"><span>Quantità</span><span class="text-right">Costo</span><span class="text-right">Vendita</span><span class="text-right">Azioni</span></div>
-                            @forelse($product->priceTiers as $tier)
-                                <div class="grid grid-cols-[minmax(0,1fr)_90px_90px_180px] items-center gap-5 border-t border-gray-mid px-8 py-6 text-11 font-bold">
-                                    <span>{{ number_format((float)$tier->min_quantity, 2, ',', '.') }} – {{ $tier->max_quantity !== null ? number_format((float)$tier->max_quantity, 2, ',', '.') : '∞' }}</span><span class="text-right">€ {{ number_format((float)($tier->unit_cost ?? $product->unit_cost), 2, ',', '.') }}</span><span class="text-right">€ {{ number_format((float)$tier->unit_price, 2, ',', '.') }}</span>
-                                    @if ($canManageCatalog)<div class="grid grid-cols-2 items-center gap-4"><button type="button" data-catalog-toggle="product-tier-edit-{{ $tier->id }}" aria-expanded="false" class="h-32 w-full rounded-10 border border-black-nike text-10 font-extrabold uppercase">Modifica</button>
-                                        <form method="POST" action="{{ route('admin.crm-catalog.products.tiers.destroy', $tier) }}" onsubmit="return confirm('Eliminare questa fascia prezzo?')" class="h-32">@csrf @method('DELETE')<button class="h-full w-full rounded-10 border border-red-600 text-10 font-extrabold uppercase text-red-600">Elimina</button></form></div>@else<span></span>@endif
-                                </div>
-                                @if ($canManageCatalog)
-                                    <form id="product-tier-edit-{{ $tier->id }}" hidden method="POST" action="{{ route('admin.crm-catalog.products.tiers.update', $tier) }}" class="grid grid-cols-1 gap-5 border-t border-gray-mid bg-gray-light p-8 sm:grid-cols-[1fr_1fr_1fr_1fr_auto] sm:items-end">@csrf @method('PATCH')
-                                        <label><span class="text-10 font-bold text-gray">Quantità da</span><input name="min_quantity" required type="number" min="0.01" step="0.01" value="{{ $tier->min_quantity }}" class="mt-4 w-full bg-white"></label>
-                                        <label><span class="text-10 font-bold text-gray">Quantità a</span><input name="max_quantity" type="number" step="0.01" value="{{ $tier->max_quantity }}" placeholder="Senza limite" class="mt-4 w-full bg-white"></label>
-                                        <label><span class="text-10 font-bold text-gray">Costo €</span><input name="unit_cost" required type="number" min="0" step="0.01" value="{{ $tier->unit_cost ?? $product->unit_cost }}" class="mt-4 w-full bg-white"></label>
-                                        <label><span class="text-10 font-bold text-gray">Prezzo €</span><input name="unit_price" required type="number" min="0" step="0.01" value="{{ $tier->unit_price }}" class="mt-4 w-full bg-white"></label>
-                                        <button class="rounded-10 bg-black-nike px-10 text-10 font-extrabold uppercase text-white">Salva</button>
-                                        </form>
-                                @endif
-                            @empty <p class="border-t border-gray-mid px-8 py-6 text-11 font-semibold text-gray">Nessuna fascia prezzo.</p>@endforelse
-                            </div>
-                        @if ($canManageCatalog)
-                        <button type="button" data-catalog-toggle="product-tier-new-{{ $product->id }}" aria-expanded="false" class="mt-6 rounded-10 border border-black-nike px-10 text-10 font-extrabold uppercase">+ Aggiungi fascia prezzo</button>
-                        <form id="product-tier-new-{{ $product->id }}" hidden method="POST" action="{{ route('admin.crm-catalog.products.tiers.store', $product) }}" class="mt-6 grid grid-cols-1 gap-5 rounded-10 bg-gray-light p-8 sm:grid-cols-[1fr_1fr_1fr_1fr_auto] sm:items-end">@csrf
-                            <label><span class="text-10 font-bold text-gray">Quantità da</span><input name="min_quantity" required type="number" min="0.01" step="0.01" class="mt-4 w-full bg-white"></label><label><span class="text-10 font-bold text-gray">Quantità a</span><input name="max_quantity" type="number" step="0.01" placeholder="Senza limite" class="mt-4 w-full bg-white"></label><label><span class="text-10 font-bold text-gray">Costo €</span><input name="unit_cost" required type="number" min="0" step="0.01" value="{{ $product->unit_cost }}" class="mt-4 w-full bg-white"></label><label><span class="text-10 font-bold text-gray">Prezzo €</span><input name="unit_price" required type="number" min="0" step="0.01" class="mt-4 w-full bg-white"></label><button class="rounded-10 bg-black-nike px-10 text-10 font-extrabold uppercase text-white">Aggiungi</button>
-                        </form>
-                        @endif
-                        </div>
-                    </details>
-                @empty
-                    <p class="text-12 font-semibold text-gray">Nessun prodotto configurato.</p>
-                @endforelse
-            </div>
-        </div>
-    </section>
-
-    <section class="rounded-10 border border-gray-mid bg-white">
-        <div class="border-b border-gray-mid px-12 py-10">
-            <p class="text-10 font-extrabold uppercase tracking-normal text-gray">Listino lavorazioni</p>
-            <h2 class="mt-4 text-18 font-black">Stampe</h2>
-            <p class="mt-4 text-11 font-semibold text-gray">Costi e prezzi per applicazione IVA esclusa.</p>
-        </div>
-        <div class="p-12">
-            @if ($canManageCatalog)
-            <form method="POST" action="{{ route('admin.crm-catalog.prints.store') }}" class="grid gap-6 rounded-10 border border-gray-mid bg-gray-light p-10 md:grid-cols-[150px_minmax(220px,1fr)_auto] md:items-end">@csrf
-                <label><span class="text-10 font-extrabold uppercase text-gray">Codice</span><input name="code" required placeholder="CUORE1" class="mt-4 w-full bg-white"></label>
-                <label><span class="text-10 font-extrabold uppercase text-gray">Descrizione stampa</span><input name="name" required placeholder="Lato cuore 1 colore" class="mt-4 w-full bg-white"></label>
-                <button class="rounded-10 bg-black-nike px-12 text-10 font-extrabold uppercase text-white">Salva stampa</button>
-            </form>
-            @endif
-
-            <div class="{{ $canManageCatalog ? 'mt-12' : '' }} space-y-10">
-                @forelse($printTypes as $printType)
-                    <details class="group overflow-hidden rounded-10 border border-gray-mid bg-white">
-                        <summary class="flex cursor-pointer list-none flex-wrap items-start justify-between gap-8 border-b border-gray-mid bg-gray-light px-10 py-8 sm:grid sm:grid-cols-[minmax(0,1fr)_220px_16px]">
-                            <div class="flex min-w-0 items-center gap-8"><span class="shrink-0 rounded-10 bg-black-nike px-8 py-5 text-10 font-extrabold uppercase text-white">{{ $printType->code }}</span><div><p class="truncate text-14 font-black">{{ $printType->name }}</p><p class="mt-3 text-10 font-bold uppercase text-gray">{{ $printType->priceTiers->count() }} {{ $printType->priceTiers->count() === 1 ? 'fascia' : 'fasce' }}</p></div></div>
-                            @if ($canManageCatalog)<div class="grid w-full grid-cols-2 items-start gap-5 sm:w-full"><button type="button" data-catalog-toggle="print-edit-{{ $printType->id }}" aria-expanded="false" class="h-32 w-full rounded-10 border border-black-nike text-10 font-extrabold uppercase">Modifica</button><form method="POST" action="{{ route('admin.crm-catalog.prints.destroy', $printType) }}" onsubmit="return confirm('Eliminare la stampa e tutte le sue fasce prezzo? Lo storico delle schede vendita resterà invariato.')" class="h-32">@csrf @method('DELETE')<button class="h-full w-full rounded-10 border border-red-600 text-10 font-extrabold uppercase text-red-600">Elimina</button></form></div>@endif
-                            <span class="pt-6 text-center text-16 font-black leading-none text-gray transition group-open:rotate-180 sm:col-start-3">⌄</span>
-                        </summary>
-                        @if ($canManageCatalog)<form id="print-edit-{{ $printType->id }}" hidden method="POST" action="{{ route('admin.crm-catalog.prints.update', $printType) }}" class="grid gap-6 border-b border-gray-mid bg-white p-10 md:grid-cols-[150px_minmax(220px,1fr)_auto] md:items-end">@csrf @method('PATCH')<label><span class="text-10 font-bold text-gray">Codice</span><input name="code" required value="{{ $printType->code }}" class="mt-4 w-full"></label><label><span class="text-10 font-bold text-gray">Descrizione stampa</span><input name="name" required value="{{ $printType->name }}" class="mt-4 w-full"></label><button class="rounded-10 bg-black-nike px-10 text-10 font-extrabold uppercase text-white">Salva modifiche</button></form>@endif
-
-                        <div class="grid {{ $canManageCatalog ? 'lg:grid-cols-[minmax(0,3fr)_minmax(340px,2fr)]' : '' }}">
-                            <div class="p-10 lg:order-2 lg:border-l lg:border-gray-mid">
-                                <p class="mb-6 text-10 font-extrabold uppercase text-gray">Fasce configurate</p>
-                                <div class="overflow-hidden rounded-10 border border-gray-mid">
-                                    <div class="grid grid-cols-3 bg-gray-light px-8 py-6 text-10 font-extrabold uppercase text-gray">
-                                        <span>Quantità</span><span class="text-center">Costo unitario</span><span class="text-right">Prezzo vendita</span>
-                                    </div>
-                                    @forelse($printType->priceTiers as $tier)
-                                        <div class="grid grid-cols-[minmax(0,1fr)_100px_100px] items-center border-t border-gray-mid px-8 py-6 text-11 font-bold"><span>{{ number_format((float)$tier->min_quantity, 2, ',', '.') }} – {{ $tier->max_quantity !== null ? number_format((float)$tier->max_quantity, 2, ',', '.') : '∞' }}</span><span class="text-right">€ {{ number_format((float)$tier->unit_cost, 2, ',', '.') }}</span><span class="text-right">€ {{ number_format((float)$tier->unit_price, 2, ',', '.') }}</span></div>
-                                        @if ($canManageCatalog)<div class="grid grid-cols-2 items-center gap-4 border-t border-gray-mid px-8 py-5"><button type="button" data-catalog-toggle="print-tier-edit-{{ $tier->id }}" aria-expanded="false" class="h-32 w-full rounded-10 border border-black-nike text-10 font-extrabold uppercase">Modifica</button><form method="POST" action="{{ route('admin.crm-catalog.prints.tiers.destroy', $tier) }}" onsubmit="return confirm('Eliminare questa fascia prezzo?')" class="h-32">@csrf @method('DELETE')<button class="h-full w-full rounded-10 border border-red-600 text-10 font-extrabold uppercase text-red-600">Elimina</button></form></div>
-                                        <form id="print-tier-edit-{{ $tier->id }}" hidden method="POST" action="{{ route('admin.crm-catalog.prints.tiers.update', $tier) }}" class="grid grid-cols-2 gap-5 border-t border-gray-mid bg-gray-light p-8">@csrf @method('PATCH')<label><span class="text-10 font-bold text-gray">Quantità da</span><input name="min_quantity" required type="number" min="0.01" step="0.01" value="{{ $tier->min_quantity }}" class="mt-4 w-full bg-white"></label><label><span class="text-10 font-bold text-gray">Quantità a</span><input name="max_quantity" type="number" step="0.01" value="{{ $tier->max_quantity }}" placeholder="Senza limite" class="mt-4 w-full bg-white"></label><label><span class="text-10 font-bold text-gray">Costo unitario €</span><input name="unit_cost" required type="number" min="0" step="0.01" value="{{ $tier->unit_cost }}" class="mt-4 w-full bg-white"></label><label><span class="text-10 font-bold text-gray">Prezzo vendita €</span><input name="unit_price" required type="number" min="0" step="0.01" value="{{ $tier->unit_price }}" class="mt-4 w-full bg-white"></label><button class="col-span-2 rounded-10 bg-black-nike px-10 text-10 font-extrabold uppercase text-white">Salva modifiche</button></form>@endif
-                                    @empty
-                                        <p class="border-t border-gray-mid px-8 py-8 text-11 font-semibold text-gray">Nessuna fascia configurata.</p>
-                                    @endforelse
-                                </div>
-                            </div>
-
-                            @if ($canManageCatalog)
-                            <form method="POST" action="{{ route('admin.crm-catalog.prints.tiers.store', $printType) }}" class="border-t border-gray-mid bg-gray-light p-10 lg:order-1 lg:border-t-0">@csrf
-                                <p class="mb-6 text-10 font-extrabold uppercase text-gray">Nuova fascia</p>
-                                <div class="grid grid-cols-2 gap-6">
-                                    <label><span class="text-10 font-bold text-gray">Quantità da</span><input name="min_quantity" required type="number" min="0.01" step="0.01" placeholder="0,00" class="mt-4 w-full bg-white"></label>
-                                    <label><span class="text-10 font-bold text-gray">Quantità a</span><input name="max_quantity" type="number" step="0.01" placeholder="Senza limite" class="mt-4 w-full bg-white"></label>
-                                    <label><span class="text-10 font-bold text-gray">Costo unitario €</span><input name="unit_cost" required type="number" min="0" step="0.01" placeholder="0,00" class="mt-4 w-full bg-white"></label>
-                                    <label><span class="text-10 font-bold text-gray">Prezzo vendita €</span><input name="unit_price" required type="number" min="0" step="0.01" placeholder="0,00" class="mt-4 w-full bg-white"></label>
-                                </div>
-                                <button class="mt-8 w-full rounded-10 bg-black-nike px-10 text-10 font-extrabold uppercase text-white">Aggiungi fascia</button>
-                            </form>
-                            @endif
-                        </div>
-                    </details>
-                @empty
-                    <p class="text-12 font-semibold text-gray">Nessuna stampa configurata.</p>
-                @endforelse
-            </div>
-        </div>
-    </section>
+        </x-catalog-dialog>
+        <x-catalog-dialog id="catalog-delete" title="Conferma eliminazione" description="L’operazione è definitiva.">
+            <div class="catalog-modal-body"><p data-catalog-delete-message></p></div><footer class="catalog-modal-footer"><button type="button" data-catalog-close class="catalog-button catalog-button-secondary">Annulla</button><button type="button" data-catalog-confirm-delete class="catalog-button catalog-button-danger">Elimina definitivamente</button></footer>
+        </x-catalog-dialog>
+    @endif
 </div>
-@if ($canManageCatalog)
-<script>
-document.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-catalog-toggle]');
-    if (!button) return;
-    const panel = document.getElementById(button.dataset.catalogToggle);
-    if (!panel) return;
-    panel.hidden = !panel.hidden;
-    button.setAttribute('aria-expanded', String(!panel.hidden));
-    button.textContent = panel.hidden ? (button.dataset.catalogToggle.includes('-new-') ? '+ Aggiungi fascia prezzo' : 'Modifica') : 'Chiudi';
-});
-</script>
-@endif
 @endsection

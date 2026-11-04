@@ -3,16 +3,21 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\CrmBrand;
 use App\Models\CrmPrintPriceTier;
 use App\Models\CrmPrintType;
 use App\Models\CrmProduct;
 use App\Models\CrmProductPriceTier;
+use App\Models\CrmSupplier;
 use App\Models\LeadCategory;
+use App\Services\CrmProductCatalogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CrmCatalogController extends Controller
 {
@@ -22,8 +27,12 @@ class CrmCatalogController extends Controller
 
         return view('admin.crm-catalog.index', [
             'categories' => LeadCategory::orderBy('sort_order')->orderBy('name')->get(),
-            'products' => CrmProduct::with('priceTiers')
-                ->when($search !== '', fn ($query) => $query->where(fn ($query) => $query->where('code', 'like', "%{$search}%")->orWhere('name', 'like', "%{$search}%")))
+            'brands' => CrmBrand::with('suppliers')->orderBy('name')->get(),
+            'suppliers' => CrmSupplier::with('brands')->orderBy('name')->get(),
+            'products' => CrmProduct::with(['priceTiers', 'brand', 'suppliers', 'colors', 'sizes'])
+                ->when($search !== '', fn ($query) => $query->where(fn ($query) => $query->where('code', 'like', "%{$search}%")->orWhere('name', 'like', "%{$search}%")
+                    ->orWhereHas('brand', fn ($query) => $query->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('suppliers', fn ($query) => $query->where('name', 'like', "%{$search}%"))))
                 ->orderBy('name')->get(),
             'printTypes' => CrmPrintType::with('priceTiers')
                 ->when($search !== '', fn ($query) => $query->where(fn ($query) => $query->where('code', 'like', "%{$search}%")->orWhere('name', 'like', "%{$search}%")))
@@ -57,27 +66,36 @@ class CrmCatalogController extends Controller
         return back()->with('status', 'Categoria eliminata definitivamente.');
     }
 
-    public function storeProduct(Request $request): RedirectResponse
+    public function storeProduct(Request $request, CrmProductCatalogService $catalog): RedirectResponse
     {
-        $data = $request->validate(['code' => ['required', 'string', 'max:100', 'unique:crm_products,code'], 'name' => ['required', 'string', 'max:255'], 'unit_cost' => ['required', 'numeric', 'min:0']]);
-        CrmProduct::create($data + ['is_active' => true]);
+        $catalog->save($request);
 
         return back()->with('status', 'Prodotto salvato.');
     }
 
-    public function updateProduct(Request $request, CrmProduct $product): RedirectResponse
+    public function updateProduct(Request $request, CrmProduct $product, CrmProductCatalogService $catalog): RedirectResponse
     {
-        $data = $request->validate(['code' => ['required', 'string', 'max:100', Rule::unique('crm_products', 'code')->ignore($product)], 'name' => ['required', 'string', 'max:255'], 'unit_cost' => ['required', 'numeric', 'min:0']]);
-        $product->update($data);
+        $catalog->save($request, $product);
 
         return back()->with('status', 'Prodotto modificato.');
     }
 
     public function destroyProduct(CrmProduct $product): RedirectResponse
     {
+        $datasheet = $product->datasheet_path;
         $product->delete();
+        if ($datasheet) {
+            Storage::disk('local')->delete($datasheet);
+        }
 
         return back()->with('status', 'Prodotto eliminato.');
+    }
+
+    public function datasheet(CrmProduct $product): StreamedResponse
+    {
+        abort_unless($product->datasheet_path && Storage::disk('local')->exists($product->datasheet_path), 404);
+
+        return Storage::disk('local')->download($product->datasheet_path, $product->datasheet_filename ?: 'scheda-prodotto.pdf', ['Content-Type' => 'application/pdf']);
     }
 
     public function storeProductTier(Request $request, CrmProduct $product): RedirectResponse

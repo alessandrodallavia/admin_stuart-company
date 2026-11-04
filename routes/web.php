@@ -138,9 +138,16 @@ Route::name('admin.')->group(function () {
 
         Route::middleware(['admin.permission:crm_catalog.view', 'admin.training.blocked'])->group(function () {
             Route::get('/settings/crm-catalog', [AdminCrmCatalogController::class, 'index'])->name('crm-catalog.index');
+            Route::get('/settings/crm-catalog/products/{product}/datasheet', [AdminCrmCatalogController::class, 'datasheet'])->name('crm-catalog.products.datasheet');
         });
 
         Route::middleware(['admin.permission:crm_catalog.manage', 'admin.training.blocked'])->group(function () {
+            Route::post('/settings/crm-catalog/brands', [\App\Http\Controllers\Admin\CrmCatalogDirectoryController::class, 'storeBrand'])->name('crm-catalog.brands.store');
+            Route::patch('/settings/crm-catalog/brands/{brand}', [\App\Http\Controllers\Admin\CrmCatalogDirectoryController::class, 'updateBrand'])->name('crm-catalog.brands.update');
+            Route::delete('/settings/crm-catalog/brands/{brand}', [\App\Http\Controllers\Admin\CrmCatalogDirectoryController::class, 'destroyBrand'])->name('crm-catalog.brands.destroy');
+            Route::post('/settings/crm-catalog/suppliers', [\App\Http\Controllers\Admin\CrmCatalogDirectoryController::class, 'storeSupplier'])->name('crm-catalog.suppliers.store');
+            Route::patch('/settings/crm-catalog/suppliers/{supplier}', [\App\Http\Controllers\Admin\CrmCatalogDirectoryController::class, 'updateSupplier'])->name('crm-catalog.suppliers.update');
+            Route::delete('/settings/crm-catalog/suppliers/{supplier}', [\App\Http\Controllers\Admin\CrmCatalogDirectoryController::class, 'destroySupplier'])->name('crm-catalog.suppliers.destroy');
             Route::post('/settings/crm-catalog/categories', [AdminCrmCatalogController::class, 'storeCategory'])->name('crm-catalog.categories.store');
             Route::patch('/settings/crm-catalog/categories/{category}/toggle', [AdminCrmCatalogController::class, 'toggleCategory'])->name('crm-catalog.categories.toggle');
             Route::delete('/settings/crm-catalog/categories/{category}', [AdminCrmCatalogController::class, 'destroyCategory'])->name('crm-catalog.categories.destroy');
