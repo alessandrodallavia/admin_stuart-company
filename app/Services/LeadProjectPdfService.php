@@ -11,7 +11,7 @@ use TCPDF;
 
 class LeadProjectPdfService
 {
-    private const VAT_RATE = 22;
+    private const VAT_RATE = LeadSalesSheet::VAT_RATE;
 
     public function generate(Lead $lead, LeadQuotePdf $proposal): array
     {
@@ -242,10 +242,10 @@ class LeadProjectPdfService
         $product = $item?->configuration_name ?: $item?->product_name ?: $lead->product ?: $lead->calculator_model ?: 'Progetto personalizzato';
         $quantity = (float) ($item?->quantity ?: $lead->quantity ?: $lead->calculator_quantity ?: 1);
         $unitPrice = $item
-            ? $this->netUnitPrice((float) $item->final_unit_price)
+            ? $this->roundMoney((float) $item->final_unit_price)
             : ($quantity > 0 ? round($subtotal / $quantity, 2) : 0);
         $lineTotal = $item
-            ? $this->splitVatIncluded((float) $item->revenue_total)['net']
+            ? $this->roundMoney((float) $item->revenue_total)
             : $subtotal;
         $colors = collect($item?->colors)->filter()->join(', ') ?: ($lead->live_mockup_color ?: '-');
         $prints = $item?->prints?->pluck('print_name')->filter()->join(', ') ?: 'Personalizzazione inclusa';
@@ -371,8 +371,8 @@ class LeadProjectPdfService
             $y += 7;
             $product = $item->configuration_name ?: $item->product_name ?: 'Prodotto personalizzato';
             $quantity = (float) ($item->quantity ?: 1);
-            $unitPrice = $this->netUnitPrice((float) $item->final_unit_price);
-            $lineTotal = $this->splitVatIncluded((float) $item->revenue_total)['net'];
+            $unitPrice = $this->roundMoney((float) $item->final_unit_price);
+            $lineTotal = $this->roundMoney((float) $item->revenue_total);
             $colors = collect($item->colors)->filter()->join(', ') ?: ($lead->live_mockup_color ?: '-');
             $prints = $item->prints?->pluck('print_name')->filter()->join(', ') ?: 'Personalizzazione inclusa';
 
@@ -467,8 +467,8 @@ class LeadProjectPdfService
 
             $product = $item->configuration_name ?: $item->product_name ?: 'Prodotto personalizzato';
             $quantity = (float) ($item->quantity ?: 1);
-            $unitPrice = $this->netUnitPrice((float) $item->final_unit_price);
-            $lineTotal = $this->splitVatIncluded((float) $item->revenue_total)['net'];
+            $unitPrice = $this->roundMoney((float) $item->final_unit_price);
+            $lineTotal = $this->roundMoney((float) $item->revenue_total);
             $colors = collect($item->colors)->filter()->join(', ') ?: ($lead->live_mockup_color ?: '-');
             $prints = $item->prints?->pluck('print_name')->filter()->join(', ') ?: 'Personalizzazione inclusa';
 

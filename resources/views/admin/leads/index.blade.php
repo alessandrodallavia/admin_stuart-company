@@ -409,7 +409,7 @@
 
                                     <div class="grid gap-10 rounded-10 border border-gray-mid bg-gray-light p-10 md:grid-cols-2">
                                         <label class="block">
-                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Importo pagamento</span>
+                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Importo pagamento IVA inclusa</span>
                                             <input name="payment_amount" value="{{ old('payment_amount', $selectedLead->payment_amount) }}" type="number" min="0" step="0.01" placeholder="0,00" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
                                         </label>
 
@@ -584,7 +584,7 @@
                                         <div>
                                             <p class="text-10 font-extrabold uppercase text-gray">Storico cliente</p>
                                             <h3 class="mt-4 text-18 font-black">{{ $selectedLead->salesSheets->count() }} {{ $selectedLead->salesSheets->count() === 1 ? 'ordine' : 'ordini' }}</h3>
-                                            <p class="mt-3 text-10 font-semibold text-gray">Ogni nuovo acquisto resta collegato allo stesso lead e ha conti, prodotti e materiali separati.</p>
+                                            <p class="mt-3 text-10 font-semibold text-gray">Ogni ordine ha conti, prodotti e materiali separati. Le schede mostrano il netto; nel riepilogo trovi IVA e totale da pagare.</p>
                                         </div>
                                         <form method="POST" action="{{ route('admin.leads.orders.store', $selectedLead) }}" class="flex w-full gap-5 lg:w-auto">@csrf
                                             <input name="name" required maxlength="255" placeholder="Nome nuovo ordine" class="min-w-0 flex-1 rounded-10 border-gray-mid px-10 py-8 text-11 font-semibold lg:w-[240px]">
@@ -594,7 +594,7 @@
                                     <div class="mt-8 flex gap-5 overflow-x-auto pb-2">
                                         @foreach($selectedLead->salesSheets as $order)
                                             <div class="flex shrink-0 overflow-hidden rounded-10 border {{ $selectedSalesSheet?->id === $order->id ? 'border-black-nike bg-black-nike text-white' : 'border-gray-mid bg-gray-light' }}">
-                                                <a href="{{ route('admin.leads.index', ['lead' => $selectedLead, 'sales_sheet' => $order->id]).'#product' }}" class="px-10 py-7 text-10 font-extrabold uppercase transition {{ $selectedSalesSheet?->id === $order->id ? 'text-white' : 'hover:text-bullstar' }}">{{ $order->order_number }} · {{ $order->name }} · € {{ number_format((float)$order->revenue_total, 2, ',', '.') }}</a>
+                                                <a href="{{ route('admin.leads.index', ['lead' => $selectedLead, 'sales_sheet' => $order->id]).'#product' }}" class="px-10 py-7 text-10 font-extrabold uppercase transition {{ $selectedSalesSheet?->id === $order->id ? 'text-white' : 'hover:text-bullstar' }}">{{ $order->order_number }} · {{ $order->name }} · € {{ number_format((float)$order->revenue_total, 2, ',', '.') }} IVA esclusa</a>
                                                 <form method="POST" action="{{ route('admin.leads.orders.destroy', [$selectedLead, $order]) }}" onsubmit="return confirm('Eliminare definitivamente questo ordine, i prodotti e tutti i file grafici collegati?')" class="flex border-l {{ $selectedSalesSheet?->id === $order->id ? 'border-white/20' : 'border-gray-mid' }}">@csrf @method('DELETE')
                                                     <button type="submit" title="Elimina ordine" aria-label="Elimina ordine {{ $order->order_number }}" class="px-8 text-14 font-black transition {{ $selectedSalesSheet?->id === $order->id ? 'text-white/70 hover:bg-red-600 hover:text-white' : 'text-red-600 hover:bg-red-50' }}">×</button>
                                                 </form>
@@ -625,7 +625,7 @@
                                         <input name="proposal_number" value="{{ old('proposal_number') }}" type="text" maxlength="100" required placeholder="Inserisci numero proposta" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
                                     </label>
                                     <label class="block min-w-0">
-                                        <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Importo proposta</span>
+                                        <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Importo proposta IVA inclusa</span>
                                         <input name="proposal_amount" value="{{ old('proposal_amount') }}" type="number" min="0.50" step="0.01" required placeholder="0,00" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
                                     </label>
                                     <label class="block min-w-0 md:col-span-2">
@@ -723,7 +723,7 @@
                                     <div class="flex items-center justify-between gap-6 border-b border-gray-mid bg-gray-light px-12 py-8">
                                         <div>
                                             <p class="text-11 font-black uppercase">Pagamento</p>
-                                            <p class="mt-3 text-10 font-semibold text-gray">Link e azioni di incasso.</p>
+                                            <p class="mt-3 text-10 font-semibold text-gray">Importo da incassare IVA inclusa. Il link Stripe usa il totale dell'ultima proposta salvata.</p>
                                         </div>
                                         <p class="text-18 font-black">{{ $selectedLead->payment_amount ? '€ ' . number_format((float) $selectedLead->payment_amount, 2, ',', '.') : '-' }}</p>
                                     </div>

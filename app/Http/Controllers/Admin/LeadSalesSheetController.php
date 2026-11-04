@@ -42,7 +42,7 @@ class LeadSalesSheetController extends Controller
         $proposal = $lead->quotePdfs()->create([
             'lead_sales_sheet_id' => $sheet->id,
             'proposal_number' => $data['proposal_number'],
-            'amount' => $sheet->revenue_total,
+            'amount' => $sheet->vatTotals()['gross'],
             'project_notes' => $data['project_notes'] ?? null,
             'uploaded_at' => now(),
         ]);

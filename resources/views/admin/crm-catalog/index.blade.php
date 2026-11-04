@@ -8,7 +8,7 @@
 <div data-crm-catalog class="space-y-12">
     <header class="overflow-hidden rounded-10 border border-gray-mid bg-black-nike p-12 text-white sm:p-16">
         <div class="flex flex-col gap-10 lg:flex-row lg:items-end lg:justify-between">
-            <div><p class="text-10 font-extrabold uppercase tracking-wider text-white/60">Configurazione CRM</p><h1 class="mt-4 text-24 font-black">Catalogo commerciale</h1><p class="mt-4 text-11 font-semibold text-white/60">Prodotti, costi, prezzi e lavorazioni organizzati per fascia quantità.</p></div>
+            <div><p class="text-10 font-extrabold uppercase tracking-wider text-white/60">Configurazione CRM</p><h1 class="mt-4 text-24 font-black">Catalogo commerciale</h1><p class="mt-4 text-11 font-semibold text-white/60">Prodotti, costi, prezzi e lavorazioni organizzati per fascia quantità. Tutti i costi e i prezzi sono IVA esclusa.</p></div>
             <form method="GET" class="flex w-full gap-5 lg:max-w-[440px]"><input name="q" value="{{ $search }}" placeholder="Cerca codice o nome…" class="min-w-0 flex-1 rounded-10 border-white/20 bg-white px-10 py-9 text-12 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar"><button class="rounded-10 bg-bullstar px-12 text-10 font-extrabold uppercase text-white">Cerca</button>@if($search)<a href="{{ route('admin.crm-catalog.index') }}" class="flex items-center rounded-10 border border-white/30 px-10 text-10 font-extrabold uppercase">Azzera</a>@endif</form>
         </div>
         <div class="mt-10 grid grid-cols-3 gap-6"><div class="rounded-10 bg-white/10 p-8"><p class="text-10 font-extrabold uppercase text-white/50">Categorie</p><p class="mt-3 text-18 font-black">{{ $categories->count() }}</p></div><div class="rounded-10 bg-white/10 p-8"><p class="text-10 font-extrabold uppercase text-white/50">Prodotti</p><p class="mt-3 text-18 font-black">{{ $products->count() }}</p></div><div class="rounded-10 bg-white/10 p-8"><p class="text-10 font-extrabold uppercase text-white/50">Lavorazioni</p><p class="mt-3 text-18 font-black">{{ $printTypes->count() }}</p></div></div>
@@ -60,6 +60,7 @@
         <div class="border-b border-gray-mid px-12 py-10">
             <p class="text-10 font-extrabold uppercase tracking-normal text-gray">Listino articoli</p>
             <h2 class="mt-4 text-18 font-black">Prodotti</h2>
+            <p class="mt-4 text-11 font-semibold text-gray">Costi e prezzi unitari IVA esclusa.</p>
         </div>
         <div class="p-12">
             @if ($canManageCatalog)
@@ -133,6 +134,7 @@
         <div class="border-b border-gray-mid px-12 py-10">
             <p class="text-10 font-extrabold uppercase tracking-normal text-gray">Listino lavorazioni</p>
             <h2 class="mt-4 text-18 font-black">Stampe</h2>
+            <p class="mt-4 text-11 font-semibold text-gray">Costi e prezzi per applicazione IVA esclusa.</p>
         </div>
         <div class="p-12">
             @if ($canManageCatalog)

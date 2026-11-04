@@ -5,12 +5,12 @@
             <div>
                 <p class="text-10 font-extrabold uppercase tracking-wider text-white/60">{{ $salesSheet?->order_number }} · {{ $salesSheet?->name }}</p>
                 <h2 class="mt-4 text-18 font-black">Configura prodotti e materiali dell'ordine</h2>
-                <p class="mt-4 max-w-2xl text-11 font-semibold text-white/60">Prezzi, lavorazioni, colori e grafiche in un unico flusso.</p>
+                <p class="mt-4 max-w-2xl text-11 font-semibold text-white/60">Prezzi e costi sono IVA esclusa. Il riepilogo mostra anche l'IVA e il totale da pagare.</p>
             </div>
 
             <div class="grid grid-cols-2 gap-6 sm:grid-cols-4 lg:min-w-[520px]">
                 <div class="rounded-10 bg-white/10 px-8 py-8">
-                    <p class="text-10 font-extrabold uppercase text-white/50">Totale cliente</p>
+                    <p class="text-10 font-extrabold uppercase text-white/50">Totale ordine IVA esclusa</p>
                     <p class="mt-3 text-16 font-black">€ {{ number_format((float)($salesSheet?->revenue_total ?? 0), 2, ',', '.') }}</p>
                 </div>
                 <div class="rounded-10 bg-white/10 px-8 py-8">
@@ -30,6 +30,15 @@
     </header>
 
     <div class="p-10 sm:p-12">
+        <section aria-label="Riepilogo IVA e pagamento" class="mb-12 rounded-10 border border-bullstar/30 bg-bullstar/5 p-10 sm:p-12">
+            <h3 class="text-12 font-black uppercase">Riepilogo pagamento</h3>
+            <div class="mt-8 grid gap-8 sm:grid-cols-3">
+                <div><p class="text-10 font-extrabold uppercase text-gray">Imponibile IVA esclusa</p><p class="mt-3 text-16 font-black">€ {{ number_format($vatTotals['net'], 2, ',', '.') }}</p></div>
+                <div><p class="text-10 font-extrabold uppercase text-gray">IVA {{ $vatTotals['rate'] }}%</p><p class="mt-3 text-16 font-black">€ {{ number_format($vatTotals['vat'], 2, ',', '.') }}</p></div>
+                <div class="rounded-10 bg-black-nike p-10 text-white"><p class="text-10 font-extrabold uppercase text-white/70">Totale da pagare IVA inclusa</p><p class="mt-3 text-20 font-black">€ {{ number_format($vatTotals['gross'], 2, ',', '.') }}</p></div>
+            </div>
+            <p class="mt-8 text-11 font-semibold text-gray">Il totale comprende sconti, arrotondamenti e spedizione addebitata. Usa il totale IVA inclusa per il link di pagamento; le nuove proposte generate da questo ordine includono già l'IVA.</p>
+        </section>
         @if($statusMessage)
             <div class="mb-10 flex items-center gap-6 rounded-10 border border-bullstar/20 bg-bullstar/5 px-10 py-8 text-11 font-bold text-bullstar" wire:key="sales-status">
                 <span class="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-bullstar text-10 text-white">✓</span>
@@ -90,7 +99,7 @@
                     <span class="rounded-full px-8 py-5 text-10 font-extrabold uppercase {{ $economicStatus['class'] }}">{{ $economicStatus['label'] }}</span>
                 </div>
                 <div class="mt-10 grid grid-cols-2 gap-6">
-                    <div class="rounded-10 bg-white/10 p-8"><p class="text-10 font-extrabold uppercase text-white/50">Totale cliente</p><p class="mt-3 text-14 font-black">{{ $salesSheet && $hasProducts ? '€ '.number_format((float)$salesSheet->revenue_total, 2, ',', '.') : 'N.D.' }}</p></div>
+                    <div class="rounded-10 bg-white/10 p-8"><p class="text-10 font-extrabold uppercase text-white/50">Totale ordine IVA esclusa</p><p class="mt-3 text-14 font-black">{{ $salesSheet && $hasProducts ? '€ '.number_format((float)$salesSheet->revenue_total, 2, ',', '.') : 'N.D.' }}</p></div>
                     <div class="rounded-10 bg-white/10 p-8"><p class="text-10 font-extrabold uppercase text-white/50">Costi diretti</p><p class="mt-3 text-14 font-black">{{ $salesSheet && $hasProducts ? '€ '.number_format((float)$salesSheet->cost_total, 2, ',', '.') : 'N.D.' }}</p></div>
                     <div class="rounded-10 bg-white/10 p-8"><p class="text-10 font-extrabold uppercase text-white/50">Margine lordo</p><p class="mt-3 text-14 font-black">{{ $salesSheet && $hasProducts ? '€ '.number_format((float)$salesSheet->margin_total, 2, ',', '.') : 'N.D.' }}</p></div>
                     <div class="rounded-10 bg-white/10 p-8">
@@ -172,7 +181,7 @@
                     @error('quantity')<span class="mt-4 block text-10 font-bold text-red-600">{{ $message }}</span>@enderror
                 </label>
                 <label class="lg:col-span-2">
-                    <span class="text-10 font-extrabold uppercase text-gray">Prezzo finale / pz</span>
+                    <span class="text-10 font-extrabold uppercase text-gray">Prezzo / pz IVA esclusa</span>
                     <div class="mt-4 flex overflow-hidden rounded-10 border border-gray-mid bg-white focus-within:border-bullstar focus-within:ring-1 focus-within:ring-bullstar">
                         <span class="flex shrink-0 items-center border-r border-gray-mid bg-gray-light px-10 text-12 font-bold text-gray">€</span>
                         <input wire:model="finalUnitPrice" required type="number" min="0" step="0.01" placeholder="0,00" class="min-w-0 flex-1 border-0 bg-white px-10 py-8 text-12 font-semibold focus:border-0 focus:ring-0">
@@ -202,7 +211,7 @@
                                 </div>
                                 <div class="flex items-center justify-between gap-10 sm:justify-end">
                                     <div class="text-left sm:text-right">
-                                        <p class="text-10 font-extrabold uppercase text-gray">Totale prodotto</p>
+                                        <p class="text-10 font-extrabold uppercase text-gray">Totale prodotto IVA esclusa</p>
                                         <p class="mt-2 text-16 font-black">€ {{ number_format((float)$item->revenue_total, 2, ',', '.') }}</p>
                                     </div>
                                     <span class="text-16 font-black text-gray transition group-open:rotate-180">⌄</span>
@@ -299,6 +308,7 @@
                             {{-- Prezzo e lavorazioni --}}
                             <div class="min-w-0 bg-gray-light/50 p-10 sm:p-12">
                                 <p class="text-11 font-black uppercase">Prezzo e lavorazioni</p>
+                                <p class="mt-3 text-10 font-semibold text-gray">Prezzi e costi IVA esclusa.</p>
                                 <div class="mt-8 grid grid-cols-3 gap-4">
                                     <div class="rounded-10 bg-white px-6 py-6 text-center">
                                         <p class="text-10 font-extrabold uppercase text-gray">Base</p>
@@ -317,7 +327,7 @@
                                 <form wire:submit="updateFinalPrice({{ $item->id }})" class="mt-8">
                                     <label>
                                         <span class="flex items-center justify-between gap-4 text-10 font-extrabold uppercase text-gray">
-                                            Prezzo finale / pz
+                                            Prezzo / pz IVA esclusa
                                             @if($item->final_price_overridden)<span class="rounded-full bg-amber-100 px-6 py-4 text-10 text-amber-700">Manuale</span>@else<span class="rounded-full bg-bullstar/10 px-6 py-4 text-10 text-bullstar">Automatico</span>@endif
                                         </span>
                                         <div class="mt-4 flex overflow-hidden rounded-10 border border-gray-mid bg-white focus-within:border-bullstar focus-within:ring-1 focus-within:ring-bullstar">
@@ -393,7 +403,7 @@
                             <span>Segna la proposta come inviata e registra l’evento di conversione</span>
                         </label>
                         <div class="mt-8 rounded-10 bg-white px-8 py-7 text-10 font-semibold text-gray">
-                            Totale PDF: <span class="font-black text-black-nike">€ {{ number_format((float)$salesSheet->revenue_total, 2, ',', '.') }}</span>
+                            Totale PDF IVA inclusa: <span class="font-black text-black-nike">€ {{ number_format($vatTotals['gross'], 2, ',', '.') }}</span>
                         </div>
                         <button type="submit" class="mt-8 w-full rounded-10 bg-black-nike px-10 py-10 text-10 font-extrabold uppercase text-white transition hover:bg-bullstar">Genera PDF dall’ordine</button>
                     </form>

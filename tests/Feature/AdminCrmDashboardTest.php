@@ -18,6 +18,7 @@ use App\Services\LeadSalesSheetService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -466,9 +467,25 @@ class AdminCrmDashboardTest extends TestCase
 
         $proposal = $lead->quotePdfs()->firstOrFail();
         $this->assertSame($sheet->id, $proposal->lead_sales_sheet_id);
-        $this->assertSame('512.40', $proposal->amount);
+        $this->assertSame('625.13', $proposal->amount);
+        $this->assertSame('625.13', $lead->fresh()->quote_amount);
         Storage::disk('local')->assertExists($proposal->path);
         $this->assertStringStartsWith('%PDF-', Storage::disk('local')->get($proposal->path));
+
+        config()->set('services.stripe.secret_key', 'sk_test_vat');
+        config()->set('services.stripe.currency', 'eur');
+        Http::preventStrayRequests();
+        Http::fake([
+            'https://api.stripe.com/v1/customers' => Http::response(['id' => 'cus_vat']),
+            'https://api.stripe.com/v1/checkout/sessions' => Http::response([
+                'id' => 'cs_test_vat', 'url' => 'https://checkout.stripe.test/vat',
+            ]),
+        ]);
+        $this->post(route('admin.leads.stripe-payment-link', $lead))->assertSessionHasNoErrors();
+        Http::assertSent(fn ($request) => $request->url() === 'https://api.stripe.com/v1/checkout/sessions'
+            && $request['line_items'][0]['price_data']['unit_amount'] === 62513
+            && $request['line_items'][0]['price_data']['tax_behavior'] === 'inclusive');
+        $this->assertSame('625.13', $lead->fresh()->payment_amount);
     }
 
     public function test_product_mockup_accepts_webp_and_normalizes_it_for_the_pdf(): void
@@ -675,7 +692,16 @@ class AdminCrmDashboardTest extends TestCase
             ->call('addProduct')
             ->assertHasNoErrors()
             ->assertSee('Prodotto aggiunto alla scheda vendita.')
-            ->assertSee('90,00');
+            ->assertSee('90,00')
+            ->assertSee('IVA 22%')
+            ->assertSee('21,98')
+            ->assertSee('Totale da pagare IVA inclusa')
+            ->assertSee('121,88')
+            ->set('shippingFee', '0')
+            ->call('saveShipping')
+            ->assertHasNoErrors()
+            ->assertSee('19,80')
+            ->assertSee('109,80');
 
         $this->assertDatabaseHas('lead_sales_items', [
             'product_code' => 'POLO01',
@@ -994,6 +1020,8 @@ class AdminCrmDashboardTest extends TestCase
         $this->assertSame(30.0, (float) $sheet->discount_amount);
         $this->assertSame(0.0, (float) $sheet->shipping_charge);
         $this->assertSame(269.9, (float) $sheet->revenue_total);
+        $this->assertEquals(59.38, $sheet->vatTotals()['vat']);
+        $this->assertEquals(329.28, $sheet->vatTotals()['gross']);
         $this->assertSame(160.0, (float) $sheet->margin_total);
     }
 
