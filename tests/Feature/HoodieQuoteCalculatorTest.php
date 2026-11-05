@@ -38,6 +38,65 @@ class HoodieQuoteCalculatorTest extends TestCase
         }
     }
 
+    private function tshirts(): void
+    {
+        foreach (['economic' => 6, 'basic' => 8, 'premium' => 10] as $quality => $price) {
+            $product = CrmProduct::create(['code' => 'TS-'.$quality, 'name' => 'T-shirt '.$quality, 'unit_cost' => 1, 'is_active' => true, 'is_visible_on_site' => false]);
+            $product->priceTiers()->create(['min_quantity' => 15, 'max_quantity' => 19.99, 'unit_price' => $price, 'unit_cost' => 1]);
+            $product->priceTiers()->create(['min_quantity' => 20, 'max_quantity' => null, 'unit_price' => $price - 1, 'unit_cost' => 1]);
+            $slot = CrmCalculatorSlot::where('family', 'tshirt')->where('quality', $quality)->firstOrFail();
+            $slot->update(['crm_product_id' => $product->id]);
+            $slot->printTypes()->sync(CrmPrintType::pluck('id'));
+        }
+    }
+
+    public function test_tshirt_comparison_uses_crm_and_does_not_send_or_save_whatsapp_messages(): void
+    {
+        $this->tshirts();
+        Http::preventStrayRequests();
+        $conversation = $this->conversation();
+        $response = $this->actingAs($this->owner(), 'admin')->postJson(route('admin.conversations.hoodie-quote.preview', $conversation), [
+            'family' => 'tshirt', 'model' => 'tshirt', 'quantity' => 15, 'personalization' => 'heart_logo_back_print', 'qualities' => ['economic', 'basic', 'premium'],
+        ])->assertOk()->assertJsonPath('family', 'tshirt')->assertJsonPath('band', '15-19')
+            ->assertJsonPath('quotes.0.unit', 1000)->assertJsonPath('quotes.0.total', 19290)
+            ->assertJsonPath('quotes.1.total', 22950)->assertJsonPath('quotes.2.total', 25620);
+        $this->assertStringContainsString('TS-basic', $response->json('message'));
+        $this->assertStringContainsString('della T-shirt scelta', $response->json('message'));
+        $this->assertStringContainsString('https://stuart-company.com/#calcolatore-prezzo', $response->json('message'));
+        $this->assertStringNotContainsString('felpe-personalizzate', $response->json('message'));
+        $this->assertSame(0, WhatsappMessage::count());
+        Http::assertNothingSent();
+    }
+
+    public function test_tshirt_catalog_prefills_lead_and_supports_max_and_twenty_piece_tier(): void
+    {
+        $this->tshirts();
+        $lead = Lead::create(['uuid' => 'TSQUOTE', 'calculator_used' => true, 'calculator_model' => 'Premium', 'calculator_quantity' => 50, 'calculator_personalization' => 'max_front_print_max_back_print']);
+        $conversation = $this->conversation(['lead_id' => $lead->id]);
+        $this->actingAs($this->owner(), 'admin')->getJson(route('admin.conversations.hoodie-quote.catalog', $conversation))
+            ->assertOk()->assertJsonPath('family', 'tshirt')->assertJsonPath('defaults.model', 'tshirt')->assertJsonPath('defaults.qualities', ['premium'])
+            ->assertJsonPath('defaults.quantity', 50)->assertJsonPath('products.basic.basic.code', 'TS-basic')->assertJsonPath('minimum_quantity', 15);
+        $calculator = app(HoodieQuoteCalculator::class);
+        $max = $calculator->generate(['family' => 'tshirt', 'model' => 'tshirt', 'quantity' => 20, 'personalization' => 'max_front_print_max_back_print', 'qualities' => ['basic']]);
+        $this->assertSame(1500, $max['quotes'][0]['unit']);
+        $this->assertSame(36600, $max['quotes'][0]['total']);
+        // A single instance must keep the two family catalogs separate.
+        $this->assertSame(1200, $calculator->generate($this->selection())['quotes'][0]['unit']);
+    }
+
+    public function test_tshirt_unconfigured_products_and_invalid_selections_are_rejected(): void
+    {
+        $this->tshirts();
+        $conversation = $this->conversation();
+        $this->actingAs($this->owner(), 'admin');
+        $selection = ['family' => 'tshirt', 'model' => 'tshirt', 'quantity' => 20, 'personalization' => 'heart_logo', 'qualities' => ['basic']];
+        foreach ([['family' => 'invalid'], ['model' => 'hood'], ['quantity' => 14], ['quantity' => 3000], ['qualities' => ['organic']]] as $change) {
+            $this->postJson(route('admin.conversations.hoodie-quote.preview', $conversation), [...$selection, ...$change])->assertUnprocessable();
+        }
+        CrmCalculatorSlot::where('family', 'tshirt')->where('quality', 'basic')->update(['crm_product_id' => null]);
+        $this->postJson(route('admin.conversations.hoodie-quote.preview', $conversation), $selection)->assertUnprocessable()->assertJsonValidationErrors('qualities');
+    }
+
     private function owner(): AdminUser
     {
         return AdminUser::create(['name' => 'Owner', 'email' => fake()->unique()->safeEmail(), 'password' => 'password', 'role' => 'owner', 'is_active' => true]);
@@ -138,9 +197,9 @@ class HoodieQuoteCalculatorTest extends TestCase
     {
         $conversation = $this->conversation();
         $this->actingAs($this->owner(), 'admin')->get(route('admin.conversations.show', $conversation))->assertOk()
-            ->assertSee('Prepara preventivo felpe')->assertSee('data-quote-insert', false);
+            ->assertSee('Prepara preventivo prodotti')->assertSee('data-quote-insert', false);
         $conversation->update(['mode' => 'auto']);
-        $this->get(route('admin.conversations.show', $conversation))->assertOk()->assertDontSee('Prepara preventivo felpe');
+        $this->get(route('admin.conversations.show', $conversation))->assertOk()->assertDontSee('Prepara preventivo prodotti');
     }
 
     public function test_missing_shared_catalog_returns_a_clear_error(): void

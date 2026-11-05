@@ -1,30 +1,31 @@
-<details data-hoodie-quote data-url="{{ route('admin.conversations.hoodie-quote.catalog', $selectedConversation) }}" class="rounded-10 border border-gray-mid bg-gray-light p-12">
-    <summary class="cursor-pointer text-14 font-bold text-black-nike">Prepara preventivo felpe</summary>
-    <p class="mt-8 text-12 text-gray">Confronta le qualità e prepara un messaggio modificabile prima dell'invio.</p>
-    <div data-quote-fields hidden class="mt-12 grid gap-12">
-        <div class="grid grid-cols-2 gap-12">
-            <label class="text-12 font-bold">Tipo di felpa
-                <select data-quote-model class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14"></select>
-            </label>
-            <label class="text-12 font-bold">Quantità
-                <input data-quote-quantity type="number" step="1" inputmode="numeric" class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14">
-            </label>
+<button type="button" data-quote-open class="catalog-button catalog-button-secondary wa-quote-trigger">Prepara preventivo prodotti <span aria-hidden="true">↗</span></button>
+<dialog data-hoodie-quote data-url="{{ route('admin.conversations.hoodie-quote.catalog', $selectedConversation) }}" class="catalog-dialog catalog-dialog-wide wa-quote-dialog" aria-labelledby="wa-quote-title">
+    <div class="catalog-dialog-shell">
+        <header class="catalog-dialog-header"><div><h2 id="wa-quote-title">Prepara preventivo prodotti</h2><p>Confronta i prodotti CRM e controlla il messaggio prima di inserirlo nella chat.</p></div><button type="button" data-quote-close class="catalog-close" aria-label="Chiudi preventivo">×</button></header>
+        <div class="catalog-dialog-content catalog-modal-body">
+            <label class="catalog-field wa-quote-family">Prodotto<select data-quote-family><option value="hoodie">Felpe</option><option value="tshirt">T-shirt</option></select></label>
+            <p data-quote-status role="status" aria-live="polite" class="wa-quote-status"></p>
+            <div data-quote-fields hidden class="wa-quote-grid">
+                <section class="wa-quote-controls" aria-label="Configurazione del preventivo">
+                    <div class="catalog-form-grid">
+                        <label data-quote-model-wrap class="catalog-field"><span>Tipo di felpa</span><select data-quote-model></select></label>
+                        <label class="catalog-field"><span>Quantità</span><input data-quote-quantity type="number" step="1" inputmode="numeric"></label>
+                        <label class="catalog-field catalog-span-full"><span>Personalizzazione</span><select data-quote-print></select></label>
+                    </div>
+                    <fieldset class="wa-quote-quality-field"><legend>Qualità da confrontare</legend><div data-quote-qualities></div></fieldset>
+                    <button type="button" data-quote-generate class="catalog-button catalog-button-primary">Genera messaggio</button>
+                    <p class="catalog-help">Prezzi dal catalogo CRM, IVA e spedizione calcolate per ogni soluzione.</p>
+                </section>
+                <section class="wa-quote-output" aria-label="Anteprima del messaggio">
+                    <div data-quote-empty class="wa-quote-empty"><strong>Il preventivo comparirà qui</strong><p>Scegli le opzioni e premi “Genera messaggio”.</p></div>
+                    <label data-quote-preview-wrap hidden class="catalog-field"><span>Anteprima messaggio</span><textarea data-quote-preview readonly rows="16"></textarea></label>
+                    <button type="button" data-quote-insert hidden disabled class="catalog-button catalog-button-primary">Inserisci nella chat</button>
+                    <p class="catalog-help">Il testo verrà inserito nel campo messaggio. Potrai modificarlo prima di inviarlo.</p>
+                </section>
+            </div>
         </div>
-        <label class="text-12 font-bold">Personalizzazione
-            <select data-quote-print class="mt-6 w-full rounded-10 border-gray-mid px-12 py-10 text-14"></select>
-        </label>
-        <fieldset>
-            <legend class="text-12 font-bold">Qualità da confrontare</legend>
-            <div data-quote-qualities class="mt-8 flex flex-wrap gap-12"></div>
-        </fieldset>
-        <button type="button" data-quote-generate class="rounded-10 bg-black-nike px-12 py-10 text-12 font-bold text-white">Genera messaggio</button>
-        <label data-quote-preview-wrap hidden class="text-12 font-bold">Anteprima messaggio
-            <textarea data-quote-preview readonly rows="14" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14"></textarea>
-        </label>
-        <button type="button" data-quote-insert hidden disabled class="rounded-10 bg-bullstar px-12 py-10 text-12 font-bold text-white">Inserisci nella chat</button>
     </div>
-    <p data-quote-status role="status" aria-live="polite" class="mt-8 text-12 font-semibold text-gray"></p>
-</details>
+</dialog>
 
 @push('scripts')
 <script>
@@ -33,6 +34,9 @@
     if (!panel) return;
     const find = (name) => panel.querySelector(`[data-quote-${name}]`);
     const status = find('status');
+    const trigger = document.querySelector('[data-quote-open]');
+    let inserted = false;
+    const family = find('family');
     const model = find('model');
     const quantity = find('quantity');
     const print = find('print');
@@ -47,6 +51,7 @@
         insert.disabled = true;
         insert.hidden = true;
         find('preview-wrap').hidden = true;
+        find('empty').hidden = false;
         status.textContent = '';
     };
     const syncPrints = () => {
@@ -60,15 +65,25 @@
         }
     };
     const errorText = (data) => Object.values(data.errors || {}).flat().join(' ') || data.message || 'Impossibile preparare il preventivo. Riprova.';
-    panel.addEventListener('toggle', async () => {
-        if (!panel.open || catalog || loading) return;
+    const loadCatalog = async (selectedFamily = null) => {
+        if (loading) return;
+        invalidate();
+        catalog = null;
         loading = true;
-        status.textContent = 'Caricamento listino…';
+        family.disabled = true;
+        find('fields').hidden = true;
+        status.textContent = 'Caricamento listino CRM…';
         try {
-            const response = await fetch(panel.dataset.url, { headers: { Accept: 'application/json' } });
+            const url = new URL(panel.dataset.url, window.location.origin);
+            if (selectedFamily) url.searchParams.set('family', selectedFamily);
+            const response = await fetch(url, { headers: { Accept: 'application/json' } });
             const data = await response.json();
             if (!response.ok) throw new Error(errorText(data));
             catalog = data;
+            family.value = data.family;
+            model.replaceChildren();
+            print.replaceChildren();
+            find('qualities').replaceChildren();
             for (const [value, label] of Object.entries(data.models)) model.add(new Option(label, value));
             for (const [value, label] of Object.entries(data.personalizations)) print.add(new Option(label, value));
             for (const [value, text] of Object.entries(data.qualities)) {
@@ -79,28 +94,63 @@
                 input.value = value;
                 input.checked = data.defaults.qualities.includes(value);
                 input.dataset.quoteQuality = '';
-                label.append(input, document.createTextNode(text));
+                const caption = document.createElement('span');
+                caption.dataset.quoteQualityLabel = '';
+                caption.dataset.label = text;
+                label.append(input, caption);
                 find('qualities').append(label);
             }
             model.value = data.defaults.model;
+            find('model-wrap').hidden = data.family === 'tshirt';
+            quantity.closest('label').classList.toggle('col-span-2', data.family === 'tshirt');
             quantity.min = data.minimum_quantity;
             quantity.max = data.maximum_quantity;
             quantity.value = data.defaults.quantity;
             print.value = data.defaults.personalization;
             syncPrints();
+            const available = syncQualities();
             find('fields').hidden = false;
-            status.textContent = '';
+            status.textContent = available ? '' : 'Nessun prodotto attivo associato. Configura le associazioni nel catalogo CRM.';
         } catch (error) {
             status.textContent = error.message;
-        } finally { loading = false; }
+        } finally { loading = false; family.disabled = false; }
+    };
+    const syncQualities = () => {
+        if (!catalog) return;
+        for (const input of panel.querySelectorAll('[data-quote-quality]')) {
+            const product = catalog.products?.[catalog.family === 'tshirt' ? input.value : model.value]?.[input.value];
+            input.disabled = !product;
+            if (!product) input.checked = false;
+            const caption = input.parentElement.querySelector('[data-quote-quality-label]');
+            caption.textContent = `${caption.dataset.label}${product ? ' · ' + product.code : ' · prodotto non associato o inattivo'}`;
+        }
+        const available = Boolean(panel.querySelector('[data-quote-quality]:not(:disabled)'));
+        generate.disabled = !available;
+        if (!panel.querySelector('[data-quote-quality]:checked')) {
+            const first = panel.querySelector('[data-quote-quality]:not(:disabled)');
+            if (first) first.checked = true;
+        }
+        return available;
+    };
+    trigger.addEventListener('click', () => {
+        inserted = false;
+        panel.showModal();
+        if (!catalog && !loading) loadCatalog();
     });
+    find('close').addEventListener('click', () => panel.close());
+    panel.addEventListener('click', (event) => { if (event.target === panel) panel.close(); });
+    panel.addEventListener('close', () => {
+        if (inserted) document.getElementById('message-composer')?.focus();
+        else trigger.focus();
+    });
+    family.addEventListener('change', () => loadCatalog(family.value));
     // This panel lives inside the chat form: Enter must never submit a message.
     panel.addEventListener('keydown', (event) => {
         if (event.key === 'Enter' && event.target.tagName === 'INPUT') event.preventDefault();
     });
     panel.addEventListener('input', invalidate);
-    model.addEventListener('change', () => { syncPrints(); invalidate(); });
-    panel.addEventListener('change', (event) => { if (event.target !== model) invalidate(); });
+    model.addEventListener('change', () => { syncPrints(); const available = syncQualities(); invalidate(); if (!available) status.textContent = 'Nessun prodotto attivo associato per questo modello.'; });
+    panel.addEventListener('change', (event) => { if (event.target !== model && event.target !== family) invalidate(); });
     generate.addEventListener('click', async () => {
         invalidate();
         const currentRevision = revision;
@@ -111,7 +161,7 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': @json(csrf_token()) },
                 body: JSON.stringify({
-                    model: model.value, quantity: quantity.value, personalization: print.value,
+                    family: family.value, model: model.value, quantity: quantity.value, personalization: print.value,
                     qualities: Array.from(panel.querySelectorAll('[data-quote-quality]:checked')).map(input => input.value),
                 }),
             });
@@ -120,12 +170,13 @@
             if (!response.ok) throw new Error(errorText(data));
             preview.value = data.message;
             find('preview-wrap').hidden = false;
+            find('empty').hidden = true;
             insert.disabled = false;
             insert.hidden = false;
             status.textContent = 'Prezzi, IVA e spedizione calcolati. Controlla il testo prima di inserirlo nella chat.';
         } catch (error) {
             if (revision === currentRevision) status.textContent = error.message;
-        } finally { generate.disabled = false; }
+        } finally { generate.disabled = loading || !panel.querySelector('[data-quote-quality]:not(:disabled)'); }
     });
     insert.addEventListener('click', () => {
         if (insert.disabled) return;
@@ -141,6 +192,8 @@
         }
         composer.value = text;
         composer.dispatchEvent(new Event('input', { bubbles: true }));
+        inserted = true;
+        panel.close();
         composer.focus();
         insert.disabled = true;
         status.textContent = 'Preventivo inserito nel campo messaggio. Puoi modificarlo e inviarlo quando sei pronto.';

@@ -481,3 +481,79 @@ input[type="file"] {
 .catalog-mockup-library-item span { display: block; margin-top: 8px; overflow-wrap: anywhere; font-size: 11px; }
 @media (max-width: 850px) { .catalog-mockup-layout { grid-template-columns: 1fr; } .catalog-mockup-colors { max-height: 220px; border-right: 0; border-bottom: 1px solid #dfe5ed; } }
 @media (max-width: 640px) { .catalog-mockup-sides { grid-template-columns: 1fr; } .catalog-mockup-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* WhatsApp workspace: shared catalog controls and surfaces. */
+.wa-workspace { --wa-muted: #64748b; }
+.wa-page-header { padding-bottom: 22px; }
+.wa-workspace .catalog-button { min-height: 44px; padding: 10px 15px; font-size: 12px; line-height: 20px; font-weight: 600; text-transform: none; letter-spacing: normal; border-radius: 8px; }
+.wa-workspace .catalog-button-primary { background: rgb(var(--color-bullstar)); color: #fff; border-color: rgb(var(--color-bullstar)); }
+.wa-workspace .catalog-button-primary:hover { background: rgb(var(--color-bullstar-hover)); border-color: rgb(var(--color-bullstar-hover)); color: #fff; }
+.wa-workspace .catalog-button-secondary { background: #fff; color: #334155; border-color: #dbe2eb; }
+.wa-workspace .catalog-button-secondary:hover { background: #f8fafc; border-color: #b9c6d5; color: #17212f; }
+.wa-workspace .catalog-button:disabled { opacity: .55; }
+.wa-workspace .admin-stats-grid { gap: 12px; border: 0; border-radius: 0; background: transparent; grid-template-columns: repeat(5, minmax(0, 1fr)); margin-bottom: 22px; }
+.wa-workspace .admin-stat-card { padding: 16px 18px; border: 1px solid #dfe5ed; border-radius: 12px; background: white; }
+.wa-workspace .admin-stat-card p:first-child { font-size: 12px; line-height: 18px; font-weight: 500; text-transform: none; color: #64748b; }
+.wa-workspace .admin-stat-card p:last-child { font-size: 27px; line-height: 34px; font-weight: 650; margin-top: 8px; }
+.wa-layout { display: block; min-width: 0; }
+.wa-inbox, .wa-chat { min-width: 0; }
+.wa-inbox-heading { padding: 22px 20px; gap: 16px; border-bottom: 1px solid #e5eaf0; background: #fff; color: #17212f; }
+.wa-inbox-heading p:first-child { font-size: 11px; font-weight: 500; color: #64748b; text-transform: none; }
+.wa-inbox-heading p:nth-child(2) { font-size: 20px; font-weight: 650; }
+.wa-inbox-heading #inbox-count { color: #64748b; font-size: 12px; font-weight: 400; }
+.wa-inbox-toolbar { padding: 16px 20px; border-bottom: 1px solid #e5eaf0; background: #fafbfd; }
+.wa-workspace #conversation-search { padding-left: 34px; font-weight: 400; }
+.wa-inbox-filter { margin-top: 12px; }
+.wa-inbox-filter > span { font-size: 12px; }
+.wa-inbox-toolbar #inbox-visible-count { margin-top: 12px; }
+.wa-inbox #conversation-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; max-height: 70dvh; margin: 0; padding: 16px; background: #fafbfd; }
+.wa-inbox #conversation-list > a { margin: 0; padding: 18px; border: 1px solid #e0e6ee; border-radius: 10px; background: white; transition: border-color .15s, background .15s; }
+.wa-inbox #conversation-list > a:hover { border-color: #aabfdf; background: #f8fbff; }
+.wa-inbox #conversation-list > a[data-unread]:not([data-unread="0"]) { border-left: 3px solid #206ae9; }
+.wa-inbox [data-conversation-id] p { text-transform: none; }
+.wa-inbox [data-conversation-id] > div:first-child > span { width: 38px; height: 38px; font-size: 14px; font-weight: 600; background: #e9eff8; color: #355581; }
+.wa-inbox [data-conversation-id] > div:first-child p:first-child { font-size: 14px; line-height: 20px; font-weight: 600; }
+.wa-inbox [data-conversation-id] > p { margin-top: 12px; font-size: 13px; line-height: 20px; font-weight: 400; }
+.wa-inbox [data-conversation-id] > div:last-child { margin-top: 14px; padding-top: 10px; gap: 6px; border-color: #edf0f5; }
+.wa-inbox [data-conversation-id] > div:last-child span { font-size: 10px; font-weight: 500; text-transform: none; padding: 4px 8px; }
+.wa-chat-heading { padding: 22px 24px; border-bottom: 1px solid #e5eaf0; }
+.wa-chat-heading h2 { font-size: 22px; line-height: 30px; font-weight: 650; }
+.wa-chat-heading p { font-weight: 400; }
+.wa-chat-heading > div { gap: 20px; }
+.wa-chat-heading form { flex-shrink: 0; }
+.wa-workspace #follow-up-panel > summary { padding: 16px 24px; font-size: 13px; font-weight: 550; text-transform: none; color: #42536a; background: #fafbfd; }
+.wa-workspace #follow-up-panel .admin-follow-up-grid { padding: 20px; gap: 20px; }
+.wa-workspace #follow-up-panel p, .wa-workspace #follow-up-panel textarea { font-weight: 400; line-height: 1.6; text-transform: none; }
+.wa-workspace #message-list { background: #f3f6fa; padding: 26px 24px; min-height: 350px; max-height: 56dvh; }
+.wa-message-bubble { max-width: 86%; padding: 14px 18px; border-radius: 14px; box-shadow: 0 1px 2px #17212f06; overflow-wrap: anywhere; }
+.wa-message-bubble.wa-message-out { color: #173152; background: #e8f0fc; border: 1px solid #d7e4f7; border-bottom-right-radius: 4px; }
+.wa-message-bubble.wa-message-in { color: #253247; background: #fff; border: 1px solid #e0e6ee; border-bottom-left-radius: 4px; }
+.wa-message-bubble > p { font-size: 14px; line-height: 1.65; font-weight: 400; }
+.wa-message-bubble .wa-message-meta { font-size: 10px; font-weight: 450; line-height: 1.6; text-transform: none; color: #66798f; gap: 5px 10px; }
+.wa-message-bubble .text-red-100 { color: #b91c1c; }
+.wa-composer { padding: 22px 24px; border-top: 1px solid #e5eaf0; background: #fff; }
+.wa-composer #message-composer { min-height: 130px; max-height: 320px; resize: vertical; padding: 14px 16px; font-size: 14px; font-weight: 400; line-height: 1.65; }
+.wa-quick-replies { border: 1px solid #dfe5ed; border-radius: 8px; }
+.wa-quick-replies > summary { padding: 12px 16px; font-size: 13px; font-weight: 550; cursor: pointer; }
+.wa-quick-reply-list { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 12px 12px; max-height: 200px; overflow-y: auto; }
+.wa-workspace [data-message-template-index] { white-space: normal; text-align: left; }
+.wa-quote-trigger { align-self: flex-start; }
+.wa-quote-family { max-width: 320px; }
+.wa-quote-status { margin: 12px 0; font-size: 13px; line-height: 1.6; color: #64748b; }
+.wa-quote-grid { display: grid; grid-template-columns: minmax(260px, .85fr) minmax(0, 1.15fr); gap: 26px; align-items: start; }
+.wa-quote-controls, .wa-quote-output { display: grid; gap: 16px; min-width: 0; }
+.wa-quote-controls .catalog-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.wa-quote-quality-field legend { margin-bottom: 10px; font-size: 12px; font-weight: 550; color: #42536a; }
+.wa-workspace [data-quote-qualities] { display: grid; gap: 8px; }
+.wa-workspace [data-quote-qualities] label { padding: 10px 12px; min-height: 44px; border: 1px solid #e0e6ee; border-radius: 8px; font-weight: 450; line-height: 1.5; background: #fafbfd; }
+.wa-workspace [data-quote-preview] { min-height: 360px; max-height: 55dvh; resize: vertical; font-size: 13px; font-weight: 400; line-height: 1.65; background: #fafbfd; }
+.wa-quote-empty { min-height: 300px; display: flex; flex-direction: column; justify-content: center; gap: 10px; text-align: center; border: 1px dashed #ccd6e4; border-radius: 10px; padding: 24px; color: #64748b; background: #fafbfd; font-size: 13px; }
+.wa-quote-empty strong { color: #42536a; font-weight: 600; }
+@media (max-width: 1200px) { .wa-chat-heading > div { flex-direction: column; align-items: stretch; } }
+@media (max-width: 900px) { .wa-workspace .admin-stats-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .wa-page-header { flex-direction: column; align-items: flex-start; } .wa-quote-grid { grid-template-columns: 1fr; } .wa-quote-empty { min-height: 100px; } }
+@media (max-width: 640px) { .wa-inbox #conversation-list { grid-template-columns: 1fr; padding: 10px; } .wa-chat-heading, .wa-composer { padding: 16px; } .wa-workspace #message-list { padding: 18px 12px; min-height: 300px; } .wa-message-bubble { max-width: 94%; padding: 12px 14px; } .wa-workspace .admin-stats-grid { gap: 8px; } .wa-workspace .admin-stat-card { padding: 12px; } .wa-workspace .admin-stat-card p:first-child { white-space: normal; font-size: 11px; } .wa-workspace .admin-stat-card p:last-child { font-size: 23px; } .wa-workspace .catalog-tax-note { white-space: normal; line-height: 1.6; } .wa-workspace .catalog-button { white-space: normal; } }
+
+.wa-inbox #conversation-list > a[aria-current="page"] { background: #eef4ff; border-color: #a5bfe8; }
+.wa-workspace .catalog-close { width: 44px; height: 44px; min-width: 44px; font-size: 24px; }
+
+.wa-workspace button:focus-visible, .wa-workspace a:focus-visible, .wa-workspace summary:focus-visible { outline: 3px solid rgba(var(--color-bullstar), .3); outline-offset: 3px; }
