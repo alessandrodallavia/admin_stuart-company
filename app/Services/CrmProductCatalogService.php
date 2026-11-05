@@ -28,9 +28,12 @@ class CrmProductCatalogService
             'colors_text' => ['sometimes', 'nullable', 'string', 'max:30000'],
             'sizes_text' => ['sometimes', 'nullable', 'string', 'max:6000'],
             'colors' => ['sometimes', 'array', 'max:200'],
-            'colors.*' => ['array:code,name,hex'],
+            'colors.*' => ['array:code,name,hex,sizes_restricted,sizes'],
             'colors.*.code' => ['nullable', 'string', 'max:100'],
             'colors.*.name' => ['required', 'string', 'max:100'],
+            'colors.*.sizes_restricted' => ['sometimes', 'boolean'],
+            'colors.*.sizes' => ['sometimes', 'array', 'max:100'],
+            'colors.*.sizes.*' => ['required', 'string', 'max:50'],
             'colors.*.hex' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'sizes' => ['sometimes', 'array', 'max:100'],
             'sizes.*' => ['required', 'string', 'max:50'],
@@ -85,7 +88,8 @@ class CrmProductCatalogService
                 if ($colors !== null) {
                     $ids = [];
                     foreach ($colors as $color) {
-                        $ids[] = $product->colors()->updateOrCreate(['code' => $color['code']], $color)->id;
+                        $attributes = collect($color)->except(['sizes', 'matrix_present', 'input_index'])->all();
+                        $ids[] = $product->colors()->updateOrCreate(['code' => $color['code']], $attributes)->id;
                     }
                     $product->colors()->whereNotIn('id', $ids)->delete();
                 }
@@ -95,6 +99,27 @@ class CrmProductCatalogService
                         $ids[] = $product->sizes()->updateOrCreate(['name' => $size['name']], $size)->id;
                     }
                     $product->sizes()->whereNotIn('id', $ids)->delete();
+                }
+                if ($colors !== null || $sizes !== null) {
+                    $availableSizes = $product->sizes()->get();
+                    $submitted = collect($colors ?? [])->keyBy(fn ($color) => mb_strtolower($color['code']));
+                    foreach ($product->colors()->with('sizes')->get() as $color) {
+                        $input = $submitted->get(mb_strtolower($color->code));
+                        if ($input && ($input['matrix_present'] ?? false)) {
+                            $names = array_map('trim', $input['sizes']);
+                            $known = $availableSizes->keyBy(fn ($size) => mb_strtolower($size->name));
+                            foreach ($names as $name) {
+                                if (! $known->has(mb_strtolower($name))) {
+                                    throw ValidationException::withMessages(['colors.'.$input['input_index'].'.sizes' => 'La taglia '.$name.' non è tra le taglie del prodotto.']);
+                                }
+                            }
+                            $chosen = collect($names)->map(fn ($name) => $known->get(mb_strtolower($name))->id)->all();
+                        } else {
+                            // Metadata-only or legacy requests must preserve imported restrictions.
+                            $chosen = $color->sizes->modelKeys();
+                        }
+                        $color->sizes()->sync($color->sizes_restricted ? $chosen : $availableSizes->modelKeys());
+                    }
                 }
             });
         } catch (Throwable $error) {
@@ -125,7 +150,20 @@ class CrmProductCatalogService
                 throw ValidationException::withMessages(['colors.'.$index.'.code' => 'Codice colore duplicato: '.$code]);
             }
             $seen[$key] = true;
-            $rows[] = ['code' => $code, 'name' => $name, 'hex' => ! empty($color['hex']) ? strtoupper($color['hex']) : null, 'sort_order' => count($rows)];
+            if ($name === '') {
+                throw ValidationException::withMessages(['colors.'.$index.'.name' => 'Inserisci il nome del colore.']);
+            }
+            $row = ['code' => $code, 'name' => $name, 'hex' => ! empty($color['hex']) ? strtoupper($color['hex']) : null, 'sort_order' => count($rows), 'input_index' => $index];
+            if (array_key_exists('sizes_restricted', $color)) {
+                $row['sizes_restricted'] = (bool) $color['sizes_restricted'];
+                $row['matrix_present'] = true;
+                $row['sizes'] = array_map('trim', $color['sizes'] ?? []);
+                $keys = array_map(fn ($size) => mb_strtolower($size), $row['sizes']);
+                if (in_array('', $keys, true) || count(array_unique($keys)) !== count($keys)) {
+                    throw ValidationException::withMessages(['colors.'.$index.'.sizes' => 'Seleziona taglie valide e senza duplicati per questo colore.']);
+                }
+            }
+            $rows[] = $row;
         }
 
         return $rows;

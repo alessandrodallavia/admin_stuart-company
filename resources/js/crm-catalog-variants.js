@@ -28,6 +28,46 @@ export function initializeVariantEditors(scope) {
             row.querySelector('[data-color-hex]').setCustomValidity(value && !valid ? 'Inserisci un codice nel formato #RRGGBB, oppure lascia vuoto.' : '');
             if (valid) row.querySelector('[data-color-picker]').value = value;
         };
+        const sizeNames = () => [...sizes.querySelectorAll('input')].map((input) => input.value);
+        const refreshColorSizes = (row, renderOptions = true) => {
+            const names = sizeNames();
+            const restricted = row.querySelector('[data-color-size-mode]').value === '1';
+            const chosen = new Set([...row.allowedSizes].map(normalize));
+            row.allowedSizes = names.filter((name) => chosen.has(normalize(name)));
+            row.querySelector('[data-color-size-summary]').textContent = restricted
+                ? (row.allowedSizes.length ? row.allowedSizes.join(' · ') : 'Nessuna taglia abilitata per questo colore.')
+                : (names.length ? `Tutte: ${names.join(' · ')}` : 'Aggiungi le taglie generali del prodotto.');
+            const details = row.querySelector('[data-color-size-details]');
+            details.hidden = !restricted;
+            const values = row.querySelector('[data-color-size-values]');
+            values.replaceChildren();
+            if (restricted) row.allowedSizes.forEach((name) => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = `colors[${row.dataset.colorIndex}][sizes][]`;
+                input.value = name;
+                values.append(input);
+            });
+            if (!renderOptions) return;
+            const options = row.querySelector('[data-color-size-options]');
+            // Create checkboxes only when this color's selector is expanded.
+            options.replaceChildren();
+            if (!details.open || !restricted) return;
+            if (!names.length) {
+                options.textContent = 'Aggiungi prima le taglie generali del prodotto.';
+                return;
+            }
+            names.forEach((name) => {
+                const label = document.createElement('label');
+                label.className = 'catalog-check';
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.dataset.colorSizeOption = name;
+                input.checked = row.allowedSizes.includes(name);
+                label.append(input, document.createTextNode(name));
+                options.append(label);
+            });
+        };
         const addColor = (value = {}, focus = false) => {
             if (colors.children.length >= 200) return;
             if (!value || typeof value !== 'object') value = {};
@@ -38,13 +78,21 @@ export function initializeVariantEditors(scope) {
                 input.name = `colors[${index}][${field}]`;
                 input.value = value[field] ?? '';
             }
+            row.dataset.colorIndex = index;
+            row.allowedSizes = Array.isArray(value.sizes) ? [...value.sizes] : [];
+            const mode = row.querySelector('[data-color-size-mode]');
+            mode.name = `colors[${index}][sizes_restricted]`;
+            mode.value = value.sizes_restricted === true || String(value.sizes_restricted) === '1' ? '1' : '0';
+            row.querySelector('[data-color-size-details]').addEventListener('toggle', () => refreshColorSizes(row));
             row.setAttribute('aria-label', `Colore ${index + 1}`);
             colors.append(row);
             paintColor(row);
+            refreshColorSizes(row);
             colorStatus();
             if (focus) row.querySelector('[data-color-name]').focus();
         };
         const sizeStatus = () => {
+            colors.querySelectorAll('[data-color-row]').forEach((row) => refreshColorSizes(row));
             const selected = [...sizes.querySelectorAll('input')].map((input) => normalize(input.value));
             editor.querySelector('[data-size-empty]').hidden = selected.length !== 0;
             editor.querySelector('[data-size-count]').textContent = `${selected.length} ${selected.length === 1 ? 'taglia' : 'taglie'}`;
@@ -119,6 +167,20 @@ export function initializeVariantEditors(scope) {
                 announceSize('');
             }
         });
+        editor.addEventListener('change', (event) => {
+            if (event.target.hasAttribute('data-color-size-mode')) {
+                const row = event.target.closest('[data-color-row]');
+                if (event.target.value === '1') row.allowedSizes = sizeNames();
+                row.querySelector('[data-color-size-details]').open = event.target.value === '1';
+                refreshColorSizes(row);
+            }
+            if (event.target.hasAttribute('data-color-size-option')) {
+                const row = event.target.closest('[data-color-row]');
+                const name = event.target.dataset.colorSizeOption;
+                row.allowedSizes = event.target.checked ? [...row.allowedSizes, name] : row.allowedSizes.filter((size) => size !== name);
+                refreshColorSizes(row, false);
+            }
+        });
         editor.addEventListener('input', (event) => {
             if (event.target.hasAttribute('data-color-picker')) {
                 const row = event.target.closest('[data-color-row]');
@@ -132,8 +194,8 @@ export function initializeVariantEditors(scope) {
                 addCustomSize();
             }
         });
-        (initial.colors ?? []).forEach((color) => addColor(color));
         (initial.sizes ?? []).forEach(addSize);
+        (initial.colors ?? []).forEach((color) => addColor(color));
         colorStatus();
         sizeStatus();
     });

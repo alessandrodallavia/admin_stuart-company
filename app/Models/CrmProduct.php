@@ -33,6 +33,11 @@ class CrmProduct extends Model
         return $this->hasMany(CrmProductSize::class)->orderBy('sort_order')->orderBy('id');
     }
 
+    public function supplierDetails(): HasMany
+    {
+        return $this->hasMany(CrmProductSupplierDetail::class);
+    }
+
     public function priceTiers(): HasMany
     {
         return $this->hasMany(CrmProductPriceTier::class)->orderBy('min_quantity');

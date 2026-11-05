@@ -29,7 +29,7 @@ class CrmCatalogController extends Controller
             'categories' => LeadCategory::orderBy('sort_order')->orderBy('name')->get(),
             'brands' => CrmBrand::with('suppliers')->orderBy('name')->get(),
             'suppliers' => CrmSupplier::with('brands')->orderBy('name')->get(),
-            'products' => CrmProduct::with(['priceTiers', 'brand', 'suppliers', 'colors', 'sizes'])
+            'products' => CrmProduct::with(['priceTiers', 'brand', 'suppliers', 'colors.sizes', 'sizes', 'supplierDetails.supplier'])
                 ->when($search !== '', fn ($query) => $query->where(fn ($query) => $query->where('code', 'like', "%{$search}%")->orWhere('name', 'like', "%{$search}%")
                     ->orWhereHas('brand', fn ($query) => $query->where('name', 'like', "%{$search}%"))
                     ->orWhereHas('suppliers', fn ($query) => $query->where('name', 'like', "%{$search}%"))))

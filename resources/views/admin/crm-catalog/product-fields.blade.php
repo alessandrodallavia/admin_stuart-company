@@ -3,7 +3,7 @@
     $restore = (string) old('catalog_product_key') === $formKey;
     $brandValue = $restore ? old('crm_brand_id') : $catalogProduct?->crm_brand_id;
     $supplierValues = $restore ? old('supplier_ids', []) : ($catalogProduct?->suppliers->modelKeys() ?? []);
-    $colorValues = $restore ? old('colors', []) : ($catalogProduct?->colors->map(fn ($color) => ['code' => $color->code, 'name' => $color->name, 'hex' => $color->hex])->all() ?? []);
+    $colorValues = $restore ? old('colors', []) : ($catalogProduct?->colors->map(fn ($color) => ['code' => $color->code, 'name' => $color->name, 'hex' => $color->hex, 'sizes_restricted' => $color->sizes_restricted, 'sizes' => $color->sizes->pluck('name')->all()])->all() ?? []);
     $sizeValues = $restore ? old('sizes', []) : ($catalogProduct?->sizes->pluck('name')->all() ?? []);
     $colorValues = is_array($colorValues) ? array_values($colorValues) : [];
     $sizeValues = is_array($sizeValues) ? array_values($sizeValues) : [];
@@ -19,7 +19,7 @@
         </div><small>Puoi selezionare più fornitori tra quelli associati al brand.</small></fieldset>
     </div>
 </section>
-@include('admin.crm-catalog.variants-editor')
+@include('admin.crm-catalog.supplier-details')
 <section class="catalog-form-section">
     <div class="catalog-form-section-title"><h3>Documenti e riferimenti</h3><p>Conserva la scheda tecnica e il collegamento al prodotto del fornitore.</p></div>
     <div class="catalog-form-grid">
@@ -29,4 +29,5 @@
         </div>
     </div>
 </section>
+@include('admin.crm-catalog.variants-editor')
 <section class="catalog-form-section"><label class="catalog-check catalog-visibility"><input type="hidden" name="is_visible_on_site" value="0"><input type="checkbox" name="is_visible_on_site" value="1" @checked($restore ? old('is_visible_on_site') : $catalogProduct?->is_visible_on_site)><span><strong>Abilita visibilità sul sito</strong><small>Il prodotto resta disponibile negli ordini anche se nascosto. La pubblicazione sarà attiva quando il sito verrà collegato al CRM.</small></span></label></section>

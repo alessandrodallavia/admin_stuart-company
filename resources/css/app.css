@@ -442,3 +442,14 @@ input[type="file"] {
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
 @source '../**/*.js';
+
+.catalog-color-size-panel { grid-column: 1 / -1; padding-top: 12px; border-top: 1px solid #e5eaf0; }
+.catalog-color-size-panel > .catalog-field { max-width: 340px; }
+.catalog-color-size-panel > p { margin-top: 8px; }
+.catalog-color-size-panel details { margin-top: 10px; }
+.catalog-color-size-panel summary { min-height: 42px; display: flex; align-items: center; cursor: pointer; color: #3c526d; font-size: 13px; font-weight: 500; }
+.catalog-color-size-options { display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 8px 0; }
+.catalog-color-size-options .catalog-check { min-height: 42px; padding: 4px 8px; border: 1px solid #dce4ee; border-radius: 8px; }
+.catalog-supplier-description { margin: 16px 0; color: #526071; font-size: 13px; line-height: 1.7; }
+
+[data-catalog-variants] > .catalog-size-editor { margin: 0 0 28px; padding: 0 0 24px; border-top: 0; border-bottom: 1px solid #edf0f5; }

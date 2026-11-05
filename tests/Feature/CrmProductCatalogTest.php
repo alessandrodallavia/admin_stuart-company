@@ -166,11 +166,14 @@ class CrmProductCatalogTest extends TestCase
 
     public function test_migration_keeps_existing_products_and_price_tiers(): void
     {
+        $variantsMigration = require database_path('migrations/2026_11_05_000001_connect_crm_supplier_details_and_color_sizes.php');
+        $variantsMigration->down();
         $migration = require database_path('migrations/2026_11_04_000001_extend_crm_product_catalog.php');
         $migration->down();
         $product = CrmProduct::create($this->productData());
         $tier = $product->priceTiers()->create(['min_quantity' => 10, 'unit_cost' => 4, 'unit_price' => 9]);
         $migration->up();
+        $variantsMigration->up();
         $this->assertSame('TS01', $product->fresh()->code);
         $this->assertFalse($product->fresh()->is_visible_on_site);
         $this->assertNull($product->fresh()->crm_brand_id);
