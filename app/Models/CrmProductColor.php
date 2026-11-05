@@ -11,7 +11,7 @@ class CrmProductColor extends Model
 
     protected $fillable = ['code', 'name', 'hex', 'sort_order', 'sizes_restricted'];
 
-    protected $casts = ['sizes_restricted' => 'boolean'];
+    protected $casts = ['sizes_restricted' => 'boolean', 'mockup_customized' => 'boolean'];
 
     public function sizes(): BelongsToMany
     {

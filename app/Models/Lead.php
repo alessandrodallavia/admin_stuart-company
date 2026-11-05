@@ -71,6 +71,7 @@ class Lead extends Model
         'user_agent',
         'device',
         'cta_origin',
+        'calculator_crm_snapshot',
         'calculator_used',
         'calculator_requires_quote',
         'calculator_model',
@@ -166,6 +167,7 @@ class Lead extends Model
     protected $casts = [
         'privacy_consent' => 'boolean',
         'marketing_consent' => 'boolean',
+        'calculator_crm_snapshot' => 'array',
         'calculator_used' => 'boolean',
         'calculator_requires_quote' => 'boolean',
         'calculator_whatsapp_click' => 'boolean',

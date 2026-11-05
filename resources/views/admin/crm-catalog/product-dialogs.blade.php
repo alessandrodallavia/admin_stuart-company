@@ -10,6 +10,7 @@
             @if($catalogProduct)
                 <div class="catalog-local-tabs" role="tablist" aria-label="Scheda prodotto">
                     <button type="button" role="tab" id="{{ $dialogId }}-details-tab" data-catalog-local-tab="{{ $dialogId }}-details" aria-controls="{{ $dialogId }}-details" aria-selected="true">Anagrafica prodotto</button>
+                    <a href="{{ route('admin.crm-catalog.products.mockups.index', $catalogProduct) }}" class="catalog-button catalog-button-secondary" style="align-self:center">Mockup per colore ↗</a>
                     <button type="button" role="tab" id="{{ $dialogId }}-pricing-tab" data-catalog-local-tab="{{ $dialogId }}-pricing" aria-controls="{{ $dialogId }}-pricing" aria-selected="false" tabindex="-1">Fasce prezzo <span>{{ $catalogProduct->priceTiers->count() }}</span></button>
                 </div>
             @endif

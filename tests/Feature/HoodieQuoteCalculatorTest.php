@@ -3,6 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\AdminUser;
+use App\Models\CrmCalculatorSlot;
+use App\Models\CrmPrintType;
+use App\Models\CrmProduct;
 use App\Models\Lead;
 use App\Models\WhatsappConversation;
 use App\Models\WhatsappMessage;
@@ -14,6 +17,26 @@ use Tests\TestCase;
 class HoodieQuoteCalculatorTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        foreach (['hood', 'crewneck', 'zip'] as $model) {
+            foreach (['economic' => 10, 'basic' => 20, 'organic' => 30] as $quality => $price) {
+                $product = CrmProduct::create(['code' => $model.'-'.$quality, 'name' => $quality, 'unit_cost' => 1, 'is_active' => true]);
+                $product->priceTiers()->create(['min_quantity' => 10, 'max_quantity' => 19.99, 'unit_price' => $price, 'unit_cost' => 1]);
+                $product->priceTiers()->create(['min_quantity' => 20, 'max_quantity' => null, 'unit_price' => $price - 2, 'unit_cost' => 1]);
+                CrmCalculatorSlot::where('model', $model)->where('quality', $quality)->update(['crm_product_id' => $product->id]);
+            }
+        }
+        foreach (['STAMPA_CUORE' => 1, 'STAMPA_FRONT' => 2, 'STAMPA_BACK' => 3, 'STAMPA_MAX' => 4] as $code => $price) {
+            $print = CrmPrintType::create(['code' => $code, 'name' => $code, 'is_active' => true]);
+            $print->priceTiers()->create(['min_quantity' => 10, 'max_quantity' => null, 'unit_price' => $price, 'unit_cost' => 1]);
+            foreach (CrmCalculatorSlot::where('family', 'hoodie')->get() as $slot) {
+                $slot->printTypes()->attach($print);
+            }
+        }
+    }
 
     private function owner(): AdminUser
     {
@@ -36,14 +59,14 @@ class HoodieQuoteCalculatorTest extends TestCase
         $conversation = $this->conversation();
         $this->actingAs($this->owner(), 'admin')->postJson(route('admin.conversations.hoodie-quote.preview', $conversation), $this->selection())
             ->assertOk()
-            ->assertJsonPath('band', '10-24')
-            ->assertJsonPath('quotes.0.unit', 1885)
-            ->assertJsonPath('quotes.0.subtotal', 37700)
-            ->assertJsonPath('quotes.0.vat', 8294)
+            ->assertJsonPath('band', '20-3000')
+            ->assertJsonPath('quotes.0.unit', 1200)
+            ->assertJsonPath('quotes.0.subtotal', 24000)
+            ->assertJsonPath('quotes.0.vat', 5280)
             ->assertJsonPath('quotes.0.shipping', 0)
-            ->assertJsonPath('quotes.0.total', 45994)
-            ->assertJsonPath('quotes.1.unit', 2148)
-            ->assertJsonPath('quotes.1.total', 52411)
+            ->assertJsonPath('quotes.0.total', 29280)
+            ->assertJsonPath('quotes.1.unit', 2200)
+            ->assertJsonPath('quotes.1.total', 53680)
             ->assertJsonFragment(['quality' => 'basic']);
         $this->assertSame(0, WhatsappMessage::count());
         $this->assertSame('manual', $conversation->fresh()->mode);
@@ -54,12 +77,12 @@ class HoodieQuoteCalculatorTest extends TestCase
     {
         $result = app(HoodieQuoteCalculator::class)->generate($this->selection(['quantity' => 11, 'personalization' => 'heart_logo']));
         $this->assertSame(990, $result['quotes'][0]['shipping']);
-        $this->assertSame(24086, $result['quotes'][0]['total']);
+        $this->assertSame(15752, $result['quotes'][0]['total']);
         $this->assertSame(0, $result['quotes'][1]['shipping']);
-        $this->assertSame(26625, $result['quotes'][1]['total']);
-        $belowThreshold = app(HoodieQuoteCalculator::class)->generate($this->selection(['quantity' => 10, 'personalization' => 'heart_logo', 'qualities' => ['basic']]));
+        $this->assertSame(28182, $result['quotes'][1]['total']);
+        $belowThreshold = app(HoodieQuoteCalculator::class)->generate($this->selection(['quantity' => 10, 'personalization' => 'heart_logo', 'qualities' => ['economic']]));
         $this->assertSame(990, $belowThreshold['quotes'][0]['shipping']);
-        $this->assertSame(25195, $belowThreshold['quotes'][0]['total']);
+        $this->assertSame(14410, $belowThreshold['quotes'][0]['total']);
         $this->assertStringContainsString('Spedizione: EUR 9,90 IVA inclusa', $result['message']);
         $this->assertStringContainsString('Spedizione: gratuita', $result['message']);
         $this->assertStringContainsString('max 25 x 15 cm', app(HoodieQuoteCalculator::class)->generate($this->selection(['personalization' => 'front_print']))['message']);
@@ -73,19 +96,19 @@ class HoodieQuoteCalculatorTest extends TestCase
             ->assertOk()->assertJsonPath('defaults.model', 'crewneck')->assertJsonPath('defaults.quantity', 100)
             ->assertJsonPath('defaults.qualities', ['organic'])->assertJsonPath('defaults.personalization', 'back_print');
         $quote = app(HoodieQuoteCalculator::class)->generate($this->selection(['model' => 'crewneck', 'quantity' => 100, 'qualities' => ['organic'], 'personalization' => 'back_print']));
-        $this->assertSame(1336, $quote['quotes'][0]['unit']);
+        $this->assertSame(3100, $quote['quotes'][0]['unit']);
         $this->assertStringContainsString('Retro grande (max 25 x 30 cm)', $quote['message']);
         $this->assertStringContainsString('felpe-personalizzate#calcolatore-prezzo', $quote['message']);
     }
 
-    public function test_max_uses_the_same_prices_as_landing_and_twenty_five_starts_second_band(): void
+    public function test_max_uses_the_same_prices_as_landing_and_twenty_starts_second_band(): void
     {
         $calculator = app(HoodieQuoteCalculator::class);
         $quote = $calculator->generate($this->selection(['quantity' => 100, 'personalization' => 'max_front_print_max_back_print', 'qualities' => ['economic']]));
-        $this->assertSame(1664, $quote['quotes'][0]['unit']);
+        $this->assertSame(1600, $quote['quotes'][0]['unit']);
         $this->assertStringContainsString('Stampa formato MAX fronte', $quote['message']);
-        $this->assertSame(1885, $calculator->generate($this->selection(['quantity' => 24]))['quotes'][0]['unit']);
-        $this->assertSame(1648, $calculator->generate($this->selection(['quantity' => 25]))['quotes'][0]['unit']);
+        $this->assertSame(1400, $calculator->generate($this->selection(['quantity' => 19]))['quotes'][0]['unit']);
+        $this->assertSame(1200, $calculator->generate($this->selection(['quantity' => 25]))['quotes'][0]['unit']);
     }
 
     public function test_invalid_selections_do_not_produce_a_quote(): void

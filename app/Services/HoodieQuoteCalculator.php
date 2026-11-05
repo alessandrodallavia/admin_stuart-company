@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Lead;
+use App\Support\CrmHoodieCatalog;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
@@ -16,12 +17,17 @@ class HoodieQuoteCalculator
             return $this->catalog;
         }
         $path = rtrim(config('landing_quote.path'), '/');
-        if (! is_file($path.'/config/hoodie_calculator.php') || ! is_file($path.'/app/Support/PrintConfiguration.php')) {
+        if (! is_file($path.'/config/hoodie_calculator.php') || ! is_file($path.'/app/Support/PrintConfiguration.php') || ! is_file($path.'/app/Support/CrmHoodieCatalog.php')) {
             throw new RuntimeException('Listino felpe non disponibile. Verificare il collegamento alla landing.');
         }
         require_once $path.'/app/Support/PrintConfiguration.php';
 
-        return $this->catalog = require $path.'/config/hoodie_calculator.php';
+        require_once $path.'/app/Support/CrmHoodieCatalog.php';
+        try {
+            return $this->catalog = CrmHoodieCatalog::build(require $path.'/config/hoodie_calculator.php', false);
+        } catch (\Throwable $e) {
+            throw new RuntimeException('Catalogo CRM felpe non disponibile. Verificare migrazioni e associazioni.', 0, $e);
+        }
     }
 
     public function defaults(?Lead $lead): array
@@ -76,16 +82,15 @@ class HoodieQuoteCalculator
         }
         $rows = [];
         foreach ($selection['qualities'] as $quality) {
-            $unit = $c['quality_prices'][$quality][$model][$print][$bandKey] ?? null;
-            if (! is_numeric($unit) || $unit <= 0) {
-                throw ValidationException::withMessages(['qualities' => 'Prezzo non disponibile per una delle qualità selezionate.']);
+            try {
+                $quote = CrmHoodieCatalog::quote($c, $model, $quality, $print, $quantity);
+            } catch (RuntimeException $e) {
+                throw ValidationException::withMessages(['qualities' => $e->getMessage()]);
             }
-            // Match landing: multiply the rounded unit price, then calculate VAT.
-            $unitCents = (int) round($unit * 100);
-            $subtotal = $unitCents * $quantity;
-            $vat = (int) round($subtotal * $c['vat_rate'] / 100);
-            $shipping = $subtotal + $vat < (int) round($c['free_shipping_threshold_inc_vat'] * 100)
-                ? (int) round($c['shipping_cost'] * 100) : 0;
+            $unitCents = $quote['unit'];
+            $subtotal = $quote['subtotal'];
+            $vat = $quote['vat'];
+            $shipping = $quote['shipping'];
             $rows[] = ['quality' => $quality, 'label' => $c['qualities'][$quality], 'unit' => $unitCents, 'subtotal' => $subtotal, 'vat' => $vat, 'shipping' => $shipping, 'total' => $subtotal + $vat + $shipping];
         }
         $money = static fn (int $cents): string => 'EUR '.number_format($cents / 100, 2, ',', '.');
@@ -93,6 +98,8 @@ class HoodieQuoteCalculator
             'Modello: '.$c['models'][$model], 'Quantità: '.$quantity.' pezzi',
             'Personalizzazione inclusa: '.$c['personalizations'][$print], ''];
         foreach ($rows as $row) {
+            $product = $c['crm_products'][$model][$row['quality']];
+            $lines[] = $row['label'].' · '.$product['code'].' · '.$product['name'];
             $lines[] = $row['label'].' - '.$money($row['unit']).' / pz + IVA';
             $lines[] = 'Totale '.$quantity.' pz: '.$money($row['subtotal']).' + IVA';
             $lines[] = 'IVA '.$c['vat_rate'].'%: '.$money($row['vat']);

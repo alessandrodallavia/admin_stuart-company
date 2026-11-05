@@ -15,7 +15,7 @@
 <div data-crm-catalog data-restore-dialog="{{ $restoreDialog }}" class="catalog-workspace">
     <header class="catalog-page-header">
         <div><p class="catalog-eyebrow">Vendite e anagrafiche</p><h1>Catalogo commerciale</h1><p>Gestisci prodotti, listini e fornitori da un unico spazio.</p></div>
-        <span class="catalog-tax-note">Costi e prezzi IVA esclusa</span>
+        <div class="catalog-header-actions"><a href="{{ route('admin.crm-catalog.calculator.index') }}" class="catalog-button catalog-button-secondary">Prodotti per calcolatore ↗</a><span class="catalog-tax-note">Costi e prezzi IVA esclusa</span></div>
     </header>
 
     <div class="catalog-surface">
