@@ -10,7 +10,8 @@
                     <div class="catalog-form-grid">
                         <label data-quote-model-wrap class="catalog-field"><span>Tipo di felpa</span><select data-quote-model></select></label>
                         <label class="catalog-field"><span>Quantità</span><input data-quote-quantity type="number" step="1" inputmode="numeric"></label>
-                        <label class="catalog-field catalog-span-full"><span>Personalizzazione</span><select data-quote-print></select></label>
+                        <input type="hidden" data-quote-print value="positions:">
+                        @foreach(['front'=>'Fronte','back'=>'Retro','sleeve'=>'Manica'] as $position=>$label)<label class="catalog-field catalog-span-full" hidden><span>{{ $label }}</span><select data-quote-position="{{ $position }}"><option value="">Nessuna</option></select></label>@endforeach
                     </div>
                     <fieldset class="wa-quote-quality-field"><legend>Qualità da confrontare</legend><div data-quote-qualities></div></fieldset>
                     <button type="button" data-quote-generate class="catalog-button catalog-button-primary">Genera messaggio</button>
@@ -43,6 +44,9 @@
     const generate = find('generate');
     const insert = find('insert');
     const preview = find('preview');
+    const positionSelects = [...panel.querySelectorAll('[data-quote-position]')];
+    const selectedPositions = () => Object.fromEntries(positionSelects.filter(s => s.value).map(s => [s.dataset.quotePosition, Number(s.value)]));
+    const encodePositions = selected => 'positions:' + ['front', 'back', 'sleeve'].filter(side => selected[side]).map(side => side + '=' + selected[side]).join(';');
     let catalog = null;
     let loading = false;
     let revision = 0;
@@ -54,15 +58,21 @@
         find('empty').hidden = false;
         status.textContent = '';
     };
-    const syncPrints = () => {
-        for (const option of print.options) {
-            const allowed = catalog.personalization_models[option.value];
-            option.disabled = Boolean(allowed && !allowed.includes(model.value));
-            option.hidden = option.disabled;
+    const syncPrints = (restore = selectedPositions()) => {
+        if (!catalog) return;
+        for (const select of positionSelects) {
+            const side = select.dataset.quotePosition;
+            const choices = {};
+            for (const [quality, models] of Object.entries(catalog.position_catalog || {})) {
+                const positions = models[catalog.family === 'tshirt' ? quality : model.value] || {};
+                Object.assign(choices, positions[side] || {});
+            }
+            select.replaceChildren(new Option('Nessuna', ''));
+            for (const [id, type] of Object.entries(choices)) select.add(new Option(type.label, id));
+            select.closest('label').hidden = !Object.keys(choices).length;
+            if (choices[restore?.[side]]) select.value = String(restore[side]);
         }
-        if (print.selectedOptions[0]?.disabled) {
-            print.value = Array.from(print.options).find(o => !o.disabled)?.value || '';
-        }
+        print.value = encodePositions(selectedPositions());
     };
     const errorText = (data) => Object.values(data.errors || {}).flat().join(' ') || data.message || 'Impossibile preparare il preventivo. Riprova.';
     const loadCatalog = async (selectedFamily = null) => {
@@ -85,7 +95,7 @@
             print.replaceChildren();
             find('qualities').replaceChildren();
             for (const [value, label] of Object.entries(data.models)) model.add(new Option(label, value));
-            for (const [value, label] of Object.entries(data.personalizations)) print.add(new Option(label, value));
+            // Positions are explicitly selected; there is no combined personalization menu.
             for (const [value, text] of Object.entries(data.qualities)) {
                 const label = document.createElement('label');
                 label.className = 'flex items-center gap-8 text-12 font-semibold';
@@ -106,8 +116,7 @@
             quantity.min = data.minimum_quantity;
             quantity.max = data.maximum_quantity;
             quantity.value = data.defaults.quantity;
-            print.value = data.defaults.personalization;
-            syncPrints();
+            syncPrints(data.defaults.positions || {});
             const available = syncQualities();
             find('fields').hidden = false;
             status.textContent = available ? '' : 'Nessun prodotto attivo associato. Configura le associazioni nel catalogo CRM.';
@@ -118,14 +127,17 @@
     const syncQualities = () => {
         if (!catalog) return;
         for (const input of panel.querySelectorAll('[data-quote-quality]')) {
-            const product = catalog.products?.[catalog.family === 'tshirt' ? input.value : model.value]?.[input.value];
-            input.disabled = !product;
+            const productModel = catalog.family === 'tshirt' ? input.value : model.value;
+            const product = catalog.products?.[productModel]?.[input.value];
+            const allowed = catalog.position_catalog?.[input.value]?.[productModel] || {};
+            const supported = Object.entries(selectedPositions()).every(([side, id]) => allowed[side]?.[id]);
+            input.disabled = !product || !supported;
             if (!product) input.checked = false;
             const caption = input.parentElement.querySelector('[data-quote-quality-label]');
-            caption.textContent = `${caption.dataset.label}${product ? ' · ' + product.code : ' · prodotto non associato o inattivo'}`;
+            caption.textContent = `${caption.dataset.label}${product ? ' · ' + product.code + (supported ? '' : ' · lavorazione non abilitata') : ' · prodotto non associato o inattivo'}`;
         }
         const available = Boolean(panel.querySelector('[data-quote-quality]:not(:disabled)'));
-        generate.disabled = !available;
+        generate.disabled = !available || !Object.keys(selectedPositions()).length;
         if (!panel.querySelector('[data-quote-quality]:checked')) {
             const first = panel.querySelector('[data-quote-quality]:not(:disabled)');
             if (first) first.checked = true;
@@ -150,7 +162,7 @@
     });
     panel.addEventListener('input', invalidate);
     model.addEventListener('change', () => { syncPrints(); const available = syncQualities(); invalidate(); if (!available) status.textContent = 'Nessun prodotto attivo associato per questo modello.'; });
-    panel.addEventListener('change', (event) => { if (event.target !== model && event.target !== family) invalidate(); });
+    panel.addEventListener('change', (event) => { if (event.target !== model && event.target !== family) { if (event.target.hasAttribute('data-quote-position')) { print.value = encodePositions(selectedPositions()); syncQualities(); } invalidate(); } });
     generate.addEventListener('click', async () => {
         invalidate();
         const currentRevision = revision;
@@ -161,7 +173,7 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': @json(csrf_token()) },
                 body: JSON.stringify({
-                    family: family.value, model: model.value, quantity: quantity.value, personalization: print.value,
+                    positions: selectedPositions(), family: family.value, model: model.value, quantity: quantity.value, personalization: print.value,
                     qualities: Array.from(panel.querySelectorAll('[data-quote-quality]:checked')).map(input => input.value),
                 }),
             });
@@ -176,7 +188,7 @@
             status.textContent = 'Prezzi, IVA e spedizione calcolati. Controlla il testo prima di inserirlo nella chat.';
         } catch (error) {
             if (revision === currentRevision) status.textContent = error.message;
-        } finally { generate.disabled = loading || !panel.querySelector('[data-quote-quality]:not(:disabled)'); }
+        } finally { generate.disabled = loading || !Object.keys(selectedPositions()).length || !panel.querySelector('[data-quote-quality]:not(:disabled)'); }
     });
     insert.addEventListener('click', () => {
         if (insert.disabled) return;

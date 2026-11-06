@@ -21,6 +21,8 @@ class HoodieQuoteController extends Controller
             $c = $calculator->catalog($family);
 
             return response()->json([
+                'personalization_mode' => 'positions',
+                'position_catalog' => collect($c['position_catalog'])->map(fn ($models) => collect($models)->map(fn ($entry) => $entry['positions'])),
                 'family' => $family,
                 'models' => $family === 'tshirt' ? ['tshirt' => 'T-shirt'] : $c['models'], 'qualities' => $c['qualities'] ?? $c['models'],
                 'products' => collect($c['crm_products'])->map(fn ($qualities) => collect($qualities)->map(fn ($product) => ['code' => $product['code'], 'name' => $product['name']])),
@@ -45,7 +47,9 @@ class HoodieQuoteController extends Controller
                 'family' => ['sometimes', Rule::in(['hoodie', 'tshirt'])],
                 'model' => ['required', Rule::in($family === 'tshirt' ? ['tshirt'] : array_keys($c['models']))],
                 'quantity' => ['required', 'integer', 'min:'.$c['minimum_quantity'], 'max:'.$c['custom_quote_above_quantity']],
-                'personalization' => ['required', Rule::in(array_keys($c['personalizations']))],
+                'personalization' => ['nullable', 'string', 'max:100'],
+                'positions' => ['sometimes', 'array:front,back,sleeve'],
+                'positions.*' => ['nullable', 'integer', 'min:1'],
                 'qualities' => ['required', 'array', 'min:1', 'max:'.count($qualities)],
                 'qualities.*' => ['required', 'distinct', Rule::in(array_keys($qualities))],
             ], ['quantity.max' => 'Oltre '.number_format($c['custom_quote_above_quantity'], 0, ',', '.').' pezzi serve una quotazione dedicata.']);

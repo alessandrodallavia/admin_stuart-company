@@ -11,6 +11,7 @@ use App\Models\WhatsappConversation;
 use App\Models\WhatsappMessage;
 use App\Services\HoodieQuoteCalculator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -30,10 +31,17 @@ class HoodieQuoteCalculatorTest extends TestCase
             }
         }
         foreach (['STAMPA_CUORE' => 1, 'STAMPA_FRONT' => 2, 'STAMPA_BACK' => 3, 'STAMPA_MAX' => 4] as $code => $price) {
-            $print = CrmPrintType::create(['code' => $code, 'name' => $code, 'is_active' => true]);
+            $metadata = ['STAMPA_CUORE' => ['HEART', 'max 10 x 10 cm'], 'STAMPA_FRONT' => ['STANDARD', 'max 25 x 15 cm'], 'STAMPA_BACK' => ['LARGE', 'max 25 x 30 cm'], 'STAMPA_MAX' => ['MAX', 'dimensione massima compatibile con il capo e la taglia']][$code];
+            $print = CrmPrintType::create(['code' => $code, 'name' => $code, 'is_active' => true, 'preview_layout' => $metadata[0], 'size_label' => $metadata[1]]);
             $print->priceTiers()->create(['min_quantity' => 10, 'max_quantity' => null, 'unit_price' => $price, 'unit_cost' => 1]);
             foreach (CrmCalculatorSlot::where('family', 'hoodie')->get() as $slot) {
                 $slot->printTypes()->attach($print);
+                foreach (['front', 'back'] as $side) {
+                    if (($side === 'back' && $code === 'STAMPA_CUORE') || ($side === 'front' && $code === 'STAMPA_BACK' && $slot->model !== 'crewneck')) {
+                        continue;
+                    }
+                    DB::table('crm_product_position_print_type')->insert(['crm_product_id' => $slot->crm_product_id, 'position' => $side, 'crm_print_type_id' => $print->id]);
+                }
             }
         }
     }
@@ -47,6 +55,14 @@ class HoodieQuoteCalculatorTest extends TestCase
             $slot = CrmCalculatorSlot::where('family', 'tshirt')->where('quality', $quality)->firstOrFail();
             $slot->update(['crm_product_id' => $product->id]);
             $slot->printTypes()->sync(CrmPrintType::pluck('id'));
+            foreach (CrmPrintType::all() as $print) {
+                foreach (['front', 'back'] as $side) {
+                    if ($side === 'back' && $print->code === 'STAMPA_CUORE') {
+                        continue;
+                    }
+                    DB::table('crm_product_position_print_type')->insert(['crm_product_id' => $product->id, 'position' => $side, 'crm_print_type_id' => $print->id]);
+                }
+            }
         }
     }
 
@@ -156,7 +172,7 @@ class HoodieQuoteCalculatorTest extends TestCase
             ->assertJsonPath('defaults.qualities', ['organic'])->assertJsonPath('defaults.personalization', 'back_print');
         $quote = app(HoodieQuoteCalculator::class)->generate($this->selection(['model' => 'crewneck', 'quantity' => 100, 'qualities' => ['organic'], 'personalization' => 'back_print']));
         $this->assertSame(3100, $quote['quotes'][0]['unit']);
-        $this->assertStringContainsString('Retro grande (max 25 x 30 cm)', $quote['message']);
+        $this->assertStringContainsString('Retro: STAMPA_BACK (max 25 x 30 cm)', $quote['message']);
         $this->assertStringContainsString('felpe-personalizzate#calcolatore-prezzo', $quote['message']);
     }
 
@@ -165,7 +181,7 @@ class HoodieQuoteCalculatorTest extends TestCase
         $calculator = app(HoodieQuoteCalculator::class);
         $quote = $calculator->generate($this->selection(['quantity' => 100, 'personalization' => 'max_front_print_max_back_print', 'qualities' => ['economic']]));
         $this->assertSame(1600, $quote['quotes'][0]['unit']);
-        $this->assertStringContainsString('Stampa formato MAX fronte', $quote['message']);
+        $this->assertStringContainsString('Fronte: STAMPA_MAX', $quote['message']);
         $this->assertSame(1400, $calculator->generate($this->selection(['quantity' => 19]))['quotes'][0]['unit']);
         $this->assertSame(1200, $calculator->generate($this->selection(['quantity' => 25]))['quotes'][0]['unit']);
     }

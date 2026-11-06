@@ -37,6 +37,7 @@ class CrmCatalogController extends Controller
             'printTypes' => CrmPrintType::with('priceTiers')
                 ->when($search !== '', fn ($query) => $query->where(fn ($query) => $query->where('code', 'like', "%{$search}%")->orWhere('name', 'like', "%{$search}%")))
                 ->orderBy('name')->get(),
+            'setupTypes' => CrmPrintType::where('technique', 'setup')->orderBy('name')->get(),
             'search' => $search,
         ]);
     }
@@ -126,7 +127,7 @@ class CrmCatalogController extends Controller
 
     public function storePrintType(Request $request): RedirectResponse
     {
-        $data = $request->validate(['code' => ['required', 'string', 'max:100', 'unique:crm_print_types,code'], 'name' => ['required', 'string', 'max:255']]);
+        $data = $this->printTypeData($request);
         CrmPrintType::create($data + ['is_active' => true]);
 
         return back()->with('status', 'Stampa salvata.');
@@ -134,14 +135,54 @@ class CrmCatalogController extends Controller
 
     public function updatePrintType(Request $request, CrmPrintType $printType): RedirectResponse
     {
-        $data = $request->validate(['code' => ['required', 'string', 'max:100', Rule::unique('crm_print_types', 'code')->ignore($printType)], 'name' => ['required', 'string', 'max:255']]);
+        $data = $this->printTypeData($request, $printType);
         $printType->update($data);
 
         return back()->with('status', 'Stampa modificata.');
     }
 
+    private function printTypeData(Request $request, ?CrmPrintType $printType = null): array
+    {
+        $data = $request->validate([
+            'code' => ['required', 'string', 'max:100', Rule::unique('crm_print_types', 'code')->ignore($printType)],
+            'name' => ['required', 'string', 'max:255'],
+            'technique' => ['sometimes', Rule::in(['print', 'embroidery', 'other', 'setup'])],
+            'preview_layout' => ['sometimes', Rule::in(['HEART', 'STANDARD', 'LARGE', 'MAX'])],
+            'size_label' => ['nullable', 'string', 'max:255'],
+            'allowed_sides' => ['sometimes', 'array', 'max:2'],
+            'allowed_sides.*' => ['required', 'distinct', Rule::in(['front', 'back'])],
+            'setup_print_type_id' => ['nullable', 'integer', Rule::exists('crm_print_types', 'id')->where('technique', 'setup')],
+            'fixed_price' => ['nullable', 'numeric', 'min:0', 'max:9999999999'],
+        ]);
+        if ($printType && ! empty($data['setup_print_type_id']) && (int) $data['setup_print_type_id'] === $printType->id) {
+            throw ValidationException::withMessages(['setup_print_type_id' => 'Una lavorazione non può dipendere da se stessa.']);
+        }
+        if ($printType?->technique === 'setup' && isset($data['technique']) && $data['technique'] !== 'setup' && CrmPrintType::where('setup_print_type_id', $printType->id)->exists()) {
+            throw ValidationException::withMessages(['technique' => 'Questo impianto è utilizzato da altri ricami: conserva la tecnica Impianto.']);
+        }
+        if ($request->boolean('personalization_metadata_present')) {
+            $technique = $data['technique'] ?? $printType?->technique ?? 'print';
+            if ($technique === 'embroidery' && empty($data['setup_print_type_id'])) {
+                throw ValidationException::withMessages(['setup_print_type_id' => 'Seleziona l’impianto da applicare una sola volta per ogni ricamo.']);
+            }
+            if ($technique === 'setup') {
+                $data['setup_print_type_id'] = null;
+                if (($data['fixed_price'] ?? null) === null) {
+                    throw ValidationException::withMessages(['fixed_price' => 'Inserisci il prezzo unico IVA esclusa dell’impianto.']);
+                }
+            } else {
+                $data['fixed_price'] = null;
+            }
+        }
+
+        return $data;
+    }
+
     public function destroyPrintType(CrmPrintType $printType): RedirectResponse
     {
+        if (CrmPrintType::where('setup_print_type_id', $printType->id)->exists()) {
+            return back()->withErrors(['print_type' => 'Questo impianto è utilizzato da altre lavorazioni e non può essere eliminato.']);
+        }
         $printType->delete();
 
         return back()->with('status', 'Stampa eliminata.');

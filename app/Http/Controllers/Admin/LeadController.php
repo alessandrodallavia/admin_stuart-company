@@ -110,6 +110,7 @@ class LeadController extends Controller
         $liveMockupFiles = collect([
             'front' => $selectedLead?->live_mockup_front_file,
             'back' => $selectedLead?->live_mockup_back_file,
+            'sleeve' => $selectedLead?->live_mockup_sleeve_file,
         ])->map(fn (?string $path) => [
             'path' => $path,
             'exists' => filled($path) && Storage::disk('live_mockups')->exists($path),
@@ -178,13 +179,13 @@ class LeadController extends Controller
 
     private function mockupFile(Lead $lead, string $side): array
     {
-        abort_unless(in_array($side, ['front', 'back'], true), 404);
+        abort_unless(in_array($side, ['front', 'back', 'sleeve'], true), 404);
 
-        $path = $side === 'front' ? $lead->live_mockup_front_file : $lead->live_mockup_back_file;
+        $path = $lead->{'live_mockup_'.$side.'_file'};
         abort_if(blank($path) || ! Storage::disk('live_mockups')->exists($path), 404);
 
         $extension = pathinfo($path, PATHINFO_EXTENSION);
-        $filename = 'grafica-'.($side === 'front' ? 'fronte' : 'retro').($extension ? '.'.$extension : '');
+        $filename = 'grafica-'.(['front' => 'fronte', 'back' => 'retro', 'sleeve' => 'manica'][$side]).($extension ? '.'.$extension : '');
         $mimeType = Storage::disk('live_mockups')->mimeType($path) ?: 'application/octet-stream';
 
         return [$path, $filename, $mimeType];

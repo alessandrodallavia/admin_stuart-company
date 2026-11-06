@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\CrmCalculatorSlotController;
 use App\Http\Controllers\Admin\CrmCatalogController as AdminCrmCatalogController;
 use App\Http\Controllers\Admin\CrmCatalogDirectoryController;
 use App\Http\Controllers\Admin\CrmProductMockupController;
+use App\Http\Controllers\Admin\CrmProductPersonalizationController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\DocumentController as AdminDocumentController;
 use App\Http\Controllers\Admin\EmailController as AdminEmailController;
@@ -140,6 +141,7 @@ Route::name('admin.')->group(function () {
         });
 
         Route::middleware(['admin.permission:crm_catalog.view', 'admin.training.blocked'])->group(function () {
+            Route::get('/settings/crm-catalog/products/{product}/personalizations', [CrmProductPersonalizationController::class, 'index'])->name('crm-catalog.products.personalizations.index');
             Route::get('/settings/crm-catalog/mockup-assets', [CrmProductMockupController::class, 'asset'])->name('crm-catalog.mockup-assets.show');
             Route::get('/settings/crm-catalog/products/{product}/mockups', [CrmProductMockupController::class, 'index'])->name('crm-catalog.products.mockups.index');
             Route::get('/settings/crm-catalog/calculator', [CrmCalculatorSlotController::class, 'index'])->name('crm-catalog.calculator.index');
@@ -148,6 +150,7 @@ Route::name('admin.')->group(function () {
         });
 
         Route::middleware(['admin.permission:crm_catalog.manage', 'admin.training.blocked'])->group(function () {
+            Route::patch('/settings/crm-catalog/products/{product}/personalizations', [CrmProductPersonalizationController::class, 'update'])->name('crm-catalog.products.personalizations.update');
             Route::patch('/settings/crm-catalog/products/{product}/mockups/{color}', [CrmProductMockupController::class, 'update'])->name('crm-catalog.products.mockups.update');
             Route::patch('/settings/crm-catalog/calculator/{slot}', [CrmCalculatorSlotController::class, 'update'])->name('crm-catalog.calculator.update');
             Route::post('/settings/crm-catalog/brands', [CrmCatalogDirectoryController::class, 'storeBrand'])->name('crm-catalog.brands.store');

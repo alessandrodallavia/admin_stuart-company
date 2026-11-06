@@ -480,8 +480,8 @@
                                         'front_print_back_print' => 'Stampa frontale + stampa retro',
                                         'big_front_print_big_back_print' => 'Stampa grande frontale + stampa grande retro',
                                     ];
-                                    $mockupPersonalization = $personalizationLabels[$selectedLead->calculator_personalization] ?? $selectedLead->calculator_personalization;
-                                    $hasLiveMockupGraphics = filled($selectedLead->live_mockup_front_file) || filled($selectedLead->live_mockup_back_file);
+                                    $mockupPersonalization = $selectedLead->calculator_crm_snapshot['personalization_label'] ?? $selectedLead->calculator_crm_snapshot['quote_cents']['selection_label'] ?? $personalizationLabels[$selectedLead->calculator_personalization] ?? $selectedLead->calculator_personalization;
+                                    $hasLiveMockupGraphics = filled($selectedLead->live_mockup_front_file) || filled($selectedLead->live_mockup_back_file) || filled($selectedLead->live_mockup_sleeve_file);
                                     $mockupModelKey = Illuminate\Support\Str::slug((string) $selectedLead->calculator_model);
                                     $mockupColorKey = Illuminate\Support\Str::slug((string) $selectedLead->live_mockup_color);
                                     $hasMockupBase = filled($mockupModelKey) && filled($mockupColorKey);
@@ -538,7 +538,7 @@
                                         </dl>
 
                                         <div class="grid gap-10 sm:grid-cols-2">
-                                            @foreach (['front' => 'Fronte', 'back' => 'Retro'] as $side => $label)
+                                            @foreach (['front' => 'Fronte', 'back' => 'Retro', 'sleeve' => 'Manica'] as $side => $label)
                                                 <article class="overflow-hidden rounded-10 border border-gray-mid bg-gray-light">
                                                     <div class="flex items-center justify-between border-b border-gray-mid bg-white px-10 py-8">
                                                         <p class="text-11 font-black uppercase">{{ $label }}</p>
@@ -547,7 +547,7 @@
                                                         @endif
                                                     </div>
 
-                                                    @if ($hasMockupBase)
+                                                    @if ($hasMockupBase && $side !== 'sleeve')
                                                         <div class="bg-white p-8">
                                                             <div class="relative mx-auto aspect-[4/5] max-w-[250px] overflow-hidden">
                                                                 <img src="{{ route('admin.leads.mockup-base.show', [$selectedLead, $side]) }}" alt="Mockup {{ strtolower($label) }} {{ $selectedLead->calculator_model }} {{ $selectedLead->live_mockup_color }}" class="h-full w-full object-contain">

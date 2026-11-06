@@ -7,6 +7,7 @@ use App\Models\CrmCalculatorSlot;
 use App\Models\CrmPrintType;
 use App\Models\CrmProduct;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class CrmCalculatorSlotTest extends TestCase
@@ -52,14 +53,15 @@ class CrmCalculatorSlotTest extends TestCase
         $product = $this->product();
         $before = $product->fresh()->toArray();
         $print = CrmPrintType::create(['code' => 'TEST_PRINT', 'name' => 'Test print', 'is_active' => true]);
+        DB::table('crm_product_position_print_type')->insert(['crm_product_id' => $product->id, 'position' => 'front', 'crm_print_type_id' => $print->id]);
         $slot = CrmCalculatorSlot::where('family', 'tshirt')->firstOrFail();
         $this->actingAs($this->owner(), 'admin')->patch(route('admin.crm-catalog.calculator.update', $slot), [
-            'crm_product_id' => $product->id, 'is_enabled_on_site' => 0, 'print_type_ids' => [$print->id],
+            'crm_product_id' => $product->id, 'is_enabled_on_site' => 0,
             'family' => 'invalid', 'quality' => 'invalid',
         ])->assertRedirect(route('admin.crm-catalog.calculator.index'))->assertSessionHasNoErrors();
         $this->assertSame($product->id, $slot->fresh()->crm_product_id);
         $this->assertSame('tshirt', $slot->fresh()->family);
-        $this->assertSame([$print->id], $slot->fresh()->printTypes->modelKeys());
+        $this->assertSame([$print->id], DB::table('crm_product_position_print_type')->where('crm_product_id', $product->id)->pluck('crm_print_type_id')->all());
         $this->assertSame($before, $product->fresh()->toArray());
         $this->assertSame('8.0000', $product->priceTiers->first()->unit_price);
         $this->patch(route('admin.crm-catalog.calculator.update', $slot), ['crm_product_id' => null, 'is_enabled_on_site' => 0])->assertSessionHasNoErrors();
@@ -73,7 +75,8 @@ class CrmCalculatorSlotTest extends TestCase
         $product = $this->product();
         $print = CrmPrintType::create(['code' => 'TEST_PRINT', 'name' => 'Test print', 'is_active' => true]);
         $url = route('admin.crm-catalog.calculator.update', $slot);
-        $data = ['crm_product_id' => $product->id, 'is_enabled_on_site' => 1, 'print_type_ids' => [$print->id]];
+        $data = ['crm_product_id' => $product->id, 'is_enabled_on_site' => 1];
+        DB::table('crm_product_position_print_type')->insert(['crm_product_id' => $product->id, 'position' => 'front', 'crm_print_type_id' => $print->id]);
         $this->actingAs($this->owner(), 'admin')->patch($url, $data)->assertSessionHasErrors('print_type_ids');
         $this->assertFalse($slot->fresh()->is_enabled_on_site);
         $print->priceTiers()->create(['min_quantity' => 10, 'max_quantity' => null, 'unit_cost' => 1, 'unit_price' => 2]);

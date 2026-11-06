@@ -88,6 +88,7 @@ class Lead extends Model
         'live_mockup_color',
         'live_mockup_front_file',
         'live_mockup_back_file',
+        'live_mockup_sleeve_file',
         'live_mockup_configured_at',
         'live_mockup_whatsapp_click',
         'is_training',
