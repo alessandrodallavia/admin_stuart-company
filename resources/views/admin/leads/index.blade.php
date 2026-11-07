@@ -498,6 +498,17 @@
                                             : ['top' => '22%', 'left' => '50%', 'width' => '40%', 'height' => '24%'],
                                     ];
                             @endphp
+                            @if(!empty($selectedLead->calculator_crm_snapshot['artwork_composition']))
+                            <section class="rounded-xl border border-gray-200 p-4"><h3 class="font-semibold">Composizione richiesta · anteprima indicativa</h3>
+                            <p class="text-xs text-gray-500">Posizioni misurate dall’angolo superiore sinistro dell’area personalizzabile. Verificare prima della produzione.</p>
+                            @foreach($selectedLead->calculator_crm_snapshot['artwork_composition'] as $side=>$drawing)
+                            <p class="mt-2 text-sm"><strong>{{ ['front'=>'Fronte','back'=>'Retro','sleeve'=>'Manica'][$side] ?? $side }} · {{ $drawing['print_name'] }}</strong>: {{ $drawing['width_cm'] }} × {{ $drawing['height_cm'] }} cm; da sinistra {{ $drawing['x_cm'] }} cm, dall’alto {{ $drawing['y_cm'] }} cm.</p>
+                            @if($liveMockupFiles[$side]['exists'])
+                            <div class="relative mt-3 max-w-[250px] border border-dashed border-gray-400 bg-gray-100" style="aspect-ratio: {{ $drawing['area']['width_cm'] }} / {{ $drawing['area']['height_cm'] }}" aria-label="Composizione nell’area personalizzabile">
+                            <img class="absolute" alt="Composizione {{ $side }}" src="{{ route('admin.leads.mockup-files.show', [$selectedLead, $side]) }}" style="left: {{ $drawing['x_cm'] / $drawing['area']['width_cm'] * 100 }}%; top: {{ $drawing['y_cm'] / $drawing['area']['height_cm'] * 100 }}%; width: {{ $drawing['width_cm'] / $drawing['area']['width_cm'] * 100 }}%; height: {{ $drawing['height_cm'] / $drawing['area']['height_cm'] * 100 }}%;">
+                            </div>@endif
+                            @endforeach</section>
+                            @endif
                                 <section x-show="tab === 'main'" class="order-5 overflow-hidden rounded-10 border border-gray-mid bg-white shadow-sm lg:col-start-2 lg:row-start-3">
                                     <div class="flex items-center justify-between gap-10 bg-black-nike px-12 py-10 text-white">
                                         <div>
@@ -547,7 +558,7 @@
                                                         @endif
                                                     </div>
 
-                                                    @if ($hasMockupBase && $side !== 'sleeve')
+                                                    @if ($hasMockupBase && $side !== 'sleeve' && empty($selectedLead->calculator_crm_snapshot['artwork_composition'][$side]))
                                                         <div class="bg-white p-8">
                                                             <div class="relative mx-auto aspect-[4/5] max-w-[250px] overflow-hidden">
                                                                 <img src="{{ route('admin.leads.mockup-base.show', [$selectedLead, $side]) }}" alt="Mockup {{ strtolower($label) }} {{ $selectedLead->calculator_model }} {{ $selectedLead->live_mockup_color }}" class="h-full w-full object-contain">

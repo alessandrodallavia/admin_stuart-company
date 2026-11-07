@@ -77,3 +77,14 @@ In Catalogo CRM → prodotto → Personalizzazioni, selezionare le lavorazioni c
 Il cliente sceglie separatamente una lavorazione o Nessuna per ogni posizione disponibile. Una posizione senza associazioni è nascosta. Almeno una personalizzazione è richiesta per questo flusso. Il server ricontrolla prodotto e posizione; tariffe e nomi provengono dal CRM. Le grafiche manica hanno un caricamento separato e vengono conservate nelle richieste, senza inventare una foto del capo di profilo.
 
 Gli impianti restano dipendenze, non scelte autonome: ogni posizione ricamata aggiunge un costo unico di 35 € + IVA, quindi tre ricami aggiungono tre impianti. Ricami e combinazioni miste prevedono 12 giorni lavorativi. I minimi reali delle tariffe vengono mostrati al cliente. I vecchi preventivi e gli scaglioni degli ordini restano conservati.
+
+
+## Dimensioni e composizione libera (7 novembre 2026)
+
+Distribuire admin e landing con gli asset compilati. Applicare dall’admin `2026_11_07_000001_configure_artwork_dimensions.php` prima di rinominare i vecchi codici: registra un riferimento stabile agli ID delle stampe storiche, mantenuto anche se il codice cambia. Non rinomina lavorazioni e non inserisce misure. Le nuove associazioni continuano a usare gli ID.
+
+Nella scheda lavorazione impostare larghezza e altezza massime in centimetri. Il nome e il codice possono diventare Stampa piccola / STAMPA_PICCOLA ecc. senza eliminare e ricreare la lavorazione. L’etichetta descrittiva non sostituisce i limiti numerici. Nella scheda prodotto → Personalizzazioni impostare le dimensioni fisiche dell’area e la sua posizione percentuale sulla tavola 4:5 per ogni lato. La larghezza percentuale calibra la scala; l’altezza è derivata dalle proporzioni reali. L’anteprima admin usa un colore con foto associata: verificare che gli altri colori abbiano foto con inquadratura uniforme. La manica usa una tavola dedicata.
+
+Con misure complete e grafica caricata, il cliente trascina la grafica (mouse o tocco) e ne regola la larghezza con il cursore. Le proporzioni e i limiti di lavorazione/area sono mantenuti; le frecce della tastiera spostano la grafica di 0,1 cm. Cambiare prodotto o lavorazione reinizializza la composizione. Il prezzo segue la lavorazione selezionata, senza cambi automatici di fascia legati al ridimensionamento. Senza limiti o area resta l’anteprima indicativa senza modifica libera.
+
+Il server rifiuta composizioni per posizioni non abilitate o fuori dai limiti. Lo snapshot della richiesta conserva posizione in centimetri rispetto all’area, dimensioni, identità/nome della lavorazione e area al momento della richiesta. L’admin mostra misure e schema della composizione separato dalla vecchia anteprima fissa. Non viene prodotta una simulazione dei fili o una dima di produzione: il mockup definitivo resta da approvare.

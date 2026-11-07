@@ -148,6 +148,8 @@ class CrmCatalogController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'technique' => ['sometimes', Rule::in(['print', 'embroidery', 'other', 'setup'])],
             'preview_layout' => ['sometimes', Rule::in(['HEART', 'STANDARD', 'LARGE', 'MAX'])],
+            'max_width_cm' => ['nullable', 'numeric', 'min:0.1', 'max:200', 'required_with:max_height_cm'],
+            'max_height_cm' => ['nullable', 'numeric', 'min:0.1', 'max:200', 'required_with:max_width_cm'],
             'size_label' => ['nullable', 'string', 'max:255'],
             'allowed_sides' => ['sometimes', 'array', 'max:2'],
             'allowed_sides.*' => ['required', 'distinct', Rule::in(['front', 'back'])],

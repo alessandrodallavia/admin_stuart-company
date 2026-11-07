@@ -82,4 +82,23 @@ class CrmPersonalizationSettingsTest extends TestCase
         $this->patch($url, [])->assertSessionHasNoErrors();
         $this->assertDatabaseCount('crm_product_position_print_type', 0);
     }
+
+    public function test_dimensions_and_product_areas_require_complete_valid_bounds(): void
+    {
+        $this->loginOwner();
+        $print = CrmPrintType::create(['code' => 'STAMPA_CUORE', 'name' => 'Stampa piccola', 'is_active' => true, 'technique' => 'print']);
+        $url = route('admin.crm-catalog.prints.update', $print);
+        $this->patch($url, ['code' => 'STAMPA_PICCOLA', 'name' => 'Stampa piccola', 'max_width_cm' => 10])->assertSessionHasErrors('max_height_cm');
+        $this->patch($url, ['code' => 'STAMPA_PICCOLA', 'name' => 'Stampa piccola', 'max_width_cm' => 10, 'max_height_cm' => 12])->assertSessionHasNoErrors();
+        $this->assertEquals(10, $print->fresh()->max_width_cm);
+        $product = CrmProduct::create(['code' => 'AREAS', 'name' => 'Area test', 'is_active' => true, 'unit_cost' => 1]);
+        $url = route('admin.crm-catalog.products.personalizations.update', $product);
+        $area = ['width_cm' => 30, 'height_cm' => 40, 'x_percent' => 25, 'y_percent' => 20, 'width_percent' => 50, 'height_percent' => 60];
+        $this->patch($url, ['areas' => ['front' => [...$area, 'x_percent' => 60]]])->assertSessionHasErrors('areas');
+        $this->patch($url, ['positions' => ['front' => [$print->id]], 'areas' => ['front' => $area]])->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('crm_product_print_areas', ['crm_product_id' => $product->id, 'position' => 'front', 'width_cm' => 30]);
+        $this->get(route('admin.crm-catalog.products.personalizations.index', $product))->assertOk()->assertSee('Larghezza reale cm');
+        $this->patch($url, ['areas' => ['front' => array_fill_keys(array_keys($area), null)]])->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('crm_product_print_areas',0);
+    }
 }
