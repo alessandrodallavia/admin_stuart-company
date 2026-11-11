@@ -1,0 +1,938 @@
+{
+  "RY6424": {
+    "31": {
+      "front": "economic/economic-arancione-front.webp",
+      "back": "economic/economic-arancione-back.webp"
+    },
+    "01": {
+      "front": "economic/economic-bianco-front.webp",
+      "back": "economic/economic-bianco-back.webp"
+    },
+    "55": {
+      "front": "economic/economic-blu-navy-front.webp",
+      "back": "economic/economic-blu-navy-back.webp"
+    },
+    "03": {
+      "front": "economic/economic-giallo-front.webp",
+      "back": "economic/economic-giallo-back.webp"
+    },
+    "58": {
+      "front": "economic/economic-grigio-vigore-front.webp",
+      "back": "economic/economic-grigio-vigore-back.webp"
+    },
+    "02": {
+      "front": "economic/economic-nero-front.webp",
+      "back": "economic/economic-nero-back.webp"
+    },
+    "78": {
+      "front": "economic/economic-rosa-orchidea-front.webp",
+      "back": "economic/economic-rosa-orchidea-back.webp"
+    },
+    "60": {
+      "front": "economic/economic-rosso-front.webp",
+      "back": "economic/economic-rosso-back.webp"
+    },
+    "05": {
+      "front": "economic/economic-royal-front.webp",
+      "back": "economic/economic-royal-back.webp"
+    },
+    "12": {
+      "front": "economic/economic-turchese-front.webp",
+      "back": "economic/economic-turchese-back.webp"
+    },
+    "20": {
+      "front": "economic/economic-verde-kelly-front.webp",
+      "back": "economic/economic-verde-kelly-back.webp"
+    }
+  },
+  "BS010": {
+    "AS": {
+      "front": "basic/basic-ash-front.webp",
+      "back": "basic/basic-ash-back.webp"
+    },
+    "BK": {
+      "front": "basic/basic-black-front.webp",
+      "back": "basic/basic-black-back.webp"
+    },
+    "BU": {
+      "front": "basic/basic-burgundy-front.webp",
+      "back": "basic/basic-burgundy-back.webp"
+    },
+    "CA": {
+      "front": "basic/basic-cardinal-front.webp",
+      "back": "basic/basic-cardinal-back.webp"
+    },
+    "CH": {
+      "front": "basic/basic-chocolate-front.webp",
+      "back": "basic/basic-chocolate-back.webp"
+    },
+    "DE": {
+      "front": "basic/basic-denim-front.webp",
+      "back": "basic/basic-denim-back.webp"
+    },
+    "DG": {
+      "front": "basic/basic-dark-grey-front.webp",
+      "back": "basic/basic-dark-grey-back.webp"
+    },
+    "FG": {
+      "front": "basic/basic-forest-green-front.webp",
+      "back": "basic/basic-forest-green-back.webp"
+    },
+    "FU": {
+      "front": "basic/basic-fuchsia-front.webp",
+      "back": "basic/basic-fuchsia-back.webp"
+    },
+    "GO": {
+      "front": "basic/basic-gold-front.webp",
+      "back": "basic/basic-gold-back.webp"
+    },
+    "GY": {
+      "front": "basic/basic-heather-grey-front.webp",
+      "back": "basic/basic-heather-grey-back.webp"
+    },
+    "KG": {
+      "front": "basic/basic-kelly-green-front.webp",
+      "back": "basic/basic-kelly-green-back.webp"
+    },
+    "LE": {
+      "front": "basic/basic-bright-lemon-front.webp",
+      "back": "basic/basic-bright-lemon-back.webp"
+    },
+    "LI": {
+      "front": "basic/basic-lime-front.webp",
+      "back": "basic/basic-lime-back.webp"
+    },
+    "MB": {
+      "front": "basic/basic-mineral-blue-front.webp",
+      "back": "basic/basic-mineral-blue-back.webp"
+    },
+    "NY": {
+      "front": "basic/basic-navy-front.webp",
+      "back": "basic/basic-navy-back.webp"
+    },
+    "OL": {
+      "front": "basic/basic-olive-front.webp",
+      "back": "basic/basic-olive-back.webp"
+    },
+    "OR": {
+      "front": "basic/basic-orange-front.webp",
+      "back": "basic/basic-orange-back.webp"
+    },
+    "OW": {
+      "front": "basic/basic-off-white-front.webp",
+      "back": "basic/basic-off-white-back.webp"
+    },
+    "PU": {
+      "front": "basic/basic-purple-front.webp",
+      "back": "basic/basic-purple-back.webp"
+    },
+    "RB": {
+      "front": "basic/basic-royal-blue-front.webp",
+      "back": "basic/basic-royal-blue-back.webp"
+    },
+    "RD": {
+      "front": "basic/basic-red-front.webp",
+      "back": "basic/basic-red-back.webp"
+    },
+    "RO": {
+      "front": "basic/basic-rose-front.webp",
+      "back": "basic/basic-rose-back.webp"
+    },
+    "SA": {
+      "front": "basic/basic-sage-front.webp",
+      "back": "basic/basic-sage-back.webp"
+    },
+    "SAFO": {
+      "front": "basic/basic-safety-orange-front.webp",
+      "back": "basic/basic-safety-orange-back.webp"
+    },
+    "SAFY": {
+      "front": "basic/basic-safety-yellow-front.webp",
+      "back": "basic/basic-safety-yellow-back.webp"
+    },
+    "SB": {
+      "front": "basic/basic-sea-breeze-front.webp",
+      "back": "basic/basic-sea-breeze-back.webp"
+    },
+    "SD": {
+      "front": "basic/basic-sand-front.webp",
+      "back": "basic/basic-sand-back.webp"
+    },
+    "SK": {
+      "front": "basic/basic-sky-front.webp",
+      "back": "basic/basic-sky-back.webp"
+    },
+    "SR": {
+      "front": "basic/basic-sprint-rose-front.webp",
+      "back": "basic/basic-sprint-rose-back.webp"
+    },
+    "TU": {
+      "front": "basic/basic-turquoise-front.webp",
+      "back": "basic/basic-turquoise-back.webp"
+    },
+    "US": {
+      "front": "basic/basic-urban-slate-front.webp",
+      "back": "basic/basic-urban-slate-back.webp"
+    },
+    "WH": {
+      "front": "basic/basic-white-front.webp",
+      "back": "basic/basic-white-back.webp"
+    },
+    "ZI": {
+      "front": "basic/basic-zinc-front.webp",
+      "back": "basic/basic-zinc-back.webp"
+    }
+  },
+  "BS052": {
+    "AC": {
+      "front": "premium/premium-almond-cream-front.webp",
+      "back": "premium/premium-almond-cream-back.webp"
+    },
+    "BK": {
+      "front": "premium/premium-black-front.webp",
+      "back": "premium/premium-black-back.webp"
+    },
+    "BU": {
+      "front": "premium/premium-burgundy-front.webp",
+      "back": "premium/premium-burgundy-back.webp"
+    },
+    "CA": {
+      "front": "premium/premium-cardinal-front.webp",
+      "back": "premium/premium-cardinal-back.webp"
+    },
+    "DC": {
+      "front": "premium/premium-dark-caramel-front.webp",
+      "back": "premium/premium-dark-caramel-back.webp"
+    },
+    "DG": {
+      "front": "premium/premium-dark-grey-front.webp",
+      "back": "premium/premium-dark-grey-back.webp"
+    },
+    "DP": {
+      "front": "premium/premium-dusty-pink-front.webp",
+      "back": "premium/premium-dusty-pink-back.webp"
+    },
+    "EG": {
+      "front": "premium/premium-earthy-green-front.webp",
+      "back": "premium/premium-earthy-green-back.webp"
+    },
+    "EU": {
+      "front": "premium/premium-eucalyptus-front.webp",
+      "back": "premium/premium-eucalyptus-back.webp"
+    },
+    "FG": {
+      "front": "premium/premium-forest-green-front.webp",
+      "back": "premium/premium-forest-green-back.webp"
+    },
+    "FM": {
+      "front": "premium/premium-fresh-mint-front.webp",
+      "back": "premium/premium-fresh-mint-back.webp"
+    },
+    "FP": {
+      "front": "premium/premium-flamingo-pink-front.webp",
+      "back": "premium/premium-flamingo-pink-back.webp"
+    },
+    "GY": {
+      "front": "premium/premium-grey-heather-front.webp",
+      "back": "premium/premium-grey-heather-back.webp"
+    },
+    "HO": {
+      "front": "premium/premium-honey-front.webp",
+      "back": "premium/premium-honey-back.webp"
+    },
+    "IB": {
+      "front": "premium/premium-ink-blue-front.webp",
+      "back": "premium/premium-ink-blue-back.webp"
+    },
+    "JG": {
+      "front": "premium/premium-jade-green-front.webp",
+      "back": "premium/premium-jade-green-back.webp"
+    },
+    "LH": {
+      "front": "premium/premium-lilac-haze-front.webp",
+      "back": "premium/premium-lilac-haze-back.webp"
+    },
+    "LK": {
+      "front": "premium/premium-lemon-cake-front.webp",
+      "back": "premium/premium-lemon-cake-back.webp"
+    },
+    "MB": {
+      "front": "premium/premium-mineral-blue-front.webp",
+      "back": "premium/premium-mineral-blue-back.webp"
+    },
+    "MG": {
+      "front": "premium/premium-misty-grey-front.webp",
+      "back": "premium/premium-misty-grey-back.webp"
+    },
+    "MS": {
+      "front": "premium/premium-marsala-red-front.webp",
+      "back": "premium/premium-marsala-red-back.webp"
+    },
+    "MU": {
+      "front": "premium/premium-mustard-front.webp",
+      "back": "premium/premium-mustard-back.webp"
+    },
+    "NY": {
+      "front": "premium/premium-navy-front.webp",
+      "back": "premium/premium-navy-back.webp"
+    },
+    "OB": {
+      "front": "premium/premium-ocean-blue-front.webp",
+      "back": "premium/premium-ocean-blue-back.webp"
+    },
+    "OW": {
+      "front": "premium/premium-off-white-front.webp",
+      "back": "premium/premium-off-white-back.webp"
+    },
+    "PA": {
+      "front": "premium/premium-peach-blush-front.webp",
+      "back": "premium/premium-peach-blush-back.webp"
+    },
+    "PE": {
+      "front": "premium/premium-petroleum-front.webp",
+      "back": "premium/premium-petroleum-back.webp"
+    },
+    "RB": {
+      "front": "premium/premium-royal-blue-front.webp",
+      "back": "premium/premium-royal-blue-back.webp"
+    },
+    "RD": {
+      "front": "premium/premium-red-front.webp",
+      "back": "premium/premium-red-back.webp"
+    },
+    "RG": {
+      "front": "premium/premium-rosemary-green-front.webp",
+      "back": "premium/premium-rosemary-green-back.webp"
+    },
+    "RU": {
+      "front": "premium/premium-rust-front.webp",
+      "back": "premium/premium-rust-back.webp"
+    },
+    "SB": {
+      "front": "premium/premium-sea-breeze-front.webp",
+      "back": "premium/premium-sea-breeze-back.webp"
+    },
+    "TO": {
+      "front": "premium/premium-toffee-front.webp",
+      "back": "premium/premium-toffee-back.webp"
+    },
+    "UV": {
+      "front": "premium/premium-ultra-violet-front.webp",
+      "back": "premium/premium-ultra-violet-back.webp"
+    },
+    "WH": {
+      "front": "premium/premium-white-front.webp",
+      "back": "premium/premium-white-back.webp"
+    },
+    "ZI": {
+      "front": "premium/premium-zinc-front.webp",
+      "back": "premium/premium-zinc-back.webp"
+    }
+  },
+  "21953": {
+    "001": {
+      "front": "hoodie/hoodie-wh-front-transparent.webp",
+      "back": "hoodie/hoodie-wh-back-transparent.webp"
+    },
+    "002": {
+      "front": "hoodie/hoodie-bk-front-transparent.webp",
+      "back": "hoodie/hoodie-bk-back-transparent.webp"
+    },
+    "003": {
+      "front": "hoodie/hoodie-rd-front-transparent.webp",
+      "back": "hoodie/hoodie-rd-back-transparent.webp"
+    },
+    "004": {
+      "front": "hoodie/hoodie-ig-front-transparent.webp",
+      "back": "hoodie/hoodie-ig-back-transparent.webp"
+    },
+    "005": {
+      "front": "hoodie/hoodie-go-front-transparent.webp",
+      "back": "hoodie/hoodie-go-back-transparent.webp"
+    },
+    "007": {
+      "front": "hoodie/hoodie-or-front-transparent.webp",
+      "back": "hoodie/hoodie-or-back-transparent.webp"
+    },
+    "008": {
+      "front": "hoodie/hoodie-gy-front-transparent.webp",
+      "back": "hoodie/hoodie-gy-back-transparent.webp"
+    },
+    "015": {
+      "front": "hoodie/hoodie-ow-front-transparent.webp",
+      "back": "hoodie/hoodie-ow-back-transparent.webp"
+    },
+    "019": {
+      "front": "hoodie/hoodie-rb-front-transparent.webp",
+      "back": "hoodie/hoodie-rb-back-transparent.webp"
+    },
+    "021": {
+      "front": "hoodie/hoodie-mb-front-transparent.webp",
+      "back": "hoodie/hoodie-mb-back-transparent.webp"
+    },
+    "022": {
+      "front": "hoodie/hoodie-ro-front-transparent.webp",
+      "back": "hoodie/hoodie-ro-back-transparent.webp"
+    },
+    "225": {
+      "front": "hoodie/hoodie-fg-front-transparent.webp",
+      "back": "hoodie/hoodie-fg-back-transparent.webp"
+    },
+    "333": {
+      "front": "hoodie/hoodie-ny-front-transparent.webp",
+      "back": "hoodie/hoodie-ny-back-transparent.webp"
+    },
+    "372": {
+      "front": "hoodie/hoodie-dg-front-transparent.webp",
+      "back": "hoodie/hoodie-dg-back-transparent.webp"
+    },
+    "431": {
+      "front": "hoodie/hoodie-bu-front-transparent.webp",
+      "back": "hoodie/hoodie-bu-back-transparent.webp"
+    }
+  },
+  "BS332": {
+    "BK": {
+      "front": "hoodie/hoodie-bk-front-transparent.webp",
+      "back": "hoodie/hoodie-bk-back-transparent.webp"
+    },
+    "BU": {
+      "front": "hoodie/hoodie-bu-front-transparent.webp",
+      "back": "hoodie/hoodie-bu-back-transparent.webp"
+    },
+    "CA": {
+      "front": "hoodie/hoodie-ca-front-transparent.webp",
+      "back": "hoodie/hoodie-ca-back-transparent.webp"
+    },
+    "CH": {
+      "front": "hoodie/hoodie-ch-front-transparent.webp",
+      "back": "hoodie/hoodie-ch-back-transparent.webp"
+    },
+    "DG": {
+      "front": "hoodie/hoodie-dg-front-transparent.webp",
+      "back": "hoodie/hoodie-dg-back-transparent.webp"
+    },
+    "FG": {
+      "front": "hoodie/hoodie-fg-front-transparent.webp",
+      "back": "hoodie/hoodie-fg-back-transparent.webp"
+    },
+    "GO": {
+      "front": "hoodie/hoodie-go-front-transparent.webp",
+      "back": "hoodie/hoodie-go-back-transparent.webp"
+    },
+    "GY": {
+      "front": "hoodie/hoodie-gy-front-transparent.webp",
+      "back": "hoodie/hoodie-gy-back-transparent.webp"
+    },
+    "IB": {
+      "front": "hoodie/hoodie-ib-front-transparent.webp",
+      "back": "hoodie/hoodie-ib-back-transparent.webp"
+    },
+    "IG": {
+      "front": "hoodie/hoodie-ig-front-transparent.webp",
+      "back": "hoodie/hoodie-ig-back-transparent.webp"
+    },
+    "MB": {
+      "front": "hoodie/hoodie-mb-front-transparent.webp",
+      "back": "hoodie/hoodie-mb-back-transparent.webp"
+    },
+    "NY": {
+      "front": "hoodie/hoodie-ny-front-transparent.webp",
+      "back": "hoodie/hoodie-ny-back-transparent.webp"
+    },
+    "OL": {
+      "front": "hoodie/hoodie-ol-front-transparent.webp",
+      "back": "hoodie/hoodie-ol-back-transparent.webp"
+    },
+    "OR": {
+      "front": "hoodie/hoodie-or-front-transparent.webp",
+      "back": "hoodie/hoodie-or-back-transparent.webp"
+    },
+    "OW": {
+      "front": "hoodie/hoodie-ow-front-transparent.webp",
+      "back": "hoodie/hoodie-ow-back-transparent.webp"
+    },
+    "PE": {
+      "front": "hoodie/hoodie-pe-front-transparent.webp",
+      "back": "hoodie/hoodie-pe-back-transparent.webp"
+    },
+    "PU": {
+      "front": "hoodie/hoodie-pu-front-transparent.webp",
+      "back": "hoodie/hoodie-pu-back-transparent.webp"
+    },
+    "RB": {
+      "front": "hoodie/hoodie-rb-front-transparent.webp",
+      "back": "hoodie/hoodie-rb-back-transparent.webp"
+    },
+    "RD": {
+      "front": "hoodie/hoodie-rd-front-transparent.webp",
+      "back": "hoodie/hoodie-rd-back-transparent.webp"
+    },
+    "RO": {
+      "front": "hoodie/hoodie-ro-front-transparent.webp",
+      "back": "hoodie/hoodie-ro-back-transparent.webp"
+    },
+    "SA": {
+      "front": "hoodie/hoodie-sa-front-transparent.webp",
+      "back": "hoodie/hoodie-sa-back-transparent.webp"
+    },
+    "SB": {
+      "front": "hoodie/hoodie-sb-front-transparent.webp",
+      "back": "hoodie/hoodie-sb-back-transparent.webp"
+    },
+    "SR": {
+      "front": "hoodie/hoodie-sr-front-transparent.webp",
+      "back": "hoodie/hoodie-sr-back-transparent.webp"
+    },
+    "US": {
+      "front": "hoodie/hoodie-us-front-transparent.webp",
+      "back": "hoodie/hoodie-us-back-transparent.webp"
+    },
+    "WH": {
+      "front": "hoodie/hoodie-wh-front-transparent.webp",
+      "back": "hoodie/hoodie-wh-back-transparent.webp"
+    }
+  },
+  "BS342": {
+    "AC": {
+      "front": "hoodie-organic/hoodie-organic-ac-front-transparent.webp",
+      "back": "hoodie-organic/hoodie-organic-ac-back-transparent.webp"
+    },
+    "BK": {
+      "front": "hoodie-organic/hoodie-organic-bk-front-transparent.webp",
+      "back": "hoodie-organic/hoodie-organic-bk-back-transparent.webp"
+    },
+    "CA": {
+      "front": "hoodie-organic/hoodie-organic-ca-front-transparent.webp",
+      "back": "hoodie-organic/hoodie-organic-ca-back-transparent.webp"
+    },
+    "DG": {
+      "front": "hoodie-organic/hoodie-organic-dg-front-transparent.webp",
+      "back": "hoodie-organic/hoodie-organic-dg-back-transparent.webp"
+    },
+    "DP": {
+      "front": "hoodie-organic/hoodie-organic-dp-front-transparent.webp",
+      "back": "hoodie-organic/hoodie-organic-dp-back-transparent.webp"
+    },
+    "DU": {
+      "front": "hoodie-organic/hoodie-organic-du-front-transparent.webp",
+      "back": "hoodie-organic/hoodie-organic-du-back-transparent.webp"
+    },
+    "EG": {
+      "front": "hoodie-organic/hoodie-organic-eg-front-transparent.webp",
+      "back": "hoodie-organic/hoodie-organic-eg-back-transparent.webp"
+    },
+    "GY": {
+      "front": "hoodie-organic/hoodie-organic-gy-front-transparent.webp",
+      "back": "hoodie-organic/hoodie-organic-gy-back-transparent.webp"
+    },
+    "IB": {
+      "front": "hoodie-organic/hoodie-organic-ib-front-transparent.webp",
+      "back": "hoodie-organic/hoodie-organic-ib-back-transparent.webp"
+    },
+    "LG": {
+      "front": "hoodie-organic/hoodie-organic-lg-front-transparent.webp",
+      "back": "hoodie-organic/hoodie-organic-lg-back-transparent.webp"
+    },
+    "MB": {
+      "front": "hoodie-organic/hoodie-organic-mb-front-transparent.webp",
+      "back": "hoodie-organic/hoodie-organic-mb-back-transparent.webp"
+    },
+    "MU": {
+      "front": "hoodie-organic/hoodie-organic-mu-front-transparent.webp",
+      "back": "hoodie-organic/hoodie-organic-mu-back-transparent.webp"
+    },
+    "NY": {
+      "front": "hoodie-organic/hoodie-organic-ny-front-transparent.webp",
+      "back": "hoodie-organic/hoodie-organic-ny-back-transparent.webp"
+    },
+    "OW": {
+      "front": "hoodie-organic/hoodie-organic-ow-front-transparent.webp",
+      "back": "hoodie-organic/hoodie-organic-ow-back-transparent.webp"
+    },
+    "PE": {
+      "front": "hoodie-organic/hoodie-organic-pe-front-transparent.webp",
+      "back": "hoodie-organic/hoodie-organic-pe-back-transparent.webp"
+    },
+    "RB": {
+      "front": "hoodie-organic/hoodie-organic-rb-front-transparent.webp",
+      "back": "hoodie-organic/hoodie-organic-rb-back-transparent.webp"
+    },
+    "RD": {
+      "front": "hoodie-organic/hoodie-organic-rd-front-transparent.webp",
+      "back": "hoodie-organic/hoodie-organic-rd-back-transparent.webp"
+    },
+    "RU": {
+      "front": "hoodie-organic/hoodie-organic-ru-front-transparent.webp",
+      "back": "hoodie-organic/hoodie-organic-ru-back-transparent.webp"
+    },
+    "US": {
+      "front": "hoodie-organic/hoodie-organic-us-front-transparent.webp",
+      "back": "hoodie-organic/hoodie-organic-us-back-transparent.webp"
+    },
+    "WH": {
+      "front": "hoodie-organic/hoodie-organic-wh-front-transparent.webp",
+      "back": "hoodie-organic/hoodie-organic-wh-back-transparent.webp"
+    }
+  },
+  "21951": {
+    "001": {
+      "front": "crewneck/crewneck-wh-front-transparent.webp",
+      "back": "crewneck/crewneck-wh-back-transparent.webp"
+    },
+    "002": {
+      "front": "crewneck/crewneck-bk-front-transparent.webp",
+      "back": "crewneck/crewneck-bk-back-transparent.webp"
+    },
+    "003": {
+      "front": "crewneck/crewneck-rd-front-transparent.webp",
+      "back": "crewneck/crewneck-rd-back-transparent.webp"
+    },
+    "004": {
+      "front": "crewneck-economic/crewneck-economic-ig-front-transparent.webp",
+      "back": "crewneck-economic/crewneck-economic-ig-back-transparent.webp"
+    },
+    "005": {
+      "front": "crewneck/crewneck-go-front-transparent.webp",
+      "back": "crewneck/crewneck-go-back-transparent.webp"
+    },
+    "006": {
+      "front": "crewneck-organic/crewneck-organic-ib-front-transparent.webp",
+      "back": "crewneck-organic/crewneck-organic-ib-back-transparent.webp"
+    },
+    "007": {
+      "front": "crewneck/crewneck-or-front-transparent.webp",
+      "back": "crewneck/crewneck-or-back-transparent.webp"
+    },
+    "008": {
+      "front": "crewneck/crewneck-gy-front-transparent.webp",
+      "back": "crewneck/crewneck-gy-back-transparent.webp"
+    },
+    "015": {
+      "front": "crewneck/crewneck-ow-front-transparent.webp",
+      "back": "crewneck/crewneck-ow-back-transparent.webp"
+    },
+    "019": {
+      "front": "crewneck/crewneck-rb-front-transparent.webp",
+      "back": "crewneck/crewneck-rb-back-transparent.webp"
+    },
+    "021": {
+      "front": "crewneck/crewneck-mb-front-transparent.webp",
+      "back": "crewneck/crewneck-mb-back-transparent.webp"
+    },
+    "022": {
+      "front": "crewneck/crewneck-ro-front-transparent.webp",
+      "back": "crewneck/crewneck-ro-back-transparent.webp"
+    },
+    "225": {
+      "front": "crewneck/crewneck-fg-front-transparent.webp",
+      "back": "crewneck/crewneck-fg-back-transparent.webp"
+    },
+    "333": {
+      "front": "crewneck/crewneck-ny-front-transparent.webp",
+      "back": "crewneck/crewneck-ny-back-transparent.webp"
+    },
+    "372": {
+      "front": "crewneck/crewneck-dg-front-transparent.webp",
+      "back": "crewneck/crewneck-dg-back-transparent.webp"
+    },
+    "431": {
+      "front": "crewneck/crewneck-bu-front-transparent.webp",
+      "back": "crewneck/crewneck-bu-back-transparent.webp"
+    }
+  },
+  "BS331": {
+    "BK": {
+      "front": "crewneck/crewneck-bk-front-transparent.webp",
+      "back": "crewneck/crewneck-bk-back-transparent.webp"
+    },
+    "BU": {
+      "front": "crewneck/crewneck-bu-front-transparent.webp",
+      "back": "crewneck/crewneck-bu-back-transparent.webp"
+    },
+    "CH": {
+      "front": "crewneck/crewneck-ch-front-transparent.webp",
+      "back": "crewneck/crewneck-ch-back-transparent.webp"
+    },
+    "DG": {
+      "front": "crewneck/crewneck-dg-front-transparent.webp",
+      "back": "crewneck/crewneck-dg-back-transparent.webp"
+    },
+    "FG": {
+      "front": "crewneck/crewneck-fg-front-transparent.webp",
+      "back": "crewneck/crewneck-fg-back-transparent.webp"
+    },
+    "GO": {
+      "front": "crewneck/crewneck-go-front-transparent.webp",
+      "back": "crewneck/crewneck-go-back-transparent.webp"
+    },
+    "GY": {
+      "front": "crewneck/crewneck-gy-front-transparent.webp",
+      "back": "crewneck/crewneck-gy-back-transparent.webp"
+    },
+    "MB": {
+      "front": "crewneck/crewneck-mb-front-transparent.webp",
+      "back": "crewneck/crewneck-mb-back-transparent.webp"
+    },
+    "NY": {
+      "front": "crewneck/crewneck-ny-front-transparent.webp",
+      "back": "crewneck/crewneck-ny-back-transparent.webp"
+    },
+    "OL": {
+      "front": "crewneck/crewneck-ol-front-transparent.webp",
+      "back": "crewneck/crewneck-ol-back-transparent.webp"
+    },
+    "OR": {
+      "front": "crewneck/crewneck-or-front-transparent.webp",
+      "back": "crewneck/crewneck-or-back-transparent.webp"
+    },
+    "OW": {
+      "front": "crewneck/crewneck-ow-front-transparent.webp",
+      "back": "crewneck/crewneck-ow-back-transparent.webp"
+    },
+    "RB": {
+      "front": "crewneck/crewneck-rb-front-transparent.webp",
+      "back": "crewneck/crewneck-rb-back-transparent.webp"
+    },
+    "RD": {
+      "front": "crewneck/crewneck-rd-front-transparent.webp",
+      "back": "crewneck/crewneck-rd-back-transparent.webp"
+    },
+    "RO": {
+      "front": "crewneck/crewneck-ro-front-transparent.webp",
+      "back": "crewneck/crewneck-ro-back-transparent.webp"
+    },
+    "SA": {
+      "front": "crewneck/crewneck-sa-front-transparent.webp",
+      "back": "crewneck/crewneck-sa-back-transparent.webp"
+    },
+    "WH": {
+      "front": "crewneck/crewneck-wh-front-transparent.webp",
+      "back": "crewneck/crewneck-wh-back-transparent.webp"
+    }
+  },
+  "BS341": {
+    "BK": {
+      "front": "crewneck-organic/crewneck-organic-bk-front-transparent.webp",
+      "back": "crewneck-organic/crewneck-organic-bk-back-transparent.webp"
+    },
+    "DG": {
+      "front": "crewneck-organic/crewneck-organic-dg-front-transparent.webp",
+      "back": "crewneck-organic/crewneck-organic-dg-back-transparent.webp"
+    },
+    "DP": {
+      "front": "crewneck-organic/crewneck-organic-dp-front-transparent.webp",
+      "back": "crewneck-organic/crewneck-organic-dp-back-transparent.webp"
+    },
+    "DU": {
+      "front": "crewneck-organic/crewneck-organic-du-front-transparent.webp",
+      "back": "crewneck-organic/crewneck-organic-du-back-transparent.webp"
+    },
+    "EG": {
+      "front": "crewneck-organic/crewneck-organic-eg-front-transparent.webp",
+      "back": "crewneck-organic/crewneck-organic-eg-back-transparent.webp"
+    },
+    "GY": {
+      "front": "crewneck-organic/crewneck-organic-gy-front-transparent.webp",
+      "back": "crewneck-organic/crewneck-organic-gy-back-transparent.webp"
+    },
+    "IB": {
+      "front": "crewneck-organic/crewneck-organic-ib-front-transparent.webp",
+      "back": "crewneck-organic/crewneck-organic-ib-back-transparent.webp"
+    },
+    "LG": {
+      "front": "crewneck-organic/crewneck-organic-lg-front-transparent.webp",
+      "back": "crewneck-organic/crewneck-organic-lg-back-transparent.webp"
+    },
+    "MB": {
+      "front": "crewneck-organic/crewneck-organic-mb-front-transparent.webp",
+      "back": "crewneck-organic/crewneck-organic-mb-back-transparent.webp"
+    },
+    "MU": {
+      "front": "crewneck-organic/crewneck-organic-mu-front-transparent.webp",
+      "back": "crewneck-organic/crewneck-organic-mu-back-transparent.webp"
+    },
+    "NY": {
+      "front": "crewneck-organic/crewneck-organic-ny-front-transparent.webp",
+      "back": "crewneck-organic/crewneck-organic-ny-back-transparent.webp"
+    },
+    "OW": {
+      "front": "crewneck-organic/crewneck-organic-ow-front-transparent.webp",
+      "back": "crewneck-organic/crewneck-organic-ow-back-transparent.webp"
+    },
+    "RB": {
+      "front": "crewneck-organic/crewneck-organic-rb-front-transparent.webp",
+      "back": "crewneck-organic/crewneck-organic-rb-back-transparent.webp"
+    },
+    "RD": {
+      "front": "crewneck-organic/crewneck-organic-rd-front-transparent.webp",
+      "back": "crewneck-organic/crewneck-organic-rd-back-transparent.webp"
+    },
+    "RU": {
+      "front": "crewneck-organic/crewneck-organic-ru-front-transparent.webp",
+      "back": "crewneck-organic/crewneck-organic-ru-back-transparent.webp"
+    },
+    "WH": {
+      "front": "crewneck-organic/crewneck-organic-wh-front-transparent.webp",
+      "back": "crewneck-organic/crewneck-organic-wh-back-transparent.webp"
+    }
+  },
+  "21956": {
+    "001": {
+      "front": "zip/zip-wh-front-transparent.webp",
+      "back": "zip/zip-wh-back-transparent.webp"
+    },
+    "002": {
+      "front": "zip/zip-bk-front-transparent.webp",
+      "back": "zip/zip-bk-back-transparent.webp"
+    },
+    "003": {
+      "front": "zip/zip-rd-front-transparent.webp",
+      "back": "zip/zip-rd-back-transparent.webp"
+    },
+    "004": {
+      "front": "zip/zip-ig-front-transparent.webp",
+      "back": "zip/zip-ig-back-transparent.webp"
+    },
+    "005": {
+      "front": "zip-economic/zip-economic-go-front-transparent.webp",
+      "back": "zip-economic/zip-economic-go-back-transparent.webp"
+    },
+    "006": {
+      "front": "zip-economic/zip-economic-marine-front-transparent.webp",
+      "back": "zip-economic/zip-economic-marine-back-transparent.webp"
+    },
+    "007": {
+      "front": "zip-economic/zip-economic-or-front-transparent.webp",
+      "back": "zip-economic/zip-economic-or-back-transparent.webp"
+    },
+    "008": {
+      "front": "zip/zip-gy-front-transparent.webp",
+      "back": "zip/zip-gy-back-transparent.webp"
+    },
+    "015": {
+      "front": "zip/zip-ow-front-transparent.webp",
+      "back": "zip/zip-ow-back-transparent.webp"
+    },
+    "019": {
+      "front": "zip/zip-rb-front-transparent.webp",
+      "back": "zip/zip-rb-back-transparent.webp"
+    },
+    "021": {
+      "front": "zip-economic/zip-economic-sky-front-transparent.webp",
+      "back": "zip-economic/zip-economic-sky-back-transparent.webp"
+    },
+    "022": {
+      "front": "zip-economic/zip-economic-ro-front-transparent.webp",
+      "back": "zip-economic/zip-economic-ro-back-transparent.webp"
+    },
+    "225": {
+      "front": "zip-economic/zip-economic-fg-front-transparent.webp",
+      "back": "zip-economic/zip-economic-fg-back-transparent.webp"
+    },
+    "333": {
+      "front": "zip/zip-ny-front-transparent.webp",
+      "back": "zip/zip-ny-back-transparent.webp"
+    },
+    "372": {
+      "front": "zip/zip-dg-front-transparent.webp",
+      "back": "zip/zip-dg-back-transparent.webp"
+    },
+    "431": {
+      "front": "zip/zip-bu-front-transparent.webp",
+      "back": "zip/zip-bu-back-transparent.webp"
+    }
+  },
+  "BS333": {
+    "BK": {
+      "front": "zip/zip-bk-front-transparent.webp",
+      "back": "zip/zip-bk-back-transparent.webp"
+    },
+    "BU": {
+      "front": "zip/zip-bu-front-transparent.webp",
+      "back": "zip/zip-bu-back-transparent.webp"
+    },
+    "DG": {
+      "front": "zip/zip-dg-front-transparent.webp",
+      "back": "zip/zip-dg-back-transparent.webp"
+    },
+    "GY": {
+      "front": "zip/zip-gy-front-transparent.webp",
+      "back": "zip/zip-gy-back-transparent.webp"
+    },
+    "IG": {
+      "front": "zip/zip-ig-front-transparent.webp",
+      "back": "zip/zip-ig-back-transparent.webp"
+    },
+    "NY": {
+      "front": "zip/zip-ny-front-transparent.webp",
+      "back": "zip/zip-ny-back-transparent.webp"
+    },
+    "OL": {
+      "front": "zip/zip-ol-front-transparent.webp",
+      "back": "zip/zip-ol-back-transparent.webp"
+    },
+    "OW": {
+      "front": "zip/zip-ow-front-transparent.webp",
+      "back": "zip/zip-ow-back-transparent.webp"
+    },
+    "RB": {
+      "front": "zip/zip-rb-front-transparent.webp",
+      "back": "zip/zip-rb-back-transparent.webp"
+    },
+    "RD": {
+      "front": "zip/zip-rd-front-transparent.webp",
+      "back": "zip/zip-rd-back-transparent.webp"
+    },
+    "WH": {
+      "front": "zip/zip-wh-front-transparent.webp",
+      "back": "zip/zip-wh-back-transparent.webp"
+    }
+  },
+  "BS343": {
+    "BK": {
+      "front": "zip-organic/zip-organic-bk-front-transparent.webp",
+      "back": "zip-organic/zip-organic-bk-back-transparent.webp"
+    },
+    "DG": {
+      "front": "zip-organic/zip-organic-dg-front-transparent.webp",
+      "back": "zip-organic/zip-organic-dg-back-transparent.webp"
+    },
+    "GY": {
+      "front": "zip-organic/zip-organic-gy-front-transparent.webp",
+      "back": "zip-organic/zip-organic-gy-back-transparent.webp"
+    },
+    "IB": {
+      "front": "zip-organic/zip-organic-ib-front-transparent.webp",
+      "back": "zip-organic/zip-organic-ib-back-transparent.webp"
+    },
+    "NY": {
+      "front": "zip-organic/zip-organic-ny-front-transparent.webp",
+      "back": "zip-organic/zip-organic-ny-back-transparent.webp"
+    },
+    "OW": {
+      "front": "zip-organic/zip-organic-ow-front-transparent.webp",
+      "back": "zip-organic/zip-organic-ow-back-transparent.webp"
+    },
+    "PE": {
+      "front": "zip-organic/zip-organic-pe-front-transparent.webp",
+      "back": "zip-organic/zip-organic-pe-back-transparent.webp"
+    },
+    "RB": {
+      "front": "zip-organic/zip-organic-rb-front-transparent.webp",
+      "back": "zip-organic/zip-organic-rb-back-transparent.webp"
+    },
+    "RD": {
+      "front": "zip-organic/zip-organic-rd-front-transparent.webp",
+      "back": "zip-organic/zip-organic-rd-back-transparent.webp"
+    },
+    "US": {
+      "front": "zip-organic/zip-organic-us-front-transparent.webp",
+      "back": "zip-organic/zip-organic-us-back-transparent.webp"
+    },
+    "WH": {
+      "front": "zip-organic/zip-organic-wh-front-transparent.webp",
+      "back": "zip-organic/zip-organic-wh-back-transparent.webp"
+    }
+  }
+}

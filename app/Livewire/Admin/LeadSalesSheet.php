@@ -10,6 +10,7 @@ use App\Models\Lead;
 use App\Models\LeadSalesItem;
 use App\Models\LeadSalesItemAttachment;
 use App\Models\LeadSalesItemPrint;
+use App\Models\LeadSalesSheet as LeadSalesSheetModel;
 use App\Services\LeadEconomicMetricsService;
 use App\Services\LeadSalesSheetService;
 use Illuminate\Support\Facades\Schema;
@@ -418,6 +419,7 @@ class LeadSalesSheet extends Component
 
         return view('livewire.admin.lead-sales-sheet', [
             'salesSheet' => $sheet,
+            'vatTotals' => ($sheet ?? new LeadSalesSheetModel)->vatTotals(),
             'currentCac' => $cac,
             'isReorder' => $isReorder,
             'profitAfterAds' => $profitAfterAds,

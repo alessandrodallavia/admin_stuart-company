@@ -9,7 +9,9 @@
                 $canManageWhatsapp = auth('admin')->user()?->hasAdminPermission('whatsapp.manage');
             @endphp
 
-            <section class="{{ $selectedConversation ? 'hidden' : '' }} admin-stats-grid mb-12 md:mb-16">
+            <div class="catalog-workspace wa-workspace">
+            <header class="catalog-page-header wa-page-header"><div><p class="catalog-eyebrow">Messaggi e richieste</p><h1>WhatsApp</h1><p>Gestisci conversazioni, preventivi e follow-up da un unico spazio.</p></div><span class="catalog-tax-note">Le risposte vengono inviate solo dopo la tua conferma.</span></header>
+            <section @if($selectedConversation) hidden @endif class="{{ $selectedConversation ? 'hidden' : '' }} admin-stats-grid mb-12 md:mb-16">
                 <article class="admin-stat-card rounded-10 border border-gray-mid bg-white p-12 md:p-16">
                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Conversazioni</p>
                     <p id="stat-total" class="mt-6 text-30 font-black leading-none tracking-normal md:mt-8 md:text-38">{{ $stats['total'] ?? 0 }}</p>
@@ -36,9 +38,9 @@
                 </article>
             </section>
 
-            <section class="grid min-h-[calc(100vh-220px)] flex-1 gap-12">
-                <aside class="{{ $selectedConversation ? 'hidden' : '' }} overflow-hidden rounded-10 border border-gray-mid bg-gray-light">
-                    <div class="flex items-center justify-between bg-black-nike px-16 py-14 text-white">
+            <section class="wa-layout" data-has-chat="{{ $selectedConversation ? 'true' : 'false' }}">
+                <aside @if($selectedConversation) hidden @endif class="wa-inbox catalog-surface">
+                    <div class="wa-inbox-heading flex items-center justify-between">
                         <div>
                             <p class="text-10 font-extrabold uppercase tracking-wider text-white/60">Inbox WhatsApp</p>
                             <p class="mt-4 text-18 font-black">Conversazioni</p>
@@ -46,17 +48,19 @@
                         </div>
                         <a
                             href="{{ route('admin.whatsapp.index') }}"
-                            class="rounded-10 border border-white/20 bg-white/10 px-12 py-8 text-10 font-extrabold uppercase tracking-normal transition hover:bg-white/20"
+                            class="catalog-button catalog-button-secondary rounded-10 border border-white/20 bg-white/10 px-12 py-8 text-10 font-extrabold uppercase tracking-normal transition hover:bg-white/20"
                         >
                             Aggiorna
                         </a>
                     </div>
 
-                    <div class="border-b border-gray-mid bg-white p-8">
+                    <div class="wa-inbox-toolbar">
                         <label class="relative block">
                             <span class="pointer-events-none absolute inset-y-0 left-10 flex items-center text-14 text-gray" aria-hidden="true">⌕</span>
-                            <input id="conversation-search" type="search" placeholder="Cerca nome, telefono, email…" class="w-full rounded-10 border-gray-mid bg-gray-light py-8 pl-32 pr-10 text-12 font-semibold focus:border-bullstar focus:ring-bullstar">
+                            <input id="conversation-search" aria-label="Cerca una conversazione" type="search" placeholder="Cerca nome, telefono, email…" class="w-full rounded-10 border-gray-mid bg-gray-light py-8 pl-32 pr-10 text-12 font-semibold focus:border-bullstar focus:ring-bullstar">
                         </label>
+                        <label class="catalog-field wa-inbox-filter"><span>Mostra</span><select id="conversation-filter"><option value="all">Tutte le conversazioni</option><option value="unread">Non lette</option><option value="human">Da prendere in carico</option><option value="manual">In gestione manuale</option><option value="followup">Follow-up da fare</option></select></label>
+                        <p class="catalog-help" id="inbox-visible-count" aria-live="polite"></p>
                         <p id="conversation-search-empty" class="hidden px-8 py-10 text-center text-11 font-semibold text-gray">Nessuna conversazione corrispondente.</p>
                     </div>
 
@@ -68,7 +72,7 @@
                             @endphp
 
                             <a
-                                data-conversation-id="{{ $conversation->id }}"
+                                data-conversation-id="{{ $conversation->id }}" @if($isSelected) aria-current="page" @endif data-unread="{{ $conversation->unread_incoming_messages_count }}" data-human="{{ $conversation->needs_human ? '1' : '0' }}" data-mode="{{ $conversation->mode }}" data-followup="{{ $conversation->isExcludedFromFollowUps() ? 0 : $conversation->due_follow_ups_count }}"
                                 data-search="{{ Illuminate\Support\Str::lower(implode(' ', array_filter([$conversation->lead?->name, $conversation->lead?->club, $conversation->lead?->email, $conversation->contact_phone]))) }}"
                                 href="{{ route('admin.conversations.show', $conversation) }}"
                                 class="block rounded-10 border bg-white p-10 transition hover:border-black-nike {{ $isSelected ? 'border-bullstar ring-1 ring-bullstar' : 'border-gray-mid' }}"
@@ -140,10 +144,10 @@
                     </div>
                 </aside>
 
-                <section class="{{ $selectedConversation ? '' : 'hidden' }} overflow-hidden rounded-10 border border-gray-mid bg-white">
+                <section @if(!$selectedConversation) hidden @endif class="wa-chat catalog-surface {{ $selectedConversation ? '' : 'hidden' }}">
                     @if ($selectedConversation)
                         <div class="flex min-h-[calc(100vh-170px)] flex-col lg:min-h-[640px]">
-                            <div class="border-b border-gray-mid px-10 py-10 md:px-12 md:py-10">
+                            <div class="wa-chat-heading">
                                 <div class="flex flex-col gap-12 xl:flex-row xl:items-center xl:justify-between">
                                     <div class="min-w-0">
                                         <div class="flex flex-wrap items-center gap-8">
@@ -175,14 +179,14 @@
                                             </p>
                                         @endif
                                         <div class="mt-6 flex flex-wrap items-center gap-8">
-                                            <a href="{{ route('admin.whatsapp.index') }}" class="inline-flex h-28 w-fit shrink-0 items-center gap-6 rounded-10 border border-gray-mid px-10 text-12 font-extrabold uppercase tracking-normal text-black-nike transition hover:border-black-nike">
+                                            <a href="{{ route('admin.whatsapp.index') }}" class="catalog-button catalog-button-secondary inline-flex h-28 w-fit shrink-0 items-center gap-6 rounded-10 border border-gray-mid px-10 text-12 font-extrabold uppercase tracking-normal text-black-nike transition hover:border-black-nike">
                                                 <svg class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 6l-6 6 6 6" />
                                                 </svg>
                                                 <span>Inbox</span>
                                             </a>
                                             @if ($selectedConversation->lead)
-                                                <a href="{{ route('admin.leads.index', ['lead' => $selectedConversation->lead]) }}" class="inline-flex h-28 w-fit shrink-0 items-center rounded-10 border border-bullstar bg-bullstar/5 px-10 text-12 font-extrabold uppercase tracking-normal text-bullstar transition hover:bg-bullstar hover:text-white">
+                                                <a href="{{ route('admin.leads.index', ['lead' => $selectedConversation->lead]) }}" class="catalog-button catalog-button-secondary inline-flex h-28 w-fit shrink-0 items-center rounded-10 border border-bullstar bg-bullstar/5 px-10 text-12 font-extrabold uppercase tracking-normal text-bullstar transition hover:bg-bullstar hover:text-white">
                                                     Apri lead ↗
                                                 </a>
                                             @endif
@@ -220,7 +224,7 @@
                                                 @method('PATCH')
                                                 <button
                                                     type="submit"
-                                                    class="w-full rounded-10 border border-gray-mid bg-white px-8 py-8 text-11 font-extrabold uppercase tracking-normal transition hover:border-black-nike md:w-auto md:px-14 md:py-10 md:text-12"
+                                                    class="catalog-button catalog-button-secondary w-full rounded-10 border border-gray-mid bg-white px-8 py-8 text-11 font-extrabold uppercase tracking-normal transition hover:border-black-nike md:w-auto md:px-14 md:py-10 md:text-12"
                                                 >
                                                     Da leggere
                                                 </button>
@@ -230,7 +234,7 @@
                                                 <button
                                                     type="button"
                                                     disabled
-                                                    class="w-full rounded-10 border border-gray-mid bg-gray-light px-8 py-8 text-11 font-extrabold uppercase tracking-normal text-gray md:w-auto md:px-14 md:py-10 md:text-12"
+                                                    class="catalog-button catalog-button-secondary w-full rounded-10 border border-gray-mid bg-gray-light px-8 py-8 text-11 font-extrabold uppercase tracking-normal text-gray md:w-auto md:px-14 md:py-10 md:text-12"
                                                     title="Chat già passata in manuale"
                                                 >
                                                     Auto
@@ -253,7 +257,7 @@
                                                 <button
                                                     type="button"
                                                     disabled
-                                                    class="w-full rounded-10 border border-bullstar bg-bullstar px-8 py-8 text-11 font-extrabold uppercase tracking-normal text-white md:w-auto md:px-14 md:py-10 md:text-12"
+                                                    class="catalog-button catalog-button-primary w-full rounded-10 border border-bullstar bg-bullstar px-8 py-8 text-11 font-extrabold uppercase tracking-normal text-white md:w-auto md:px-14 md:py-10 md:text-12"
                                                 >
                                                     Manuale
                                                 </button>
@@ -264,7 +268,7 @@
                                                     <input type="hidden" name="mode" value="manual">
                                                     <button
                                                         type="submit"
-                                                        class="w-full rounded-10 border border-gray-mid bg-white px-8 py-8 text-11 font-extrabold uppercase tracking-normal transition hover:border-bullstar md:w-auto md:px-14 md:py-10 md:text-12"
+                                                        class="catalog-button catalog-button-secondary w-full rounded-10 border border-gray-mid bg-white px-8 py-8 text-11 font-extrabold uppercase tracking-normal transition hover:border-bullstar md:w-auto md:px-14 md:py-10 md:text-12"
                                                     >
                                                         Manuale
                                                     </button>
@@ -334,7 +338,7 @@
                                                         <form method="POST" action="{{ route('admin.conversations.follow-ups.cancel', [$selectedConversation, $followUp]) }}">
                                                             @csrf
                                                             @method('PATCH')
-                                                            <button type="submit" class="rounded-10 border border-gray-mid bg-white px-10 py-8 text-11 font-extrabold uppercase tracking-normal transition hover:border-red-400 hover:text-red-700">
+                                                            <button type="submit" class="catalog-button catalog-button-secondary rounded-10 border border-gray-mid bg-white px-10 py-8 text-11 font-extrabold uppercase tracking-normal transition hover:border-red-400 hover:text-red-700">
                                                                 Annulla
                                                             </button>
                                                         </form>
@@ -371,7 +375,7 @@
                                                     class="mt-4 min-h-32 w-full resize-none rounded-10 border-gray-mid px-10 py-5 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"
                                                     placeholder="Messaggio follow-up..."
                                                 >{{ old('body') }}</textarea>
-                                                <button type="submit" class="mt-4 w-full rounded-10 bg-bullstar px-12 py-6 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">
+                                                <button type="submit" class="catalog-button catalog-button-primary mt-4 w-full rounded-10 bg-bullstar px-12 py-6 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">
                                                     Programma
                                                 </button>
                                             </form>
@@ -402,7 +406,7 @@
                                                 class="mt-4 min-h-32 w-full resize-none rounded-10 border-gray-mid px-10 py-5 text-12 font-semibold focus:border-bullstar focus:ring-bullstar"
                                                 placeholder="Motivo interno..."
                                             >{{ old('reason', $selectedConversation->follow_up_exclusion_reason) }}</textarea>
-                                            <button type="submit" class="mt-4 w-full rounded-10 border border-black-nike bg-white px-12 py-6 text-12 font-extrabold uppercase tracking-normal text-black-nike transition hover:bg-gray-light">
+                                            <button type="submit" class="catalog-button catalog-button-secondary mt-4 w-full rounded-10 border border-black-nike bg-white px-12 py-6 text-12 font-extrabold uppercase tracking-normal text-black-nike transition hover:bg-gray-light">
                                                 Salva esclusione
                                             </button>
                                         </form>
@@ -429,7 +433,7 @@
                                     @endphp
 
                                     <div class="flex {{ $isOutbound ? 'justify-end' : 'justify-start' }}">
-                                        <div class="max-w-[92%] rounded-10 px-12 py-10 md:max-w-[78%] md:px-16 md:py-12 {{ $isOutbound ? 'bg-bullstar text-white' : 'border border-gray-mid bg-white text-black-nike' }}">
+                                        <div class="wa-message-bubble {{ $isOutbound ? 'wa-message-out' : 'wa-message-in' }} max-w-[92%] rounded-10 px-12 py-10 md:max-w-[78%] md:px-16 md:py-12 {{ $isOutbound ? 'bg-bullstar text-white' : 'border border-gray-mid bg-white text-black-nike' }}">
                                             @if ($message->media_path)
                                                 @php
                                                     $mediaUrl = route('admin.messages.media', $message);
@@ -469,7 +473,7 @@
                                                     [{{ $message->type }}]
                                                 </p>
                                             @endif
-                                            <div class="mt-8 flex flex-wrap items-center gap-8 text-11 font-bold uppercase tracking-normal {{ $isOutbound ? 'text-white/70' : 'text-gray' }}">
+                                            <div class="wa-message-meta mt-8 flex flex-wrap items-center gap-8 text-11 font-bold uppercase tracking-normal {{ $isOutbound ? 'text-white/70' : 'text-gray' }}">
                                                 <span>{{ $message->source }}</span>
                                                 @if ($isOutbound)
                                                     @if ($message->sent_at)
@@ -504,7 +508,7 @@
                                 <div id="message-list-bottom" class="h-px" aria-hidden="true"></div>
                             </div>
 
-                            <div class="border-t border-gray-mid bg-white p-12 md:p-16">
+                            <div class="wa-composer">
                                 @if ($selectedConversation->mode === 'manual' && $canManageWhatsapp)
                                     @php
                                         $messageTemplates = \App\Support\MessageTemplates::current();
@@ -516,7 +520,7 @@
                                     @endphp
                                     <form method="POST" action="{{ route('admin.conversations.messages.store', $selectedConversation) }}" enctype="multipart/form-data" class="flex flex-col gap-12">
                                         @csrf
-                                        <div class="flex max-h-96 flex-wrap gap-8 overflow-y-auto pr-2 md:max-h-none md:overflow-visible">
+                                        <details class="wa-quick-replies"><summary>Risposte rapide</summary><div class="wa-quick-reply-list">
                                             @foreach ($messageTemplates as $template)
                                                 <button
                                                     type="button"
@@ -526,7 +530,7 @@
                                                     {{ $template['title'] }}
                                                 </button>
                                             @endforeach
-                                        </div>
+                                        </div></details>
 
                                         @if (! empty($whatsappApprovedTemplates))
                                             <label class="block">
@@ -549,7 +553,7 @@
                                         @include('admin.partials.hoodie-quote-calculator')
 
                                         <textarea
-                                            id="message-composer"
+                                            aria-label="Messaggio da inviare" id="message-composer"
                                             name="message"
                                             rows="4"
                                             maxlength="4096"
@@ -577,14 +581,14 @@
                                                     type="button"
                                                     id="voice-record-button"
                                                     style="touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;"
-                                                    class="w-full select-none rounded-10 bg-bullstar px-24 py-12 text-14 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover active:scale-[0.98] active:bg-whatsapp disabled:cursor-not-allowed disabled:bg-gray disabled:text-white/70 md:w-auto"
+                                                    class="catalog-button catalog-button-primary w-full select-none rounded-10 bg-bullstar px-24 py-12 text-14 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover active:scale-[0.98] active:bg-whatsapp disabled:cursor-not-allowed disabled:bg-gray disabled:text-white/70 md:w-auto"
                                                     draggable="false"
                                                 >
                                                     Tieni premuto per nota vocale
                                                 </button>
                                                 <div id="voice-preview" class="mt-6 hidden min-w-0 rounded-10 border border-gray-mid bg-gray-light px-10 py-8">
                                                     <audio id="voice-preview-audio" controls class="w-full max-w-[220px]"></audio>
-                                                    <button type="button" id="voice-clear-button" class="mt-6 text-11 font-extrabold uppercase tracking-normal text-red-700">
+                                                    <button type="button" id="voice-clear-button" class="catalog-button catalog-button-secondary mt-6 text-11 font-extrabold uppercase tracking-normal text-red-700">
                                                         Rimuovi audio
                                                     </button>
                                                 </div>
@@ -592,7 +596,7 @@
 
                                             <button
                                                 type="submit"
-                                                class="rounded-10 bg-bullstar px-24 py-12 text-14 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover md:w-auto"
+                                                class="catalog-button catalog-button-primary rounded-10 bg-bullstar px-24 py-12 text-14 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover md:w-auto"
                                             >
                                                 Invia
                                             </button>
@@ -622,6 +626,7 @@
                     @endif
                 </section>
             </section>
+            </div>
 @endsection
 
 @push('scripts')
@@ -715,7 +720,7 @@
                     const initial = escapeHtml(String(conversation.name || conversation.subtitle || '?').charAt(0));
 
                     return `
-                        <a data-conversation-id="${conversation.id}" data-search="${escapeHtml([conversation.name, conversation.subtitle, conversation.phone, conversation.email].filter(Boolean).join(' ').toLowerCase())}" href="${conversation.url}" class="block rounded-10 border bg-white p-10 transition hover:border-black-nike ${selectedClass}">
+                        <a data-conversation-id="${conversation.id}" aria-current="${conversation.id === selectedConversationId ? 'page' : 'false'}" data-unread="${conversation.unread_count || 0}" data-human="${conversation.needs_human ? '1' : '0'}" data-mode="${escapeHtml(conversation.mode)}" data-followup="${conversation.follow_up_excluded ? 0 : (conversation.due_follow_ups_count || 0)}" data-search="${escapeHtml([conversation.name, conversation.subtitle, conversation.phone, conversation.email].filter(Boolean).join(' ').toLowerCase())}" href="${conversation.url}" class="block rounded-10 border bg-white p-10 transition hover:border-black-nike ${selectedClass}">
                             <div class="flex min-w-0 items-start gap-8">
                                 <span class="flex h-32 w-32 shrink-0 items-center justify-center rounded-full bg-black-nike text-12 font-black uppercase text-white">${initial}</span>
                                 <div class="min-w-0 flex-1">
@@ -753,16 +758,24 @@
                 }
 
                 const normalizedSearch = conversationSearchTerm.trim().toLowerCase();
+                const filter = document.getElementById('conversation-filter')?.value || 'all';
                 let visibleCount = 0;
 
                 list.querySelectorAll('[data-conversation-id]').forEach((conversation) => {
-                    const isVisible = normalizedSearch === '' || (conversation.dataset.search || '').includes(normalizedSearch);
+                    const matchesSearch = normalizedSearch === '' || (conversation.dataset.search || '').includes(normalizedSearch);
+                    const matchesFilter = filter === 'all' || (filter === 'unread' && Number(conversation.dataset.unread) > 0) || (filter === 'human' && conversation.dataset.human === '1') || (filter === 'manual' && conversation.dataset.mode === 'manual') || (filter === 'followup' && Number(conversation.dataset.followup) > 0);
+                    const isVisible = matchesSearch && matchesFilter;
                     conversation.classList.toggle('hidden', !isVisible);
                     visibleCount += isVisible ? 1 : 0;
                 });
 
-                empty?.classList.toggle('hidden', visibleCount > 0 || normalizedSearch === '');
+                empty?.classList.toggle('hidden', visibleCount > 0);
+                const count = document.getElementById('inbox-visible-count');
+                if (count) count.textContent = `${visibleCount} ${visibleCount === 1 ? 'conversazione visualizzata' : 'conversazioni visualizzate'}`;
             }
+
+            document.getElementById('conversation-filter')?.addEventListener('change', applyConversationSearch);
+            applyConversationSearch();
 
             function renderSelectedFollowUpAlert(conversation) {
                 const alert = document.getElementById('selected-follow-up-alert');
@@ -820,7 +833,7 @@
                             <form method="POST" action="${followUp.cancel_url}">
                                 <input type="hidden" name="_token" value="${escapeHtml(csrfToken)}">
                                 <input type="hidden" name="_method" value="PATCH">
-                                <button type="submit" class="rounded-10 border border-gray-mid bg-white px-10 py-8 text-11 font-extrabold uppercase tracking-normal transition hover:border-red-400 hover:text-red-700">
+                                <button type="submit" class="catalog-button catalog-button-secondary rounded-10 border border-gray-mid bg-white px-10 py-8 text-11 font-extrabold uppercase tracking-normal transition hover:border-red-400 hover:text-red-700">
                                     Annulla
                                 </button>
                             </form>
@@ -933,10 +946,10 @@
 
                     return `
                         <div class="flex ${alignment}">
-                            <div class="max-w-[92%] rounded-10 px-12 py-10 md:max-w-[78%] md:px-16 md:py-12 ${bubbleClass}">
+                            <div class="wa-message-bubble ${outbound ? 'wa-message-out' : 'wa-message-in'} max-w-[92%] rounded-10 px-12 py-10 md:max-w-[78%] md:px-16 md:py-12 ${bubbleClass}">
                                 ${media}
                                 ${body}
-                                <div class="mt-8 flex flex-wrap items-center gap-8 text-11 font-bold uppercase tracking-normal ${metaClass}">
+                                <div class="wa-message-meta mt-8 flex flex-wrap items-center gap-8 text-11 font-bold uppercase tracking-normal ${metaClass}">
                                     <span>${escapeHtml(message.source)}</span>
                                     ${statusMeta}
                                 </div>

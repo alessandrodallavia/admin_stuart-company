@@ -409,7 +409,7 @@
 
                                     <div class="grid gap-10 rounded-10 border border-gray-mid bg-gray-light p-10 md:grid-cols-2">
                                         <label class="block">
-                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Importo pagamento</span>
+                                            <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Importo pagamento IVA inclusa</span>
                                             <input name="payment_amount" value="{{ old('payment_amount', $selectedLead->payment_amount) }}" type="number" min="0" step="0.01" placeholder="0,00" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
                                         </label>
 
@@ -480,8 +480,8 @@
                                         'front_print_back_print' => 'Stampa frontale + stampa retro',
                                         'big_front_print_big_back_print' => 'Stampa grande frontale + stampa grande retro',
                                     ];
-                                    $mockupPersonalization = $personalizationLabels[$selectedLead->calculator_personalization] ?? $selectedLead->calculator_personalization;
-                                    $hasLiveMockupGraphics = filled($selectedLead->live_mockup_front_file) || filled($selectedLead->live_mockup_back_file);
+                                    $mockupPersonalization = $selectedLead->calculator_crm_snapshot['personalization_label'] ?? $selectedLead->calculator_crm_snapshot['quote_cents']['selection_label'] ?? $personalizationLabels[$selectedLead->calculator_personalization] ?? $selectedLead->calculator_personalization;
+                                    $hasLiveMockupGraphics = filled($selectedLead->live_mockup_front_file) || filled($selectedLead->live_mockup_back_file) || filled($selectedLead->live_mockup_sleeve_file);
                                     $mockupModelKey = Illuminate\Support\Str::slug((string) $selectedLead->calculator_model);
                                     $mockupColorKey = Illuminate\Support\Str::slug((string) $selectedLead->live_mockup_color);
                                     $hasMockupBase = filled($mockupModelKey) && filled($mockupColorKey);
@@ -498,6 +498,17 @@
                                             : ['top' => '22%', 'left' => '50%', 'width' => '40%', 'height' => '24%'],
                                     ];
                             @endphp
+                            @if(!empty($selectedLead->calculator_crm_snapshot['artwork_composition']))
+                            <section class="rounded-xl border border-gray-200 p-4"><h3 class="font-semibold">Composizione richiesta · anteprima indicativa</h3>
+                            <p class="text-xs text-gray-500">Posizioni misurate dall’angolo superiore sinistro dell’area personalizzabile. Verificare prima della produzione.</p>
+                            @foreach($selectedLead->calculator_crm_snapshot['artwork_composition'] as $side=>$drawing)
+                            <p class="mt-2 text-sm"><strong>{{ ['front'=>'Fronte','back'=>'Retro','sleeve'=>'Manica'][$side] ?? $side }} · {{ $drawing['print_name'] }}</strong>: {{ $drawing['width_cm'] }} × {{ $drawing['height_cm'] }} cm; da sinistra {{ $drawing['x_cm'] }} cm, dall’alto {{ $drawing['y_cm'] }} cm.</p>
+                            @if($liveMockupFiles[$side]['exists'])
+                            <div class="relative mt-3 max-w-[250px] border border-dashed border-gray-400 bg-gray-100" style="aspect-ratio: {{ $drawing['area']['width_cm'] }} / {{ $drawing['area']['height_cm'] }}" aria-label="Composizione nell’area personalizzabile">
+                            <img class="absolute" alt="Composizione {{ $side }}" src="{{ route('admin.leads.mockup-files.show', [$selectedLead, $side]) }}" style="left: {{ $drawing['x_cm'] / $drawing['area']['width_cm'] * 100 }}%; top: {{ $drawing['y_cm'] / $drawing['area']['height_cm'] * 100 }}%; width: {{ $drawing['width_cm'] / $drawing['area']['width_cm'] * 100 }}%; height: {{ $drawing['height_cm'] / $drawing['area']['height_cm'] * 100 }}%;">
+                            </div>@endif
+                            @endforeach</section>
+                            @endif
                                 <section x-show="tab === 'main'" class="order-5 overflow-hidden rounded-10 border border-gray-mid bg-white shadow-sm lg:col-start-2 lg:row-start-3">
                                     <div class="flex items-center justify-between gap-10 bg-black-nike px-12 py-10 text-white">
                                         <div>
@@ -538,7 +549,7 @@
                                         </dl>
 
                                         <div class="grid gap-10 sm:grid-cols-2">
-                                            @foreach (['front' => 'Fronte', 'back' => 'Retro'] as $side => $label)
+                                            @foreach (['front' => 'Fronte', 'back' => 'Retro', 'sleeve' => 'Manica'] as $side => $label)
                                                 <article class="overflow-hidden rounded-10 border border-gray-mid bg-gray-light">
                                                     <div class="flex items-center justify-between border-b border-gray-mid bg-white px-10 py-8">
                                                         <p class="text-11 font-black uppercase">{{ $label }}</p>
@@ -547,7 +558,7 @@
                                                         @endif
                                                     </div>
 
-                                                    @if ($hasMockupBase)
+                                                    @if ($hasMockupBase && $side !== 'sleeve' && empty($selectedLead->calculator_crm_snapshot['artwork_composition'][$side]))
                                                         <div class="bg-white p-8">
                                                             <div class="relative mx-auto aspect-[4/5] max-w-[250px] overflow-hidden">
                                                                 <img src="{{ route('admin.leads.mockup-base.show', [$selectedLead, $side]) }}" alt="Mockup {{ strtolower($label) }} {{ $selectedLead->calculator_model }} {{ $selectedLead->live_mockup_color }}" class="h-full w-full object-contain">
@@ -584,7 +595,7 @@
                                         <div>
                                             <p class="text-10 font-extrabold uppercase text-gray">Storico cliente</p>
                                             <h3 class="mt-4 text-18 font-black">{{ $selectedLead->salesSheets->count() }} {{ $selectedLead->salesSheets->count() === 1 ? 'ordine' : 'ordini' }}</h3>
-                                            <p class="mt-3 text-10 font-semibold text-gray">Ogni nuovo acquisto resta collegato allo stesso lead e ha conti, prodotti e materiali separati.</p>
+                                            <p class="mt-3 text-10 font-semibold text-gray">Ogni ordine ha conti, prodotti e materiali separati. Le schede mostrano il netto; nel riepilogo trovi IVA e totale da pagare.</p>
                                         </div>
                                         <form method="POST" action="{{ route('admin.leads.orders.store', $selectedLead) }}" class="flex w-full gap-5 lg:w-auto">@csrf
                                             <input name="name" required maxlength="255" placeholder="Nome nuovo ordine" class="min-w-0 flex-1 rounded-10 border-gray-mid px-10 py-8 text-11 font-semibold lg:w-[240px]">
@@ -594,7 +605,7 @@
                                     <div class="mt-8 flex gap-5 overflow-x-auto pb-2">
                                         @foreach($selectedLead->salesSheets as $order)
                                             <div class="flex shrink-0 overflow-hidden rounded-10 border {{ $selectedSalesSheet?->id === $order->id ? 'border-black-nike bg-black-nike text-white' : 'border-gray-mid bg-gray-light' }}">
-                                                <a href="{{ route('admin.leads.index', ['lead' => $selectedLead, 'sales_sheet' => $order->id]).'#product' }}" class="px-10 py-7 text-10 font-extrabold uppercase transition {{ $selectedSalesSheet?->id === $order->id ? 'text-white' : 'hover:text-bullstar' }}">{{ $order->order_number }} · {{ $order->name }} · € {{ number_format((float)$order->revenue_total, 2, ',', '.') }}</a>
+                                                <a href="{{ route('admin.leads.index', ['lead' => $selectedLead, 'sales_sheet' => $order->id]).'#product' }}" class="px-10 py-7 text-10 font-extrabold uppercase transition {{ $selectedSalesSheet?->id === $order->id ? 'text-white' : 'hover:text-bullstar' }}">{{ $order->order_number }} · {{ $order->name }} · € {{ number_format((float)$order->revenue_total, 2, ',', '.') }} IVA esclusa</a>
                                                 <form method="POST" action="{{ route('admin.leads.orders.destroy', [$selectedLead, $order]) }}" onsubmit="return confirm('Eliminare definitivamente questo ordine, i prodotti e tutti i file grafici collegati?')" class="flex border-l {{ $selectedSalesSheet?->id === $order->id ? 'border-white/20' : 'border-gray-mid' }}">@csrf @method('DELETE')
                                                     <button type="submit" title="Elimina ordine" aria-label="Elimina ordine {{ $order->order_number }}" class="px-8 text-14 font-black transition {{ $selectedSalesSheet?->id === $order->id ? 'text-white/70 hover:bg-red-600 hover:text-white' : 'text-red-600 hover:bg-red-50' }}">×</button>
                                                 </form>
@@ -625,7 +636,7 @@
                                         <input name="proposal_number" value="{{ old('proposal_number') }}" type="text" maxlength="100" required placeholder="Inserisci numero proposta" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
                                     </label>
                                     <label class="block min-w-0">
-                                        <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Importo proposta</span>
+                                        <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Importo proposta IVA inclusa</span>
                                         <input name="proposal_amount" value="{{ old('proposal_amount') }}" type="number" min="0.50" step="0.01" required placeholder="0,00" class="mt-6 w-full rounded-10 border-gray-mid bg-white px-12 py-10 text-14 font-semibold text-black-nike focus:border-bullstar focus:ring-bullstar">
                                     </label>
                                     <label class="block min-w-0 md:col-span-2">
@@ -723,7 +734,7 @@
                                     <div class="flex items-center justify-between gap-6 border-b border-gray-mid bg-gray-light px-12 py-8">
                                         <div>
                                             <p class="text-11 font-black uppercase">Pagamento</p>
-                                            <p class="mt-3 text-10 font-semibold text-gray">Link e azioni di incasso.</p>
+                                            <p class="mt-3 text-10 font-semibold text-gray">Importo da incassare IVA inclusa. Il link Stripe usa il totale dell'ultima proposta salvata.</p>
                                         </div>
                                         <p class="text-18 font-black">{{ $selectedLead->payment_amount ? '€ ' . number_format((float) $selectedLead->payment_amount, 2, ',', '.') : '-' }}</p>
                                     </div>
