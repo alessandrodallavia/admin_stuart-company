@@ -41,6 +41,11 @@ class LeadSalesItem extends Model
         return $this->hasMany(LeadSalesItemAttachment::class);
     }
 
+    public function variants(): HasMany
+    {
+        return $this->hasMany(LeadSalesItemVariant::class);
+    }
+
     public function crmProduct(): BelongsTo
     {
         return $this->belongsTo(CrmProduct::class);

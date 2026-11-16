@@ -13,6 +13,7 @@ use App\Models\LeadSalesItemPrint;
 use App\Models\LeadSalesSheet as LeadSalesSheetModel;
 use App\Services\LeadEconomicMetricsService;
 use App\Services\LeadSalesSheetService;
+use App\Services\LeadSalesItemVariantService;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -52,6 +53,8 @@ class LeadSalesSheet extends Component
     public array $itemFinalPrices = [];
 
     public array $itemColors = [];
+
+    public array $itemVariants = [];
 
     public array $itemNotes = [];
 
@@ -180,7 +183,7 @@ class LeadSalesSheet extends Component
         }
         $item->delete();
         $calculator->recalculate($sheet);
-        unset($this->printTypeIds[$itemId], $this->itemFinalPrices[$itemId], $this->itemColors[$itemId], $this->itemNotes[$itemId], $this->itemUploads[$itemId], $this->itemMockupFronts[$itemId], $this->itemMockupBacks[$itemId], $this->itemSizeCharts[$itemId]);
+        unset($this->printTypeIds[$itemId], $this->itemFinalPrices[$itemId], $this->itemColors[$itemId], $this->itemVariants[$itemId], $this->itemNotes[$itemId], $this->itemUploads[$itemId], $this->itemMockupFronts[$itemId], $this->itemMockupBacks[$itemId], $this->itemSizeCharts[$itemId]);
         $this->statusMessage = 'Prodotto rimosso.';
     }
 
@@ -298,12 +301,13 @@ class LeadSalesSheet extends Component
         $this->statusMessage = 'Sconto e arrotondamento aggiornati.';
     }
 
-    public function saveItemDetails(int $itemId): void
+    public function saveItemDetails(int $itemId, LeadSalesItemVariantService $variantService): void
     {
         $this->authorizeManage();
         $item = $this->itemForLead($itemId);
         $this->validate([
             "itemColors.$itemId" => ['nullable', 'string', 'max:2000'],
+            "itemVariants.$itemId.*.*" => ['nullable', 'numeric', 'min:0'],
             "itemNotes.$itemId" => ['nullable', 'string', 'max:10000'],
             "itemUploads.$itemId" => ['nullable', 'array', 'max:10'],
             "itemUploads.$itemId.*" => ['file', 'max:10240'],
@@ -313,7 +317,11 @@ class LeadSalesSheet extends Component
         ]);
 
         $this->persistItemDetails($item);
-        $this->statusMessage = 'Colori, note e grafiche salvati.';
+        if ($this->hasVariantInput($itemId) || $item->variants()->exists()) {
+            $variantService->save($item, $this->itemVariants[$itemId] ?? [], 'itemVariants.'.$itemId);
+            $this->syncItemFields($item->fresh());
+        }
+        $this->statusMessage = 'Taglie, colori, note e grafiche salvati.';
     }
 
     public function removeAttachment(int $itemId, int $attachmentId): void
@@ -396,10 +404,14 @@ class LeadSalesSheet extends Component
         $this->statusMessage = "Ordine in preparazione per Alessandro ({$filename}).";
     }
 
-    public function render(LeadEconomicMetricsService $economicMetrics)
+    public function render(LeadEconomicMetricsService $economicMetrics, \App\Services\LeadOrderCheckoutService $checkoutService)
     {
         $lead = $this->lead();
-        $sheet = $this->sheet()?->load(['items.prints', 'items.attachments', 'dispatches', 'proposals', 'checkouts']);
+        $sheet = $this->sheet()?->load(['items.prints', 'items.attachments', 'items.variants', 'items.crmProduct.sizes', 'items.crmProduct.colors.sizes', 'dispatches', 'proposals', 'checkouts']);
+        if ($sheet) {
+            $checkoutService->invalidateStaleForOrder($sheet);
+            $sheet->unsetRelation('checkouts')->load('checkouts');
+        }
         $isReorder = $sheet !== null && $lead->salesSheets()->whereKeyNot($sheet->id)->where('id', '<', $sheet->id)->exists();
         $cac = $isReorder ? 0.0 : $economicMetrics->currentCac();
         $margin = $sheet?->items?->isNotEmpty() ? (float) $sheet->margin_total : null;
@@ -455,9 +467,25 @@ class LeadSalesSheet extends Component
 
     private function syncItemFields(LeadSalesItem $item): void
     {
+        $item->loadMissing('variants');
         $this->itemFinalPrices[$item->id] = number_format((float) $item->final_unit_price, 2, '.', '');
         $this->itemColors[$item->id] = collect($item->colors)->join("\n");
+        $this->itemVariants[$item->id] = $item->variants
+            ->groupBy('crm_product_color_id')
+            ->map(fn ($variants) => $variants->mapWithKeys(fn ($variant) => [
+                $variant->crm_product_size_id => $this->formatVariantQuantity((float) $variant->quantity),
+            ])->all())->all();
         $this->itemNotes[$item->id] = $item->notes ?? '';
+    }
+
+    private function hasVariantInput(int $itemId): bool
+    {
+        return collect($this->itemVariants[$itemId] ?? [])->flatten()->contains(fn ($quantity) => (float) $quantity > 0);
+    }
+
+    private function formatVariantQuantity(float $quantity): string
+    {
+        return number_format($quantity, fmod($quantity, 1.0) === 0.0 ? 0 : 2, '.', '');
     }
 
     private function syncOrderFields(?\App\Models\LeadSalesSheet $sheet): void

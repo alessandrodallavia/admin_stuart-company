@@ -339,9 +339,14 @@ class AdminDocumentService
         $document->items()->delete();
 
         foreach (array_values($items) as $index => $item) {
-            if (blank($item['description'] ?? null)) {
+            $informational = (bool) ($item['informational'] ?? false);
+            if (blank($item['description'] ?? null) && ! $informational) {
                 continue;
             }
+
+            $description = blank($item['description'] ?? null)
+                ? "\u{00A0}"
+                : $item['description'];
 
             $quantity = blank($item['quantity'] ?? null) ? 0 : (float) $item['quantity'];
             $vatRate = $document->type === 'delivery_note' ? 0 : (float) ($item['vat_rate'] ?? 22);
@@ -355,13 +360,16 @@ class AdminDocumentService
                     2,
                     PHP_ROUND_HALF_UP
                 );
-            $lineSubtotal = $document->type === 'delivery_note' ? 0 : round($quantity * $unitPrice, 2, PHP_ROUND_HALF_UP);
+            $lineSubtotal = $document->type === 'delivery_note' || $informational
+                ? 0
+                : round($quantity * $unitPrice, 2, PHP_ROUND_HALF_UP);
             $lineVat = $document->type === 'delivery_note' ? 0 : round($lineSubtotal * $vatRate / 100, 2, PHP_ROUND_HALF_UP);
 
             $document->items()->create([
                 'position' => $index + 1,
                 'item_code' => blank($item['item_code'] ?? null) ? null : trim((string) $item['item_code']),
-                'description' => $item['description'],
+                'description' => $description,
+                'informational' => $informational,
                 'quantity' => $quantity,
                 'unit_price' => $unitPrice,
                 'vat_rate' => $vatRate,

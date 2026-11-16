@@ -2,7 +2,7 @@
 
 return [
     'from' => [
-        'name' => env('ADMIN_NOTIFICATION_FROM_NAME', env('APP_NAME', 'Stuart Admin')),
+        'name' => env('ADMIN_NOTIFICATION_FROM_NAME', 'Stuart Company'),
         'email' => env('ADMIN_NOTIFICATION_FROM_EMAIL', 'noreply@stuart-company.com'),
     ],
 

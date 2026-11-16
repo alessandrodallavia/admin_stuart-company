@@ -90,7 +90,7 @@ class AdminEmailWorkflowTest extends TestCase
             ->assertSee('Follow-up 4 dopo link');
     }
 
-    public function test_lead_area_shows_email_actions_for_quote_and_payment(): void
+    public function test_lead_area_shows_the_current_proposal_email_action(): void
     {
         $owner = AdminUser::create([
             'name' => 'Owner Test',
@@ -107,7 +107,7 @@ class AdminEmailWorkflowTest extends TestCase
             'payment_link' => 'https://example.test/payment',
             'payment_amount' => 100,
         ]);
-        $lead->quotePdfs()->create([
+        $quotePdf = $lead->quotePdfs()->create([
             'proposal_number' => 'PROPOSTA-EMAIL-1',
             'amount' => 100,
             'disk' => 'local',
@@ -121,7 +121,8 @@ class AdminEmailWorkflowTest extends TestCase
             ->get("/leads/{$lead->id}")
             ->assertOk()
             ->assertSee('Proposte')
-            ->assertSee('Invia via email')
+            ->assertSee('Email')
+            ->assertSee(route('admin.leads.quote-pdfs.email', [$lead, $quotePdf]), false)
             ->assertSee('lg:grid-cols-2', false)
             ->assertSee('Torna ai lead');
     }
@@ -172,10 +173,9 @@ class AdminEmailWorkflowTest extends TestCase
             ->assertSee('ESTATE-24/B')
             ->assertSee('proposta-a.pdf')
             ->assertSee('proposta-b.pdf');
-        $this->assertLessThan(
-            strpos($response->getContent(), 'Pagamento'),
-            strpos($response->getContent(), 'Proposte'),
-        );
+        $response
+            ->assertSee(route('admin.leads.quote-pdfs.email', [$lead, $pdfs[0]]), false)
+            ->assertSee(route('admin.leads.quote-pdfs.email', [$lead, $pdfs[1]]), false);
 
         $this->actingAs($operator, 'admin')
             ->delete("/leads/{$lead->id}/quote-pdfs/{$pdfs[0]->id}")

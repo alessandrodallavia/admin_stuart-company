@@ -252,8 +252,12 @@ class AdminDocumentWorkflowTest extends TestCase
         ]);
 
         $service = app(AdminDocumentXmlService::class);
+        $vatNumber = (string) config('documents.company.vat_number');
 
-        $this->assertMatchesRegularExpression('/^IT05040450289_[A-Z0-9]{5}\.xml$/', $service->filename($invoice));
+        $this->assertMatchesRegularExpression(
+            '/^IT'.preg_quote($vatNumber, '/').'_[A-Z0-9]{5}\.xml$/',
+            $service->filename($invoice),
+        );
         $this->assertStringContainsString('<ProgressivoInvio>7</ProgressivoInvio>', $service->output($invoice));
         $this->assertStringContainsString('<DatiPagamento>', $service->output($invoice));
         $this->assertStringContainsString('<ImportoPagamento>122.00</ImportoPagamento>', $service->output($invoice));

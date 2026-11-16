@@ -12,6 +12,7 @@ class AdminDocumentItem extends Model
         'position',
         'item_code',
         'description',
+        'informational',
         'quantity',
         'unit_price',
         'vat_rate',
@@ -23,6 +24,7 @@ class AdminDocumentItem extends Model
     protected function casts(): array
     {
         return [
+            'informational' => 'boolean',
             'quantity' => 'decimal:2',
             'unit_price' => 'decimal:2',
             'vat_rate' => 'decimal:2',

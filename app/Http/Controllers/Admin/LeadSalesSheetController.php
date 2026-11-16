@@ -9,6 +9,7 @@ use App\Models\Lead;
 use App\Models\LeadSalesItem;
 use App\Models\LeadSalesItemPrint;
 use App\Models\LeadSalesSheet;
+use App\Models\LeadOrderCheckout;
 use App\Services\LeadConversionTrackingService;
 use App\Services\LeadOrderCheckoutService;
 use App\Services\LeadProjectPdfService;
@@ -31,18 +32,33 @@ class LeadSalesSheetController extends Controller
         $data = $request->validate([
             'payment_type' => ['required', Rule::in(['full', 'deposit', 'balance'])],
             'deposit_amount' => ['required_if:payment_type,deposit', 'nullable', 'numeric', 'min:0.01'],
+            'expires_at' => ['required', 'date', 'after:today', 'before_or_equal:'.now()->addDays(90)->toDateString()],
         ]);
 
         $checkout = $checkoutService->createForOrder(
             $sheet,
             $data['payment_type'],
             isset($data['deposit_amount']) ? (float) $data['deposit_amount'] : null,
+            $data['expires_at'],
         );
 
         return redirect()->to(route('admin.leads.index', [
             'lead' => $lead,
             'sales_sheet' => $sheet->id,
         ]).'#product')->with('status', 'Checkout pronto: '.$checkoutService->publicUrl($checkout));
+    }
+
+    public function revokeCheckout(Lead $lead, LeadSalesSheet $sheet, LeadOrderCheckout $checkout): RedirectResponse
+    {
+        abort_unless($sheet->lead_id === $lead->id && $checkout->lead_sales_sheet_id === $sheet->id, 404);
+        abort_if($checkout->status === 'paid', 422, 'Un checkout pagato non può essere revocato.');
+
+        $checkout->forceFill(['status' => 'revoked', 'revoked_at' => now()])->save();
+
+        return redirect()->to(route('admin.leads.index', [
+            'lead' => $lead,
+            'sales_sheet' => $sheet->id,
+        ]).'#product')->with('status', 'Checkout revocato. Il vecchio link non è più valido.');
     }
 
     public function storeProposal(
@@ -115,13 +131,20 @@ class LeadSalesSheetController extends Controller
     {
         abort_unless($sheet->lead_id === $lead->id, 404);
 
-        $sheet->load('items.attachments');
+        $sheet->load(['items.attachments', 'checkouts.proforma']);
         foreach ($sheet->items->flatMap->attachments as $attachment) {
             Storage::disk($attachment->disk)->delete($attachment->path);
         }
         foreach ($sheet->items->pluck('size_chart_path')->filter() as $sizeChartPath) {
             Storage::disk('local')->delete($sizeChartPath);
         }
+
+        $sheet->checkouts
+            ->pluck('proforma')
+            ->filter()
+            ->unique('id')
+            ->each->delete();
+        $sheet->checkouts()->delete();
 
         $sheet->delete();
         $remainingSheet = $lead->salesSheets()->first();

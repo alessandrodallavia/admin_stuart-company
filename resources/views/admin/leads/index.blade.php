@@ -5,32 +5,33 @@
 @section('active_nav', 'leads')
 
 @section('content')
+<div class="catalog-workspace">
             @if (! $selectedLead)
-            <div class="mb-12 flex flex-col gap-10 rounded-10 bg-black-nike px-16 py-14 text-white md:flex-row md:items-center md:justify-between">
+            <header class="catalog-page-header">
                 <div>
-                    <p class="text-10 font-extrabold uppercase tracking-wider text-white/60">CRM commerciale</p>
-                    <h1 class="mt-4 text-24 font-black">Lista lead</h1>
-                    <p class="mt-4 text-11 font-semibold text-white/60">Cerca, filtra e apri rapidamente le opportunità da lavorare.</p>
+                    <p class="catalog-eyebrow">CRM commerciale</p>
+                    <h1>Lista lead</h1>
+                    <p>Cerca, filtra e apri rapidamente le opportunità da lavorare.</p>
                 </div>
-                <div class="flex flex-wrap gap-8">
-                <a href="{{ route('admin.leads.index') }}" class="rounded-10 border border-bullstar bg-bullstar px-12 py-10 text-12 font-extrabold uppercase tracking-normal text-white">
+                <div class="catalog-header-actions">
+                <a href="{{ route('admin.leads.index') }}" class="catalog-button catalog-button-primary">
                     Tabella
                 </a>
-                <a href="{{ route('admin.leads.board') }}" class="rounded-10 border border-white/20 bg-white/10 px-12 py-10 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-white/20">
+                <a href="{{ route('admin.leads.board') }}" class="catalog-button catalog-button-secondary">
                     Riepilogo
                 </a>
                 </div>
-            </div>
+            </header>
 
             @if (Auth::guard('admin')->user()?->hasAdminPermission('leads.manage'))
-                <details class="group mb-12 overflow-hidden rounded-10 border border-gray-mid bg-white" @if($errors->hasAny(['name', 'phone', 'email', 'acquisition_channel', 'attribution_confidence', 'duplicate'])) open @endif>
+                <details class="catalog-surface group mb-16" @if($errors->hasAny(['name', 'phone', 'email', 'acquisition_channel', 'attribution_confidence', 'duplicate'])) open @endif>
                     <summary class="flex cursor-pointer list-none items-center justify-between gap-12 bg-gray-light px-16 py-12 transition hover:bg-white">
                         <div>
                             <p class="text-12 font-extrabold uppercase tracking-normal text-black-nike">Nuovo lead manuale</p>
                             <p class="mt-4 text-11 font-semibold text-gray">Registra chiamate, contatti diretti, referral o clienti esistenti.</p>
                         </div>
-                        <span class="rounded-10 bg-black-nike px-12 py-8 text-11 font-extrabold uppercase tracking-normal text-white group-open:hidden">Aggiungi</span>
-                        <span class="hidden rounded-10 border border-gray-mid bg-white px-12 py-8 text-11 font-extrabold uppercase tracking-normal group-open:inline-flex">Chiudi</span>
+                        <span class="catalog-button catalog-button-primary group-open:hidden">Aggiungi</span>
+                        <span class="catalog-button catalog-button-secondary hidden group-open:inline-flex">Chiudi</span>
                     </summary>
 
                     <form method="POST" action="{{ route('admin.leads.store') }}" class="border-t border-gray-mid p-16">
@@ -115,32 +116,32 @@
                                 <input type="checkbox" name="confirm_duplicate" value="1" @checked(old('confirm_duplicate')) class="mt-2 h-16 w-16 rounded border-gray-mid text-bullstar focus:ring-bullstar">
                                 <span>Crea comunque se telefono o e-mail risultano già presenti.</span>
                             </label>
-                            <button type="submit" class="rounded-10 bg-bullstar px-16 py-10 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">Crea lead e apri scheda</button>
+                            <button type="submit" class="catalog-button catalog-button-primary">Crea lead e apri scheda</button>
                         </div>
                     </form>
                 </details>
             @endif
 
             <section class="mb-12 grid grid-cols-2 gap-8 lg:grid-cols-4">
-                <article class="rounded-10 border border-gray-mid bg-white p-12">
+                <article class="catalog-surface p-12">
                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Lead totali</p>
                     <p class="mt-8 text-38 font-black leading-none tracking-normal">{{ $stats['total'] }}</p>
                 </article>
-                <article class="rounded-10 border border-gray-mid bg-white p-12">
+                <article class="catalog-surface p-12">
                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Aperti</p>
                     <p class="mt-8 text-38 font-black leading-none tracking-normal">{{ $stats['open'] }}</p>
                 </article>
-                <article class="rounded-10 border border-gray-mid bg-white p-12">
+                <article class="catalog-surface p-12">
                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Da lavorare</p>
                     <p class="mt-8 text-38 font-black leading-none tracking-normal">{{ $stats['ready'] }}</p>
                 </article>
-                <article class="rounded-10 border border-gray-mid bg-white p-12">
+                <article class="catalog-surface p-12">
                     <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Pagati</p>
                     <p class="mt-8 text-38 font-black leading-none tracking-normal">{{ $stats['paid'] }}</p>
                 </article>
             </section>
 
-            <section class="mb-12 overflow-hidden rounded-10 border border-gray-mid bg-gray-light">
+            <section class="catalog-surface mb-16">
                 <form method="GET" action="{{ route('admin.leads.index') }}" class="grid gap-12 p-16 lg:grid-cols-[minmax(220px,1fr)_240px_auto] lg:items-end">
                     <label class="block">
                         <span class="text-12 font-extrabold uppercase tracking-normal text-gray">Cerca</span>
@@ -156,11 +157,11 @@
                         </select>
                     </label>
                     <div class="flex gap-8">
-                        <button type="submit" class="rounded-10 bg-black-nike px-16 py-10 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-black">
+                        <button type="submit" class="catalog-button catalog-button-primary">
                             Filtra
                         </button>
-                        <a href="{{ route('admin.leads.index') }}" class="rounded-10 border border-gray-mid px-16 py-10 text-12 font-extrabold uppercase tracking-normal transition hover:border-black-nike">
-                            Reset
+                        <a href="{{ route('admin.leads.index') }}" class="catalog-button catalog-button-secondary">
+                            Azzera
                         </a>
                     </div>
                 </form>
@@ -168,7 +169,7 @@
             @endif
 
             <section class="min-h-[660px] flex-1">
-                <section class="{{ $selectedLead ? 'hidden' : '' }} overflow-hidden rounded-10 border border-gray-mid bg-white">
+                <section class="catalog-surface {{ $selectedLead ? 'hidden' : '' }}">
                     <div class="flex flex-col gap-12 border-b border-gray-mid bg-gray-light px-16 py-12 md:flex-row md:items-center md:justify-between">
                         <div>
                             <div class="flex flex-wrap items-center gap-6">
@@ -178,8 +179,8 @@
                             <p class="mt-4 text-14 font-bold text-black-nike">{{ $leads->total() }} lead trovati</p>
                         </div>
                         <div class="flex flex-wrap gap-5">
-                            <a href="{{ route('admin.leads.export', ['q' => $search ?: null, 'status' => $currentStatus ?: null]) }}" class="rounded-10 border border-gray-mid bg-white px-10 py-7 text-10 font-extrabold uppercase text-black-nike transition hover:border-bullstar hover:text-bullstar">Esporta risultati CSV</a>
-                            <a href="{{ route('admin.leads.export', ['scope' => 'all']) }}" class="rounded-10 bg-black-nike px-10 py-7 text-10 font-extrabold uppercase text-white transition hover:bg-bullstar">Esporta tutti</a>
+                            <a href="{{ route('admin.leads.export', ['q' => $search ?: null, 'status' => $currentStatus ?: null]) }}" class="catalog-button catalog-button-secondary">Esporta risultati CSV</a>
+                            <a href="{{ route('admin.leads.export', ['scope' => 'all']) }}" class="catalog-button catalog-button-secondary">Esporta tutti</a>
                         </div>
                         <div class="flex flex-wrap gap-6">
                             @foreach ($statuses as $value => $label)
@@ -214,8 +215,8 @@
                     </div>
 
                     <div class="hidden overflow-x-auto lg:block">
-                        <table class="min-w-[920px] w-full text-left">
-                            <thead class="border-b border-gray-mid bg-black-nike text-11 font-extrabold uppercase tracking-normal text-white/70">
+                        <table class="catalog-table min-w-[920px]">
+                            <thead>
                                 <tr>
                                     <th class="px-12 py-12">Lead</th>
                                     <th class="px-12 py-12">Stato</th>
@@ -320,49 +321,37 @@
                 </section>
 
                 <main
-                    class="{{ $selectedLead ? '' : 'hidden' }} overflow-hidden rounded-10 border border-gray-mid bg-white"
+                    class="catalog-surface {{ $selectedLead ? '' : 'hidden' }}"
                     x-data="{ tab: ['proposal', 'product', 'origin'].includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : 'main', selectTab(value) { this.tab = value; window.history.replaceState(null, '', '#'+value) } }"
                 >
                     @if ($selectedLead)
                         @php
                             $statusLabel = $statuses[$selectedLead->status] ?? ucfirst((string) $selectedLead->status ?: 'Senza stato');
-                            $statusBadgeClass = match ($selectedLead->status) {
-                                'pre' => 'bg-gray-light text-gray',
-                                'confirmed' => 'bg-blue-50 text-blue-700',
-                                'completed' => 'bg-amber-50 text-amber-700',
-                                'quote_sent' => 'bg-bullstar/10 text-bullstar',
-                                'link_sent' => 'bg-indigo-50 text-indigo-700',
-                                'proforma_pending' => 'bg-orange-50 text-orange-700',
-                                'payment_pending' => 'bg-yellow-50 text-yellow-700',
-                                'order_completed' => 'bg-whatsapp/10 text-whatsapp',
-                                'lost' => 'bg-red-50 text-red-700',
-                                default => 'bg-black-nike text-white',
-                            };
                         @endphp
-                        <div class="flex flex-col gap-10 border-b border-gray-mid px-16 py-14 md:flex-row md:items-center md:justify-between">
+                        <div class="catalog-section-heading">
                             <div>
                                 <p class="text-12 font-extrabold uppercase tracking-normal text-gray">Scheda lead</p>
                                 <h2 class="mt-5 text-24 font-black leading-tight tracking-normal">{{ $selectedLead->name ?: 'Lead senza nome' }}</h2>
                                 <p class="mt-5 text-14 font-semibold text-gray">{{ $selectedLead->club ?: $selectedLead->city ?: 'Organizzazione non indicata' }}</p>
                             </div>
-                            <a href="{{ route('admin.leads.index', ['status' => $currentStatus ?: null, 'q' => $search ?: null]) }}" class="inline-flex h-32 w-fit items-center rounded-10 border border-gray-mid px-12 text-11 font-extrabold uppercase tracking-normal transition hover:border-bullstar hover:text-bullstar">← Torna ai lead</a>
+                            <a href="{{ route('admin.leads.index', ['status' => $currentStatus ?: null, 'q' => $search ?: null]) }}" class="catalog-button catalog-button-secondary">← Torna ai lead</a>
                         </div>
 
-                        <nav class="flex gap-4 overflow-x-auto border-b border-gray-mid bg-gray-light px-16 pt-10" aria-label="Sezioni del lead">
-                            <button type="button" @click="selectTab('main')" :class="tab === 'main' ? 'border-black-nike bg-white text-black-nike' : 'border-transparent text-gray hover:text-black-nike'" class="h-36 shrink-0 rounded-t-10 border border-b-0 px-12 text-11 font-extrabold uppercase tracking-normal transition">Principale</button>
-                            <button type="button" @click="selectTab('proposal')" :class="tab === 'proposal' ? 'border-black-nike bg-white text-black-nike' : 'border-transparent text-gray hover:text-black-nike'" class="h-36 shrink-0 rounded-t-10 border border-b-0 px-12 text-11 font-extrabold uppercase tracking-normal transition">Proposta</button>
-                            <button type="button" @click="selectTab('product')" :class="tab === 'product' ? 'border-black-nike bg-white text-black-nike' : 'border-transparent text-gray hover:text-black-nike'" class="h-36 shrink-0 rounded-t-10 border border-b-0 px-12 text-11 font-extrabold uppercase tracking-normal transition">Ordini e prodotti</button>
-                            <button type="button" @click="selectTab('origin')" :class="tab === 'origin' ? 'border-black-nike bg-white text-black-nike' : 'border-transparent text-gray hover:text-black-nike'" class="h-36 shrink-0 rounded-t-10 border border-b-0 px-12 text-11 font-extrabold uppercase tracking-normal transition">Origine lead</button>
+                        <nav class="catalog-local-tabs" aria-label="Sezioni del lead">
+                            <button type="button" @click="selectTab('main')" :aria-selected="tab === 'main'">Principale</button>
+                            <button type="button" @click="selectTab('proposal')" :aria-selected="tab === 'proposal'">Proposta</button>
+                            <button type="button" @click="selectTab('product')" :aria-selected="tab === 'product'">Ordini e prodotti</button>
+                            <button type="button" @click="selectTab('origin')" :aria-selected="tab === 'origin'">Origine lead</button>
                         </nav>
 
                         <div class="grid gap-16 p-16 lg:grid-cols-2">
-                            <section x-show="tab === 'main'" x-cloak class="order-1 overflow-hidden rounded-10 border border-gray-mid bg-white shadow-sm lg:col-start-1 lg:row-span-2 lg:row-start-1">
-                                <div class="flex items-start justify-between gap-12 bg-black-nike px-12 py-10 text-white">
+                            <section x-show="tab === 'main'" x-cloak class="catalog-surface order-1 lg:col-start-1 lg:row-span-2 lg:row-start-1">
+                                <div class="catalog-section-heading items-start">
                                     <div>
-                                        <p class="text-10 font-extrabold uppercase tracking-wider text-white/60">Scheda principale</p>
-                                        <p class="mt-4 text-18 font-black leading-tight">Dati e avanzamento lead</p>
+                                        <p class="catalog-eyebrow">Scheda principale</p>
+                                        <h2>Dati e avanzamento lead</h2>
                                     </div>
-                                    <span class="rounded-full px-10 py-6 text-11 font-extrabold uppercase tracking-normal {{ $statusBadgeClass }}">
+                                    <span class="catalog-badge {{ $selectedLead->status === 'order_completed' ? 'catalog-badge-green' : '' }}">
                                         {{ $statusLabel }}
                                     </span>
                                 </div>
@@ -509,13 +498,13 @@
                             </div>@endif
                             @endforeach</section>
                             @endif
-                                <section x-show="tab === 'main'" class="order-5 overflow-hidden rounded-10 border border-gray-mid bg-white shadow-sm lg:col-start-2 lg:row-start-3">
-                                    <div class="flex items-center justify-between gap-10 bg-black-nike px-12 py-10 text-white">
+                                <section x-show="tab === 'main'" class="catalog-surface order-4 lg:col-start-2 lg:row-start-2">
+                                    <div class="catalog-section-heading">
                                         <div>
-                                            <p class="text-10 font-extrabold uppercase tracking-wider text-white/60">Anteprima live</p>
-                                            <h3 class="mt-4 text-18 font-black">Grafiche mockup</h3>
+                                            <p class="catalog-eyebrow">Anteprima live</p>
+                                            <h2>Grafiche mockup</h2>
                                         </div>
-                                        <span class="rounded-full bg-white/10 px-10 py-6 text-10 font-extrabold uppercase">{{ $hasLiveMockupGraphics ? 'Caricate dal cliente' : 'Nessuna grafica' }}</span>
+                                        <span class="catalog-badge">{{ $hasLiveMockupGraphics ? 'Caricate dal cliente' : 'Nessuna grafica' }}</span>
                                     </div>
 
                                     <div class="space-y-12 p-12">
@@ -616,14 +605,14 @@
                                 <livewire:admin.lead-sales-sheet :lead-id="$selectedLead->id" :sheet-id="$selectedSalesSheet?->id" :key="'lead-sales-sheet-'.$selectedLead->id.'-'.($selectedSalesSheet?->id ?? 'new')" />
                             </section>
 
-                            <section x-show="tab === 'proposal'" x-cloak class="order-2 overflow-hidden rounded-10 border border-gray-mid bg-white shadow-sm lg:col-span-2 lg:col-start-1 lg:row-start-1">
-                                <div class="flex flex-wrap items-center justify-between gap-8 bg-black-nike px-12 py-12 text-white">
+                            <section x-show="tab === 'proposal'" x-cloak class="catalog-surface order-2 lg:col-span-2 lg:col-start-1 lg:row-start-1">
+                                <div class="catalog-section-heading">
                                     <div>
-                                        <p class="text-10 font-extrabold uppercase tracking-wider text-white/60">Scheda proposta</p>
-                                        <h3 class="mt-4 text-18 font-black">Preventivi e invii al cliente</h3>
-                                        <p class="mt-3 text-10 font-semibold text-white/60">Consulta, archivia e condividi le proposte. I nuovi PDF si generano dall’ordine selezionato.</p>
+                                        <p class="catalog-eyebrow">Scheda proposta</p>
+                                        <h2>Preventivi e invii al cliente</h2>
+                                        <p>Consulta, archivia e condividi le proposte. I nuovi PDF si generano dall’ordine selezionato.</p>
                                     </div>
-                                    <span class="rounded-full bg-white/10 px-10 py-6 text-10 font-extrabold">{{ $selectedLead->quotePdfs->count() }} {{ $selectedLead->quotePdfs->count() === 1 ? 'proposta' : 'proposte' }}</span>
+                                    <span class="catalog-badge">{{ $selectedLead->quotePdfs->count() }} {{ $selectedLead->quotePdfs->count() === 1 ? 'proposta' : 'proposte' }}</span>
                                 </div>
 
                                 <div class="mx-12 mt-12 rounded-10 border border-bullstar/20 bg-bullstar/5 px-10 py-9 text-11 font-semibold text-gray">
@@ -730,121 +719,24 @@
                             </section>
 
                             <section x-show="tab === 'main'" x-cloak class="order-3 grid gap-10 lg:col-start-2 lg:row-start-1">
-                                <div class="overflow-hidden rounded-10 border border-gray-mid bg-white shadow-sm">
-                                    <div class="flex items-center justify-between gap-6 border-b border-gray-mid bg-gray-light px-12 py-8">
-                                        <div>
-                                            <p class="text-11 font-black uppercase">Pagamento</p>
-                                            <p class="mt-3 text-10 font-semibold text-gray">Importo da incassare IVA inclusa. Il link Stripe usa il totale dell'ultima proposta salvata.</p>
-                                        </div>
-                                        <p class="text-18 font-black">{{ $selectedLead->payment_amount ? '€ ' . number_format((float) $selectedLead->payment_amount, 2, ',', '.') : '-' }}</p>
-                                    </div>
-                                    <div class="p-12">
-                                    @if ($selectedLead->payment_link)
-                                        <a href="{{ $selectedLead->payment_link }}" target="_blank" class="block truncate rounded-10 border border-gray-mid bg-gray-light px-8 py-6 text-10 font-bold text-bullstar underline-offset-4 hover:underline">Apri link di pagamento ↗</a>
-                                        <div class="mt-8 grid gap-6 sm:grid-cols-2">
-                                        <form method="POST" action="{{ route('admin.leads.stripe-payment-link.whatsapp', $selectedLead) }}">
-                                            @csrf
-                                            <button type="submit" class="w-full rounded-10 border border-whatsapp bg-whatsapp px-10 py-8 text-11 font-extrabold uppercase leading-none tracking-normal text-white transition hover:bg-whatsapp/90">
-                                                Invia su WhatsApp
-                                            </button>
-                                        </form>
-                                        <form method="POST" action="{{ route('admin.leads.stripe-payment-link.email', $selectedLead) }}">
-                                            @csrf
-                                            <button type="submit" @disabled(! $selectedLead->email) class="w-full rounded-10 border border-bullstar bg-bullstar px-10 py-8 text-11 font-extrabold uppercase leading-none tracking-normal text-white transition hover:bg-bullstar-hover disabled:cursor-not-allowed disabled:border-gray-mid disabled:bg-gray">
-                                                Invia via email
-                                            </button>
-                                        </form>
-                                        </div>
-                                    @endif
-                                    <form method="POST" action="{{ route('admin.leads.stripe-payment-link', $selectedLead) }}" class="mt-10">
-                                        @csrf
-                                        <button type="submit" class="w-full rounded-10 bg-bullstar px-16 py-12 text-12 font-extrabold uppercase tracking-normal text-white transition hover:bg-bullstar-hover">
-                                            Crea link Stripe per ultima proposta
-                                        </button>
-                                    </form>
-                                    </div>
-                                </div>
-                            </section>
-
-                            <section x-show="tab === 'main'" x-cloak class="order-4 grid gap-10 lg:col-start-2 lg:row-start-2">
-                                @php
-                                    $hasBillingData = collect([
-                                        $selectedLead->billing_name,
-                                        $selectedLead->billing_email,
-                                        $selectedLead->billing_phone,
-                                        $selectedLead->billing_tax_code,
-                                        $selectedLead->billing_vat_number,
-                                        $selectedLead->billing_recipient_code,
-                                        $selectedLead->billing_pec,
-                                        $selectedLead->billing_address_line1,
-                                        $selectedLead->billing_address_line2,
-                                        $selectedLead->billing_postal_code,
-                                        $selectedLead->billing_city,
-                                        $selectedLead->billing_province,
-                                        $selectedLead->billing_country,
-                                    ])->contains(fn ($value) => filled($value));
-                                    $billingType = match ($selectedLead->billing_customer_type) {
-                                        'company', 'business' => 'Azienda',
-                                        'private', 'individual' => 'Privato',
-                                        default => $selectedLead->billing_customer_type ?: '—',
-                                    };
-                                    $billingAddress = collect([
-                                        $selectedLead->billing_address_line1,
-                                        $selectedLead->billing_address_line2,
-                                        trim(collect([$selectedLead->billing_postal_code, $selectedLead->billing_city])->filter()->join(' ')),
-                                        $selectedLead->billing_province,
-                                        $selectedLead->billing_country,
-                                    ])->filter()->join(', ');
-                                @endphp
-                                <div class="overflow-hidden rounded-10 border border-gray-mid bg-white shadow-sm">
-                                    <div class="flex items-center justify-between gap-8 border-b border-gray-mid bg-gray-light px-12 py-8">
-                                        <div>
-                                            <p class="text-11 font-black uppercase">Dati di fatturazione</p>
-                                            <p class="mt-3 text-10 font-semibold text-gray">Dati salvati direttamente sul lead.</p>
-                                        </div>
-                                        @if ($selectedLead->billing_completed_at)
-                                            <span class="rounded-full bg-whatsapp/10 px-8 py-5 text-9 font-extrabold uppercase text-whatsapp">Completi</span>
-                                        @endif
-                                    </div>
-                                    @if ($hasBillingData)
-                                        <dl class="grid gap-x-10 gap-y-8 p-12 text-11 sm:grid-cols-2">
-                                            <div><dt class="font-extrabold uppercase text-gray">Tipo cliente</dt><dd class="mt-3 font-black">{{ $billingType }}</dd></div>
-                                            <div><dt class="font-extrabold uppercase text-gray">Intestatario</dt><dd class="mt-3 break-words font-black">{{ $selectedLead->billing_name ?: '—' }}</dd></div>
-                                            <div><dt class="font-extrabold uppercase text-gray">Codice fiscale</dt><dd class="mt-3 break-all font-black">{{ $selectedLead->billing_tax_code ?: '—' }}</dd></div>
-                                            <div><dt class="font-extrabold uppercase text-gray">Partita IVA</dt><dd class="mt-3 break-all font-black">{{ $selectedLead->billing_vat_number ?: '—' }}</dd></div>
-                                            <div><dt class="font-extrabold uppercase text-gray">Codice SDI</dt><dd class="mt-3 break-all font-black">{{ $selectedLead->billing_recipient_code ?: '—' }}</dd></div>
-                                            <div><dt class="font-extrabold uppercase text-gray">PEC</dt><dd class="mt-3 break-all font-black">{{ $selectedLead->billing_pec ?: '—' }}</dd></div>
-                                            <div><dt class="font-extrabold uppercase text-gray">Email fatturazione</dt><dd class="mt-3 break-all font-black">{{ $selectedLead->billing_email ?: '—' }}</dd></div>
-                                            <div><dt class="font-extrabold uppercase text-gray">Telefono fatturazione</dt><dd class="mt-3 break-all font-black">{{ $selectedLead->billing_phone ?: '—' }}</dd></div>
-                                            <div class="sm:col-span-2"><dt class="font-extrabold uppercase text-gray">Indirizzo di fatturazione</dt><dd class="mt-3 break-words font-black">{{ $billingAddress ?: '—' }}</dd></div>
-                                        </dl>
-                                    @else
-                                        <div class="p-12 text-11 font-semibold text-gray">Nessun dato di fatturazione ancora salvato per questo lead.</div>
-                                    @endif
-                                </div>
-                                <div class="rounded-10 border border-gray-mid bg-white p-12 shadow-sm">
-                                    <p class="text-11 font-black uppercase">Contatti</p>
-                                    <div class="mt-8 grid gap-5">
-                                        <div class="rounded-10 border border-gray-mid bg-gray-light px-8 py-6"><p class="text-10 font-extrabold uppercase text-gray">Email</p><p class="mt-3 break-all text-12 font-bold">{{ $selectedLead->email ?: 'Email mancante' }}</p></div>
-                                        <div class="rounded-10 border border-gray-mid bg-gray-light px-8 py-6"><p class="text-10 font-extrabold uppercase text-gray">Telefono</p><p class="mt-3 text-12 font-bold">{{ $selectedLead->phone ?: 'Telefono mancante' }}</p></div>
-                                    </div>
-                                </div>
                                 <div class="rounded-10 border border-gray-mid bg-white p-12 shadow-sm">
                                     <p class="text-11 font-black uppercase">Richiesta iniziale</p>
                                     <p class="mt-8 whitespace-pre-line rounded-10 border border-gray-mid bg-gray-light p-10 text-13 font-semibold leading-[20px] text-black-nike">{{ $selectedLead->message ?: 'Nessun messaggio salvato.' }}</p>
                                 </div>
                             </section>
 
-                            <section x-show="tab === 'origin'" x-cloak class="order-6 overflow-hidden rounded-10 border border-gray-mid bg-gray-light shadow-sm lg:col-span-2 lg:row-start-1">
+                            <section x-show="tab === 'origin'" x-cloak class="catalog-surface order-6 bg-gray-light lg:col-span-2 lg:row-start-1">
                                 @php
                                     $landingUrl = $selectedLead->landing_page ?: $selectedLead->entry_page;
                                     $isLandingUrl = $landingUrl && \Illuminate\Support\Str::startsWith($landingUrl, ['http://', 'https://']);
                                     $isReferrerUrl = $selectedLead->referrer && \Illuminate\Support\Str::startsWith($selectedLead->referrer, ['http://', 'https://']);
                                 @endphp
-                                <div class="bg-black-nike px-12 py-12 text-white">
-                                    <p class="text-10 font-extrabold uppercase tracking-wider text-white/60">Origine lead</p>
-                                    <h3 class="mt-4 text-18 font-black">Acquisizione e tracciamento</h3>
-                                    <p class="mt-3 text-10 font-semibold text-white/60">Percorso di ingresso, attribuzione pubblicitaria e dati tecnici.</p>
+                                <div class="catalog-section-heading bg-white">
+                                    <div>
+                                    <p class="catalog-eyebrow">Origine lead</p>
+                                    <h2>Acquisizione e tracciamento</h2>
+                                    <p>Percorso di ingresso, attribuzione pubblicitaria e dati tecnici.</p>
+                                    </div>
                                 </div>
 
                                 <div class="p-12">
@@ -977,4 +869,5 @@
                     @endif
                 </main>
             </section>
+</div>
 @endsection

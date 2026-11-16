@@ -97,11 +97,11 @@
                                 <tr>
                                     <td class="px-12 py-12 text-14 font-semibold">{{ $item->item_code ?: '-' }}</td>
                                     <td class="whitespace-pre-line px-12 py-12 text-14 font-bold">{{ $item->description }}</td>
-                                    <td class="px-12 py-12 text-right text-14 font-semibold">{{ number_format((float) $item->quantity, 2, ',', '.') }}</td>
+                                    <td class="px-12 py-12 text-right text-14 font-semibold">{{ $item->informational && (float) $item->quantity === 0.0 ? '' : number_format((float) $item->quantity, 2, ',', '.') }}</td>
                                     @unless ($document->type === 'delivery_note')
-                                        <td class="px-12 py-12 text-right text-14 font-semibold">€ {{ rtrim(preg_replace('/0{1,2}$/', '', number_format((float) $item->unit_price, 4, ',', '.')), ',') }}</td>
-                                        <td class="px-12 py-12 text-right text-14 font-semibold">{{ number_format((float) $item->vat_rate, 2, ',', '.') }}%</td>
-                                        <td class="px-12 py-12 text-right text-14 font-black">€ {{ number_format((float) $item->line_subtotal, 2, ',', '.') }}</td>
+                                        <td class="px-12 py-12 text-right text-14 font-semibold">@if(! $item->informational || (float) $item->quantity > 0)€ {{ rtrim(preg_replace('/0{1,2}$/', '', number_format((float) $item->unit_price, 4, ',', '.')), ',') }}@endif</td>
+                                        <td class="px-12 py-12 text-right text-14 font-semibold">{{ $item->informational ? '' : number_format((float) $item->vat_rate, 2, ',', '.').'%' }}</td>
+                                        <td class="px-12 py-12 text-right text-14 font-black">@if($item->informational && (float) $item->quantity > 0)€ {{ number_format((float) $item->quantity * (float) $item->unit_price, 2, ',', '.') }}@elseif(! $item->informational)€ {{ number_format((float) $item->line_subtotal, 2, ',', '.') }}@endif</td>
                                     @endunless
                                 </tr>
                             @endforeach
@@ -192,7 +192,7 @@
                     </div>
                     <div class="mt-12 space-y-10">
                         @forelse ($document->paymentSchedules as $payment)
-                            <form method="POST" action="{{ route('admin.documents.payments.update', $document) }}" class="rounded-10 border border-gray-mid bg-gray-light p-12">
+                            <form method="POST" action="{{ route('admin.documents.payments.update', $document) }}" class="rounded-10 border border-gray-mid bg-gray-light p-12" @if($checkoutOrder) data-document-payment-confirm data-payment-type="{{ $checkoutOrder->payment_type }}" data-payment-amount="{{ (float) $payment->amount }}" @endif>
                                 @csrf
                                 @method('PATCH')
                                 <input type="hidden" name="schedule_id" value="{{ $payment->id }}">
@@ -313,4 +313,19 @@
         </aside>
     </section>
     </div>
+@push('scripts')
+<script>
+    const documentPaymentConfirmation = (paymentType) => paymentType === 'balance'
+        ? 'Confermi di segnare il saldo come pagato? L’ordine passerà allo stato Pronto. Non verrà inviata alcuna notifica al cliente.'
+        : 'Confermi di segnare la proforma come pagata? L’ordine passerà automaticamente In produzione e il cliente riceverà una notifica tramite WhatsApp oppure, se non disponibile, tramite e-mail.';
+
+    document.querySelectorAll('[data-document-payment-confirm]').forEach((form) => {
+        form.addEventListener('submit', (event) => {
+            const paidAmount = Number(form.elements.paid_amount?.value || 0);
+            if (paidAmount < Number(form.dataset.paymentAmount || 0)) return;
+            if (! window.confirm(documentPaymentConfirmation(form.dataset.paymentType))) event.preventDefault();
+        });
+    });
+</script>
+@endpush
 @endsection

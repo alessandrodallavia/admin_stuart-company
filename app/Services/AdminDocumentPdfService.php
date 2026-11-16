@@ -33,6 +33,10 @@ class AdminDocumentPdfService
 
     public function filename(AdminDocument $document): string
     {
+        if ($document->type === 'proforma') {
+            return 'Proforma nr. '.($document->number ?: $document->display_code).'.pdf';
+        }
+
         return Str::slug($document->type_label.' '.$document->display_code).'.pdf';
     }
 
@@ -151,21 +155,42 @@ class AdminDocumentPdfService
 
     private function productRows(AdminDocument $document): array
     {
-        return $document->items->map(fn ($item) => $document->type === 'delivery_note' ? [
-            'codice' => $item->item_code ?: '',
-            'descrizione' => $item->description,
-            'um' => 'NR',
-            'qta' => number_format((float) $item->quantity, 2, ',', '.'),
-        ] : [
-            'codice' => $item->item_code ?: '',
-            'descrizione' => $item->description,
-            'um' => 'NR',
-            'qta' => number_format((float) $item->quantity, 2, ',', '.'),
-            'prezzo' => $this->formatUnitPrice($item->unit_price),
-            'sconto' => '',
-            'importo' => number_format((float) $item->line_subtotal, 2, ',', '.'),
-            'ci' => number_format((float) $item->vat_rate, 0),
-        ])->all();
+        return $document->items->map(function ($item) use ($document) {
+            if ($document->type === 'delivery_note') {
+                return [
+                    'codice' => $item->item_code ?: '',
+                    'descrizione' => $item->description,
+                    'um' => 'NR',
+                    'qta' => number_format((float) $item->quantity, 2, ',', '.'),
+                ];
+            }
+
+            if ($item->informational) {
+                return [
+                    'codice' => $item->item_code ?: '',
+                    'descrizione' => $item->description,
+                    'um' => (float) $item->quantity > 0 ? 'NR' : '',
+                    'qta' => (float) $item->quantity > 0 ? number_format((float) $item->quantity, 2, ',', '.') : '',
+                    'prezzo' => (float) $item->quantity > 0 ? $this->formatUnitPrice($item->unit_price) : '',
+                    'sconto' => '',
+                    'importo' => (float) $item->quantity > 0
+                        ? number_format(round((float) $item->quantity * (float) $item->unit_price, 2, PHP_ROUND_HALF_UP), 2, ',', '.')
+                        : '',
+                    'ci' => '',
+                ];
+            }
+
+            return [
+                'codice' => $item->item_code ?: '',
+                'descrizione' => $item->description,
+                'um' => 'NR',
+                'qta' => number_format((float) $item->quantity, 2, ',', '.'),
+                'prezzo' => $this->formatUnitPrice($item->unit_price),
+                'sconto' => '',
+                'importo' => number_format((float) $item->line_subtotal, 2, ',', '.'),
+                'ci' => number_format((float) $item->vat_rate, 0),
+            ];
+        })->all();
     }
 
     private function columns(AdminDocument $document): array
@@ -224,6 +249,7 @@ class AdminDocumentPdfService
     private function vatSummaries(AdminDocument $document): Collection
     {
         return $document->items
+            ->reject(fn ($item) => $item->informational)
             ->groupBy(fn ($item) => (string) $item->vat_rate)
             ->map(function ($items, $vatRate) {
                 $taxableAmount = round((float) $items->sum('line_subtotal'), 2, PHP_ROUND_HALF_UP);

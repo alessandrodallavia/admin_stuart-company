@@ -23,6 +23,11 @@ class LeadOrderCheckout extends Model
         'vat_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
         'details_completed_at' => 'datetime',
+        'paid_at' => 'datetime',
+        'expires_at' => 'datetime',
+        'invalidated_at' => 'datetime',
+        'revoked_at' => 'datetime',
+        'fulfilled_at' => 'datetime',
     ];
 
     public function lead(): BelongsTo
@@ -38,5 +43,39 @@ class LeadOrderCheckout extends Model
     public function salesSheet(): BelongsTo
     {
         return $this->belongsTo(LeadSalesSheet::class, 'lead_sales_sheet_id');
+    }
+
+    public function proforma(): BelongsTo
+    {
+        return $this->belongsTo(AdminDocument::class, 'admin_document_id');
+    }
+
+    public static function synchronizeOrderStatusForSheet(int $salesSheetId): void
+    {
+        $checkouts = self::query()
+            ->where('lead_sales_sheet_id', $salesSheetId)
+            ->whereNotIn('status', ['invalidated', 'expired', 'revoked'])
+            ->with('proforma')
+            ->get();
+        $payments = $checkouts->whereNotNull('details_completed_at');
+
+        if ($payments->isEmpty()) {
+            return;
+        }
+
+        $currentStatus = $checkouts->pluck('order_status')->first();
+        if (in_array($currentStatus, ['in_production', 'balance_pending', 'ready', 'shipped', 'cancelled'], true)) {
+            return;
+        }
+
+        $status = match (true) {
+            $payments->contains(fn (self $payment) => ! $payment->proforma || $payment->proforma->status !== 'sent') => 'proforma_pending',
+            $payments->contains(fn (self $payment) => $payment->status === 'paid') => 'paid',
+            default => 'payment_pending',
+        };
+
+        self::query()
+            ->where('lead_sales_sheet_id', $salesSheetId)
+            ->update(['order_status' => $status]);
     }
 }

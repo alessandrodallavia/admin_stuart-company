@@ -136,6 +136,33 @@ class AdminDocument extends Model
     protected static function booted(): void
     {
         static::deleting(function (AdminDocument $document) {
+            $checkoutQuery = LeadOrderCheckout::query()->where('admin_document_id', $document->id);
+            $linkedCheckouts = $checkoutQuery->get(['id', 'lead_sales_sheet_id', 'payment_type']);
+            $checkoutIds = $linkedCheckouts->pluck('id');
+            $salesSheetIds = $linkedCheckouts->pluck('lead_sales_sheet_id');
+            $isBalanceProforma = $linkedCheckouts->contains('payment_type', 'balance');
+            $checkoutQuery->update(['admin_document_id' => null]);
+
+            LeadOrderCheckout::query()
+                ->whereIn('id', $checkoutIds)
+                ->where('status', 'paid')
+                ->update(['status' => 'bank_transfer_pending']);
+
+            if ($isBalanceProforma) {
+                LeadOrderCheckout::query()
+                    ->whereIn('lead_sales_sheet_id', $salesSheetIds)
+                    ->whereNotIn('order_status', ['shipped', 'cancelled'])
+                    ->update(['order_status' => 'balance_pending']);
+            } else {
+                LeadOrderCheckout::query()
+                    ->whereIn('lead_sales_sheet_id', $salesSheetIds)
+                    ->update(['order_status' => 'proforma_pending']);
+
+                foreach ($salesSheetIds->unique() as $salesSheetId) {
+                    LeadOrderCheckout::synchronizeOrderStatusForSheet((int) $salesSheetId);
+                }
+            }
+
             $type = $document->currentDocumentType();
 
             DocumentRelation::where(function ($query) use ($document, $type) {

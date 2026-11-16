@@ -78,6 +78,17 @@
                         'route' => route('admin.leads.index'),
                         'active' => $activeNav === 'leads',
                     ] : null,
+                    $adminUser?->hasAdminPermission('leads.view') ? [
+                        'label' => 'Ordini checkout',
+                        'route' => route('admin.checkout-orders.index'),
+                        'active' => $activeNav === 'checkout-orders',
+                        'badge' => \App\Models\LeadOrderCheckout::query()
+                            ->whereNotNull('details_completed_at')
+                            ->whereNotIn('status', ['invalidated', 'expired', 'revoked'])
+                            ->where('order_status', 'proforma_pending')
+                            ->distinct()
+                            ->count('lead_sales_sheet_id'),
+                    ] : null,
                     $adminUser?->hasAdminPermission('email.view') ? [
                         'label' => 'Email',
                         'route' => route('admin.email.index'),
@@ -339,6 +350,11 @@
             @if (session('status'))
                 <div class="mb-16 rounded-10 border border-whatsapp/20 bg-whatsapp/10 px-16 py-12 text-14 font-bold text-whatsapp">
                     {{ session('status') }}
+                </div>
+            @endif
+            @if (session('notification_warning'))
+                <div class="mb-16 rounded-10 border border-amber-200 bg-amber-50 px-16 py-12 text-14 font-bold text-amber-800">
+                    {{ session('notification_warning') }}
                 </div>
             @endif
 
