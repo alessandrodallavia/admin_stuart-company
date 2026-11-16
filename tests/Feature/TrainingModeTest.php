@@ -396,7 +396,7 @@ class TrainingModeTest extends TestCase
         ), 'handle']);
 
         Http::assertSent(function ($request): bool {
-            return str_contains($request['text']['body'], 'ordine minimo 15 pezzi')
+            return str_contains($request['text']['body'], 'ordine minimo € 150')
                 && ! str_contains($request['text']['body'], 'grafiche caricate');
         });
 
@@ -438,7 +438,7 @@ class TrainingModeTest extends TestCase
         ), 'handle']);
 
         Http::assertSent(function ($request): bool {
-            return str_contains($request['text']['body'], 'ordine minimo 10 pezzi')
+            return str_contains($request['text']['body'], 'ordine minimo € 150')
                 && ! str_contains($request['text']['body'], 'Perfetto, ho ricevuto la sua richiesta.')
                 && ! str_contains($request['text']['body'], 'grafiche caricate');
         });

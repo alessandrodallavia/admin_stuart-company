@@ -53,12 +53,12 @@ class MessageTemplatesTest extends TestCase
     {
         foreach (['10:00:00', '19:00:00'] as $time) {
             Carbon::setTestNow('2026-10-05 '.$time);
-            $this->assertStringContainsString('ordine minimo 10 pezzi', MessageTemplates::initialReply(false, false, true));
+            $this->assertStringContainsString('ordine minimo € 150', MessageTemplates::initialReply(false, false, true));
             $this->assertStringContainsString('quale modello preferisce (cappuccio, girocollo o zip)', MessageTemplates::initialReply(false, false, true));
             $this->assertStringNotContainsString('per quale utilizzo', MessageTemplates::initialReply(false, false, true));
             $this->assertStringContainsString('per quale utilizzo sono destinati i capi', MessageTemplates::initialReply(false));
             $this->assertStringNotContainsString('quale modello preferisce', MessageTemplates::initialReply(false));
-            $this->assertStringContainsString('ordine minimo 15 pezzi', MessageTemplates::initialReply(false));
+            $this->assertStringContainsString('ordine minimo € 150', MessageTemplates::initialReply(false));
             $this->assertStringContainsString('colore della felpa', MessageTemplates::initialReply(true, false, true));
             $this->assertStringContainsString('colore della t-shirt', MessageTemplates::initialReply(true));
             $this->assertStringContainsString('grafiche caricate', MessageTemplates::initialReply(true, true, true));
