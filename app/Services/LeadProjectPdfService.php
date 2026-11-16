@@ -91,6 +91,11 @@ class LeadProjectPdfService
         return $this->roundMoney($grossUnitPrice / (1 + self::VAT_RATE / 100));
     }
 
+    public function grossFromNet(float $net): float
+    {
+        return $this->roundMoney($net * (1 + self::VAT_RATE / 100));
+    }
+
     public function roundMoney(float $value): float
     {
         return round(round($value, 3, PHP_ROUND_HALF_UP), 2, PHP_ROUND_HALF_UP);
@@ -206,7 +211,7 @@ class LeadProjectPdfService
 
         $items = collect($sheet?->items ?? []);
         if ($items->count() > 1) {
-            $this->drawProductsWithMockups($pdf, $lead, $items, $mockups, $proposal->project_notes, $subtotal, $vat, $amount, $blue, $black, $muted, $surface, $line, $money);
+            $this->drawProductsWithMockups($pdf, $lead, $items, $mockups, $proposal->project_notes, $subtotal, $vat, $amount, (bool) ($sheet?->prices_include_vat ?? true), $blue, $black, $muted, $surface, $line, $money);
 
             return;
         }
@@ -241,11 +246,12 @@ class LeadProjectPdfService
         $sizeChart = $this->itemSizeChart($item);
         $product = $item?->configuration_name ?: $item?->product_name ?: $lead->product ?: $lead->calculator_model ?: 'Progetto personalizzato';
         $quantity = (float) ($item?->quantity ?: $lead->quantity ?: $lead->calculator_quantity ?: 1);
+        $pricesIncludeVat = (bool) ($sheet?->prices_include_vat ?? true);
         $unitPrice = $item
-            ? $this->roundMoney((float) $item->final_unit_price)
+            ? $this->netStoredPrice((float) $item->final_unit_price, $pricesIncludeVat)
             : ($quantity > 0 ? round($subtotal / $quantity, 2) : 0);
         $lineTotal = $item
-            ? $this->roundMoney((float) $item->revenue_total)
+            ? $this->netStoredPrice((float) $item->revenue_total, $pricesIncludeVat)
             : $subtotal;
         $colors = collect($item?->colors)->filter()->join(', ') ?: ($lead->live_mockup_color ?: '-');
         $prints = $item?->prints?->pluck('print_name')->filter()->join(', ') ?: 'Personalizzazione inclusa';
@@ -354,7 +360,7 @@ class LeadProjectPdfService
         }
     }
 
-    private function drawProductsWithMockups(TCPDF $pdf, Lead $lead, $items, array $legacyMockups, ?string $notes, float $subtotal, float $vat, float $amount, array $blue, array $black, array $muted, array $surface, array $line, callable $money): void
+    private function drawProductsWithMockups(TCPDF $pdf, Lead $lead, $items, array $legacyMockups, ?string $notes, float $subtotal, float $vat, float $amount, bool $pricesIncludeVat, array $blue, array $black, array $muted, array $surface, array $line, callable $money): void
     {
         $x = 15.0;
         $width = 180.0;
@@ -371,8 +377,8 @@ class LeadProjectPdfService
             $y += 7;
             $product = $item->configuration_name ?: $item->product_name ?: 'Prodotto personalizzato';
             $quantity = (float) ($item->quantity ?: 1);
-            $unitPrice = $this->roundMoney((float) $item->final_unit_price);
-            $lineTotal = $this->roundMoney((float) $item->revenue_total);
+            $unitPrice = $this->netStoredPrice((float) $item->final_unit_price, $pricesIncludeVat);
+            $lineTotal = $this->netStoredPrice((float) $item->revenue_total, $pricesIncludeVat);
             $colors = collect($item->colors)->filter()->join(', ') ?: ($lead->live_mockup_color ?: '-');
             $prints = $item->prints?->pluck('print_name')->filter()->join(', ') ?: 'Personalizzazione inclusa';
 
@@ -539,6 +545,11 @@ class LeadProjectPdfService
             }
             $this->drawNotesSection($pdf, (string) $notes, $notesY, $blue, $black, $muted, $surface, $line);
         }
+    }
+
+    private function netStoredPrice(float $value, bool $includesVat): float
+    {
+        return $includesVat ? $this->netUnitPrice($value) : $this->roundMoney($value);
     }
 
     private function drawConfirmation(TCPDF $pdf, Lead $lead, float $subtotal, float $vat, float $amount, float $y, array $blue, array $black, array $muted, array $surface, array $line, callable $money): float

@@ -4,6 +4,7 @@
     $items = $oldItems ?: ($document->exists ? $document->items->map(fn ($item) => [
         'item_code' => $item->item_code,
         'description' => $item->description,
+        'informational' => $item->informational,
         'quantity' => $item->quantity,
         'unit_price' => $item->unit_price,
         'vat_rate' => $item->vat_rate,
@@ -51,7 +52,7 @@
     }
 @endphp
 
-<form method="POST" action="{{ $document->exists ? route('admin.documents.update', $document) : route('admin.documents.store') }}" class="space-y-24 font-montserrat" data-document-form>
+<form method="POST" action="{{ $document->exists ? route('admin.documents.update', $document) : route('admin.documents.store') }}" class="space-y-24 font-montserrat" data-document-form data-checkout-proforma="{{ isset($checkoutOrder) && $checkoutOrder ? '1' : '0' }}" data-initial-status="{{ $document->status }}">
     @csrf
     @if ($document->exists)
         @method('PATCH')
@@ -244,6 +245,7 @@
                     @foreach ($items as $index => $item)
                         <tr>
                             <td class="px-8 py-8 align-top">
+                                <input type="hidden" name="items[{{ $index }}][informational]" value="{{ ! empty($item['informational']) ? 1 : 0 }}">
                                 <button type="button" draggable="true" data-drag-item-row class="flex h-50 w-32 cursor-move flex-col items-center justify-center gap-4 rounded-10 border border-gray-mid hover:border-black-nike" title="Trascina riga" aria-label="Trascina riga">
                                     <span class="block h-px w-16 bg-black-nike"></span>
                                     <span class="block h-px w-16 bg-black-nike"></span>
@@ -498,6 +500,14 @@
         const money = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' });
         let lastSyncedSinglePayment = null;
 
+        form?.addEventListener('submit', (event) => {
+            const status = form.querySelector('[data-document-status]')?.value;
+            if (form.dataset.checkoutProforma === '1' && form.dataset.initialStatus !== 'sent' && status === 'sent') {
+                const confirmed = window.confirm('Confermi di impostare la proforma come inviata? La proforma verrà inviata automaticamente al cliente tramite WhatsApp oppure, se non disponibile, tramite e-mail.');
+                if (! confirmed) event.preventDefault();
+            }
+        });
+
         const updateUnitPriceMode = () => {
             document.querySelectorAll('[data-unit-price-label]').forEach((label) => {
                 label.textContent = pricesIncludeVat?.checked ? 'Prezzo ivato' : 'Prezzo netto';
@@ -566,9 +576,12 @@
                     ? roundMoney(enteredUnitPrice / (1 + vatRate / 100))
                     : enteredUnitPrice;
                 const lineSubtotal = roundMoney(quantity * unitPrice);
+                const informational = row.querySelector('input[name$="[informational]"]')?.value === '1';
 
-                subtotal += lineSubtotal;
-                taxableByVatRate.set(vatRate, roundMoney((taxableByVatRate.get(vatRate) || 0) + lineSubtotal));
+                if (! informational) {
+                    subtotal += lineSubtotal;
+                    taxableByVatRate.set(vatRate, roundMoney((taxableByVatRate.get(vatRate) || 0) + lineSubtotal));
+                }
 
                 const lineTotalElement = row.querySelector('[data-line-total]');
                 if (lineTotalElement) {

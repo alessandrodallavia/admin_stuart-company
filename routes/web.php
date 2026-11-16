@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\CrmCatalogController as AdminCrmCatalogController
 use App\Http\Controllers\Admin\CrmCatalogDirectoryController;
 use App\Http\Controllers\Admin\CrmProductMockupController;
 use App\Http\Controllers\Admin\CrmProductPersonalizationController;
+use App\Http\Controllers\Admin\CheckoutOrderController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\DocumentController as AdminDocumentController;
 use App\Http\Controllers\Admin\EmailController as AdminEmailController;
@@ -57,6 +58,8 @@ Route::name('admin.')->group(function () {
         });
 
         Route::middleware('admin.permission:leads.view')->group(function () {
+            Route::get('/checkout-orders', [CheckoutOrderController::class, 'index'])->name('checkout-orders.index');
+            Route::get('/checkout-orders/{checkout}', [CheckoutOrderController::class, 'show'])->name('checkout-orders.show');
             Route::get('/', AdminDashboardController::class)->name('dashboard');
             Route::get('/leads/export.csv', [AdminLeadController::class, 'exportCsv'])->name('leads.export');
             Route::get('/leads/board', [AdminLeadController::class, 'board'])->name('leads.board');
@@ -68,16 +71,21 @@ Route::name('admin.')->group(function () {
         });
 
         Route::middleware('admin.permission:leads.manage')->group(function () {
+            Route::post('/checkout-orders/{checkout}/balance', [CheckoutOrderController::class, 'storeBalance'])->name('checkout-orders.balance.store');
+            Route::post('/checkout-orders/{checkout}/balance/proforma', [CheckoutOrderController::class, 'storeBalanceProforma'])->name('checkout-orders.balance.proforma.store');
+            Route::patch('/checkout-orders/{checkout}/status', [CheckoutOrderController::class, 'updateStatus'])->name('checkout-orders.status.update');
+            Route::patch('/checkout-orders/{checkout}/fulfillment', [CheckoutOrderController::class, 'updateFulfillment'])->name('checkout-orders.fulfillment.update');
+            Route::patch('/checkout-orders/{checkout}/items/{item}/variants', [CheckoutOrderController::class, 'updateItemVariants'])->name('checkout-orders.items.variants.update');
             Route::post('/leads', [AdminLeadController::class, 'store'])->name('leads.store');
             Route::post('/leads/{lead}/orders', [AdminLeadSalesSheetController::class, 'storeOrder'])->name('leads.orders.store');
             Route::post('/leads/{lead}/orders/{sheet}/proposal', [AdminLeadSalesSheetController::class, 'storeProposal'])->name('leads.orders.proposal.store');
+            Route::post('/leads/{lead}/orders/{sheet}/checkout', [AdminLeadSalesSheetController::class, 'storeCheckout'])->name('leads.orders.checkout.store');
+            Route::patch('/leads/{lead}/orders/{sheet}/checkout/{checkout}/revoke', [AdminLeadSalesSheetController::class, 'revokeCheckout'])->name('leads.orders.checkout.revoke');
             Route::delete('/leads/{lead}/orders/{sheet}', [AdminLeadSalesSheetController::class, 'destroyOrder'])->name('leads.orders.destroy');
             Route::patch('/leads/{lead}', [AdminLeadController::class, 'update'])->name('leads.update');
             Route::post('/leads/{lead}/quote-pdfs', [AdminLeadController::class, 'storeQuotePdfs'])->name('leads.quote-pdfs.store');
             Route::delete('/leads/{lead}/quote-pdfs/{quotePdf}', [AdminLeadController::class, 'destroyQuotePdf'])->name('leads.quote-pdfs.destroy');
             Route::post('/leads/{lead}/quote-pdfs/{quotePdf}/whatsapp', [AdminLeadController::class, 'sendQuotePdfWhatsapp'])->name('leads.quote-pdfs.whatsapp');
-            Route::post('/leads/{lead}/stripe-payment-link', [AdminLeadController::class, 'createStripePaymentLink'])->name('leads.stripe-payment-link');
-            Route::post('/leads/{lead}/stripe-payment-link/whatsapp', [AdminLeadController::class, 'sendStripePaymentLinkWhatsapp'])->name('leads.stripe-payment-link.whatsapp');
             Route::post('/leads/{lead}/sales-sheet/items', [AdminLeadSalesSheetController::class, 'storeItem'])->name('leads.sales-items.store');
             Route::delete('/leads/{lead}/sales-sheet/items/{item}', [AdminLeadSalesSheetController::class, 'destroyItem'])->name('leads.sales-items.destroy');
             Route::post('/leads/{lead}/sales-sheet/items/{item}/prints', [AdminLeadSalesSheetController::class, 'storePrint'])->name('leads.sales-items.prints.store');
@@ -86,7 +94,6 @@ Route::name('admin.')->group(function () {
 
         Route::middleware(['admin.permission:leads.manage', 'admin.permission:email.manage'])->group(function () {
             Route::post('/leads/{lead}/quote-pdfs/{quotePdf}/email', [AdminLeadController::class, 'sendQuotePdfEmail'])->name('leads.quote-pdfs.email');
-            Route::post('/leads/{lead}/stripe-payment-link/email', [AdminLeadController::class, 'sendStripePaymentLinkEmail'])->name('leads.stripe-payment-link.email');
         });
 
         Route::middleware('admin.permission:email.view')->group(function () {
@@ -116,6 +123,8 @@ Route::name('admin.')->group(function () {
         });
 
         Route::middleware(['admin.permission:documents.manage', 'admin.training.blocked'])->group(function () {
+            Route::post('/checkout-orders/{checkout}/proforma', [CheckoutOrderController::class, 'storeProforma'])->name('checkout-orders.proforma.store');
+            Route::patch('/checkout-orders/{checkout}/payment', [CheckoutOrderController::class, 'markPaid'])->name('checkout-orders.payment.paid');
             Route::post('/documents', [AdminDocumentController::class, 'store'])->name('documents.store');
             Route::patch('/documents/{document}', [AdminDocumentController::class, 'update'])->name('documents.update');
             Route::delete('/documents/{document}', [AdminDocumentController::class, 'destroy'])->name('documents.destroy');

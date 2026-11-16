@@ -9,7 +9,9 @@ use App\Models\Lead;
 use App\Models\LeadSalesItem;
 use App\Models\LeadSalesItemPrint;
 use App\Models\LeadSalesSheet;
+use App\Models\LeadOrderCheckout;
 use App\Services\LeadConversionTrackingService;
+use App\Services\LeadOrderCheckoutService;
 use App\Services\LeadProjectPdfService;
 use App\Services\LeadSalesSheetService;
 use Illuminate\Http\RedirectResponse;
@@ -19,6 +21,46 @@ use Illuminate\Validation\Rule;
 
 class LeadSalesSheetController extends Controller
 {
+    public function storeCheckout(
+        Request $request,
+        Lead $lead,
+        LeadSalesSheet $sheet,
+        LeadOrderCheckoutService $checkoutService,
+    ): RedirectResponse {
+        abort_unless($sheet->lead_id === $lead->id, 404);
+
+        $data = $request->validate([
+            'payment_type' => ['required', Rule::in(['full', 'deposit', 'balance'])],
+            'deposit_amount' => ['required_if:payment_type,deposit', 'nullable', 'numeric', 'min:0.01'],
+            'expires_at' => ['required', 'date', 'after:today', 'before_or_equal:'.now()->addDays(90)->toDateString()],
+        ]);
+
+        $checkout = $checkoutService->createForOrder(
+            $sheet,
+            $data['payment_type'],
+            isset($data['deposit_amount']) ? (float) $data['deposit_amount'] : null,
+            $data['expires_at'],
+        );
+
+        return redirect()->to(route('admin.leads.index', [
+            'lead' => $lead,
+            'sales_sheet' => $sheet->id,
+        ]).'#product')->with('status', 'Checkout pronto: '.$checkoutService->publicUrl($checkout));
+    }
+
+    public function revokeCheckout(Lead $lead, LeadSalesSheet $sheet, LeadOrderCheckout $checkout): RedirectResponse
+    {
+        abort_unless($sheet->lead_id === $lead->id && $checkout->lead_sales_sheet_id === $sheet->id, 404);
+        abort_if($checkout->status === 'paid', 422, 'Un checkout pagato non può essere revocato.');
+
+        $checkout->forceFill(['status' => 'revoked', 'revoked_at' => now()])->save();
+
+        return redirect()->to(route('admin.leads.index', [
+            'lead' => $lead,
+            'sales_sheet' => $sheet->id,
+        ]).'#product')->with('status', 'Checkout revocato. Il vecchio link non è più valido.');
+    }
+
     public function storeProposal(
         Request $request,
         Lead $lead,
@@ -71,7 +113,8 @@ class LeadSalesSheetController extends Controller
         $sheet = $lead->salesSheets()->create([
             'name' => trim($data['name']),
             'status' => 'draft',
-            'shipping_fee' => 9.90,
+            'prices_include_vat' => false,
+            'shipping_fee' => 8.12,
             'free_shipping_threshold' => 250,
             'revenue_total' => 0,
             'cost_total' => 0,
@@ -88,13 +131,20 @@ class LeadSalesSheetController extends Controller
     {
         abort_unless($sheet->lead_id === $lead->id, 404);
 
-        $sheet->load('items.attachments');
+        $sheet->load(['items.attachments', 'checkouts.proforma']);
         foreach ($sheet->items->flatMap->attachments as $attachment) {
             Storage::disk($attachment->disk)->delete($attachment->path);
         }
         foreach ($sheet->items->pluck('size_chart_path')->filter() as $sizeChartPath) {
             Storage::disk('local')->delete($sizeChartPath);
         }
+
+        $sheet->checkouts
+            ->pluck('proforma')
+            ->filter()
+            ->unique('id')
+            ->each->delete();
+        $sheet->checkouts()->delete();
 
         $sheet->delete();
         $remainingSheet = $lead->salesSheets()->first();
@@ -117,7 +167,7 @@ class LeadSalesSheetController extends Controller
         if (! $tier) {
             return back()->withErrors(['quantity' => 'Nessuna fascia prezzo configurata per questa quantità.']);
         }
-        $sheet = $lead->salesSheet()->firstOrCreate([], ['revenue_total' => 0, 'cost_total' => 0, 'margin_total' => 0, 'margin_percentage' => 0]);
+        $sheet = $lead->salesSheet()->firstOrCreate([], ['prices_include_vat' => false, 'revenue_total' => 0, 'cost_total' => 0, 'margin_total' => 0, 'margin_percentage' => 0]);
         $sheet->items()->create(['crm_product_id' => $product->id, 'product_code' => $product->code, 'product_name' => $product->name, 'configuration_name' => filled($data['configuration_name'] ?? null) ? trim($data['configuration_name']) : null, 'quantity' => $data['quantity'], 'product_unit_cost' => $product->unit_cost, 'product_unit_price' => $tier->unit_price]);
         $calculator->recalculate($sheet);
 

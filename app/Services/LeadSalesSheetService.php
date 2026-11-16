@@ -15,7 +15,11 @@ class LeadSalesSheetService
             $pricingQuantity = (float) $groupItems->sum('quantity');
             $productTier = $item->crmProduct ? $this->tier($item->crmProduct->priceTiers, $pricingQuantity) : null;
 
-            if ($productTier) {
+            // Gli ordini storici conservano i valori già copiati al momento
+            // della vendita; solo i nuovi ordini netti seguono il catalogo.
+            $syncCatalogValues = ! (bool) ($sheet->prices_include_vat ?? true);
+
+            if ($productTier && $syncCatalogValues) {
                 $item->forceFill([
                     'product_unit_cost' => $productTier->unit_cost ?? $item->crmProduct->unit_cost,
                     'product_unit_price' => $productTier->unit_price,
@@ -28,7 +32,7 @@ class LeadSalesSheetService
                     ->sum('quantity');
                 $printTier = $print->printType ? $this->tier($print->printType->priceTiers, $printQuantity) : null;
 
-                if ($printTier) {
+                if ($printTier && $syncCatalogValues) {
                     $print->forceFill(['unit_cost' => $printTier->unit_cost, 'unit_price' => $printTier->unit_price])->save();
                 }
             }

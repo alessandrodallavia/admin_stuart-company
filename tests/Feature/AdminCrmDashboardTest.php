@@ -9,11 +9,14 @@ use App\Models\CrmPrintType;
 use App\Models\CrmProduct;
 use App\Models\EmailAccount;
 use App\Models\Lead;
+use App\Models\LeadOrderCheckout;
 use App\Models\LeadCategory;
 use App\Models\WhatsappConversation;
 use App\Models\WhatsappMessage;
 use App\Services\GoogleAdsReportingService;
+use App\Services\CheckoutOrderCustomerNotificationService;
 use App\Services\LeadOrderPackageService;
+use App\Services\LeadSalesItemVariantService;
 use App\Services\LeadSalesSheetService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -26,6 +29,50 @@ use Tests\TestCase;
 class AdminCrmDashboardTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_color_and_size_distribution_updates_completed_checkout_without_changing_totals(): void
+    {
+        $lead = $this->lead(['name' => 'Cliente varianti']);
+        $product = CrmProduct::create(['code' => 'TS-VAR', 'name' => 'T-shirt varianti', 'unit_cost' => 2, 'is_active' => true]);
+        $black = $product->colors()->create(['code' => 'BLACK', 'name' => 'Nero', 'sort_order' => 1]);
+        $small = $product->sizes()->create(['name' => 'S', 'sort_order' => 1]);
+        $medium = $product->sizes()->create(['name' => 'M', 'sort_order' => 2]);
+        $sheet = $lead->salesSheets()->create(['order_number' => 'ORD-00999', 'name' => 'Ordine varianti', 'status' => 'draft']);
+        $item = $sheet->items()->create([
+            'crm_product_id' => $product->id, 'product_code' => $product->code, 'product_name' => $product->name,
+            'quantity' => 10, 'product_unit_cost' => 2, 'product_unit_price' => 5, 'final_unit_price' => 5,
+            'revenue_total' => 50, 'cost_total' => 20, 'margin_total' => 30,
+        ]);
+        $checkout = LeadOrderCheckout::create([
+            'lead_id' => $lead->id, 'lead_sales_sheet_id' => $sheet->id, 'token' => str_repeat('v', 64),
+            'proposal_number' => 'ORD-00999', 'order_number' => 'ORD-00999', 'status' => 'bank_transfer_pending',
+            'order_status' => 'proforma_pending', 'payment_type' => 'full', 'payment_label' => 'Pagamento completo',
+            'currency' => 'EUR', 'items' => [[
+                'sales_item_id' => $item->id, 'code' => 'TS-VAR', 'name' => 'T-shirt varianti', 'details' => '',
+                'quantity' => 10, 'unit_price' => 5, 'line_total' => 50, 'variants' => [],
+            ]], 'product_subtotal' => 50, 'order_taxable_amount' => 50, 'order_total_amount' => 61,
+            'taxable_amount' => 50, 'total_amount' => 61,
+        ]);
+
+        app(LeadSalesItemVariantService::class)->save($item, [
+            $black->id => [$small->id => 4, $medium->id => 6],
+        ]);
+
+        $this->assertDatabaseHas('lead_sales_item_variants', ['lead_sales_item_id' => $item->id, 'color_name' => 'Nero', 'size_name' => 'S', 'quantity' => 4]);
+        $this->assertSame('bank_transfer_pending', $checkout->fresh()->status);
+        $this->assertSame('61.00', $checkout->fresh()->total_amount);
+        $this->assertNotNull($checkout->fresh()->order_snapshot_hash);
+        $this->assertSame('Nero — S/4, M/6', $checkout->fresh()->items[0]['details']);
+        $this->assertSame("col. Nero tg. S/4, M/6", \App\Support\OrderItemVariantFormatter::proformaDetails($checkout->fresh()->items[0]));
+        $this->assertSame("col. Black tg. S/10, M/10\ncol. White tg. L/5", \App\Support\OrderItemVariantFormatter::proformaDetails([
+            'variants' => [
+                ['color' => 'Black', 'size' => 'S', 'quantity' => 10],
+                ['color' => 'Black', 'size' => 'M', 'quantity' => 10],
+                ['color' => 'White', 'size' => 'L', 'quantity' => 5],
+            ],
+        ]));
+        $this->assertCount(2, $checkout->fresh()->items[0]['variants']);
+    }
 
     public function test_dashboard_is_the_admin_home_and_shows_crm_metrics(): void
     {
@@ -387,7 +434,7 @@ class AdminCrmDashboardTest extends TestCase
         $this->assertNull($lead->fresh()->acquisition_region);
     }
 
-    public function test_lead_page_shows_stored_billing_data(): void
+    public function test_lead_page_does_not_duplicate_checkout_billing_data(): void
     {
         $lead = $this->lead([
             'billing_customer_type' => 'company',
@@ -410,13 +457,9 @@ class AdminCrmDashboardTest extends TestCase
         $this->actingAs($this->owner(), 'admin')
             ->get(route('admin.leads.index', ['lead' => $lead]))
             ->assertOk()
-            ->assertSee('Dati di fatturazione')
-            ->assertSee('Stuart Cliente Srl')
-            ->assertSee('IT01234567890')
-            ->assertSee('ABC1234')
-            ->assertSee('cliente@pec.test')
-            ->assertSee('Via Roma 10')
-            ->assertSee('35100 Padova');
+            ->assertDontSee('Dati di fatturazione')
+            ->assertDontSee('IT01234567890')
+            ->assertDontSee('cliente@pec.test');
     }
 
     public function test_admin_generates_a_proposal_from_the_selected_order_with_product_mockups(): void
@@ -436,6 +479,7 @@ class AdminCrmDashboardTest extends TestCase
             $item = $sheet->items()->create([
                 'product_code' => 'DEMO-'.($index + 1),
                 'product_name' => $name,
+                'configuration_name' => $index === 0 ? 'Maglia BS052' : null,
                 'quantity' => $quantity,
                 'product_unit_cost' => 5,
                 'product_unit_price' => $index === 0 ? 9.50 : 16.55,
@@ -443,6 +487,14 @@ class AdminCrmDashboardTest extends TestCase
                 'revenue_total' => $index === 0 ? 380 : 132.40,
                 'colors' => [$index === 0 ? 'Nero' : 'Blu'],
             ]);
+            if ($index === 0) {
+                $item->prints()->create([
+                    'print_code' => 'CUORE DTF',
+                    'print_name' => 'Lato Cuore DTF',
+                    'unit_cost' => 0,
+                    'unit_price' => 0,
+                ]);
+            }
             foreach (['front', 'back'] as $side) {
                 $file = UploadedFile::fake()->image("{$index}-{$side}.png", 800, 600);
                 $path = $file->store("lead-orders/{$lead->id}/items/{$item->id}/mockups", 'local');
@@ -472,20 +524,213 @@ class AdminCrmDashboardTest extends TestCase
         Storage::disk('local')->assertExists($proposal->path);
         $this->assertStringStartsWith('%PDF-', Storage::disk('local')->get($proposal->path));
 
-        config()->set('services.stripe.secret_key', 'sk_test_vat');
-        config()->set('services.stripe.currency', 'eur');
-        Http::preventStrayRequests();
-        Http::fake([
-            'https://api.stripe.com/v1/customers' => Http::response(['id' => 'cus_vat']),
-            'https://api.stripe.com/v1/checkout/sessions' => Http::response([
-                'id' => 'cs_test_vat', 'url' => 'https://checkout.stripe.test/vat',
-            ]),
+        $proposal->delete();
+
+        $this->post(route('admin.leads.orders.checkout.store', [$lead, $sheet]), [
+            'payment_type' => 'deposit',
+            'deposit_amount' => 100,
+            'expires_at' => now()->addDays(7)->toDateString(),
+        ])
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('status');
+
+        $deposit = $sheet->fresh()->checkouts()->firstOrFail();
+        $this->assertSame(64, strlen($deposit->token));
+        $this->assertNull($deposit->lead_quote_pdf_id);
+        $this->assertSame('deposit', $deposit->payment_type);
+        $this->assertSame('81.97', $deposit->taxable_amount);
+        $this->assertSame('18.03', $deposit->vat_amount);
+        $this->assertSame('100.00', $deposit->total_amount);
+        $this->assertSame('625.13', $deposit->order_total_amount);
+        $this->assertCount(2, $deposit->items);
+        $this->assertSame('Maglia BS052', $deposit->items[0]['name']);
+        $this->assertStringNotContainsString('Maglia BS052', $deposit->items[0]['details']);
+        $this->assertStringNotContainsString('Lato Cuore DTF', $deposit->items[0]['details']);
+        $this->assertSame('Nero', $deposit->items[0]['details']);
+
+        $deposit->update([
+            'status' => 'bank_transfer_pending',
+            'order_status' => 'proforma_pending',
+            'details_completed_at' => now(),
+            'contact_first_name' => 'Mario',
+            'contact_last_name' => 'Rossi',
+            'contact_email' => 'mario.rossi@example.test',
+            'contact_phone' => '3331234567',
+            'shipping_company' => 'MV Group Italia srls',
+            'shipping_first_name' => 'Mario',
+            'shipping_last_name' => 'Rossi',
+            'shipping_address' => 'Via Roma 10',
+            'shipping_postal_code' => '35100',
+            'shipping_city' => 'Padova',
+            'shipping_province' => 'PD',
+            'billing_customer_type' => 'private',
+            'billing_first_name' => 'Mario',
+            'billing_last_name' => 'Rossi',
+            'billing_tax_code' => 'RSSMRA80A01G224A',
+            'billing_address' => 'Via Roma 10',
+            'billing_postal_code' => '35100',
+            'billing_city' => 'Padova',
+            'billing_province' => 'PD',
+            'payment_method' => 'bank',
         ]);
-        $this->post(route('admin.leads.stripe-payment-link', $lead))->assertSessionHasNoErrors();
-        Http::assertSent(fn ($request) => $request->url() === 'https://api.stripe.com/v1/checkout/sessions'
-            && $request['line_items'][0]['price_data']['unit_amount'] === 62513
-            && $request['line_items'][0]['price_data']['tax_behavior'] === 'inclusive');
-        $this->assertSame('625.13', $lead->fresh()->payment_amount);
+
+        $this->get(route('admin.checkout-orders.index'))
+            ->assertOk()
+            ->assertSee('Ordini checkout')
+            ->assertSee('ORD-000321')
+            ->assertSee('Mario Rossi')
+            ->assertSee('Proforma da generare')
+            ->assertSee('€ 100,00')
+            ->assertSee(route('admin.checkout-orders.show', $deposit), false);
+
+        $this->get(route('admin.checkout-orders.show', $deposit))
+            ->assertOk()
+            ->assertSee('ORD-000321')
+            ->assertSee('Prodotti ordinati')
+            ->assertSee('Maglia BS052')
+            ->assertSee('Contatti e spedizione')
+            ->assertSee('Riepilogo economico')
+            ->assertSee('Bonifico bancario')
+            ->assertSee('Genera proforma acconto')
+            ->assertSee('Apri lead');
+
+        $deposit->update(['status' => 'paid']);
+        $this->get(route('admin.checkout-orders.show', $deposit))
+            ->assertOk()
+            ->assertDontSee('Genera proforma acconto');
+        $this->post(route('admin.checkout-orders.balance.store', $deposit))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('checkout_url');
+        $balance = $sheet->fresh()->checkouts()->where('payment_type', 'balance')->firstOrFail();
+        $this->assertSame('525.13', $balance->total_amount);
+        $this->assertCount(2, $sheet->fresh()->checkouts);
+
+        $this->post(route('admin.checkout-orders.proforma.store', $deposit))
+            ->assertSessionHasNoErrors();
+        $deposit->refresh();
+        $this->assertNotNull($deposit->admin_document_id);
+        $this->assertSame('proforma_pending', $deposit->order_status);
+        $this->assertSame('100.00', $deposit->proforma->fresh()->total);
+        $this->assertSame('Mario Rossi c/o MV Group Italia srls', $deposit->proforma->fresh()->shipping_name);
+        $depositProformaItem = $deposit->proforma->items()->firstOrFail();
+        $this->assertSame('ACCONTO ORDINE ORD-000321', $depositProformaItem->description);
+        $this->assertNull($depositProformaItem->item_code);
+        $depositSummaryItems = $deposit->proforma->items()->where('informational', true)->orderBy('position')->get();
+        $this->assertSame("\u{00A0}", $depositSummaryItems->first()->description);
+        $summaryHeading = $depositSummaryItems->firstWhere('description', 'RIEPILOGO ORDINE');
+        $this->assertNotNull($summaryHeading);
+        $this->assertSame('0.00', $summaryHeading->quantity);
+        $summaryProduct = $depositSummaryItems->firstWhere('description', 'MAGLIA BS052 - NERO');
+        $this->assertNotNull($summaryProduct);
+        $this->assertSame('0.00', $summaryProduct->line_subtotal);
+        $this->assertFalse($depositSummaryItems->contains('description', 'SPESE DI TRASPORTO'));
+        $this->assertSame('Proforma nr. BOZZA.pdf', app(\App\Services\AdminDocumentPdfService::class)->filename($deposit->proforma));
+
+        $balance->update([
+            ...$deposit->only([
+                'contact_email', 'contact_first_name', 'contact_last_name', 'contact_phone',
+                'shipping_first_name', 'shipping_last_name', 'shipping_address', 'shipping_postal_code',
+                'shipping_city', 'shipping_province', 'billing_customer_type', 'billing_first_name',
+                'billing_last_name', 'billing_tax_code', 'billing_address', 'billing_postal_code',
+                'billing_city', 'billing_province',
+            ]),
+            'status' => 'bank_transfer_pending',
+            'details_completed_at' => now(),
+        ]);
+        $this->post(route('admin.checkout-orders.proforma.store', $balance))->assertSessionHasNoErrors();
+        $balance->refresh();
+        $balanceProforma = $balance->proforma->fresh('items');
+        $this->assertSame('525.13', $balanceProforma->total);
+        $this->assertSame('MAGLIA BS052 - NERO', $balanceProforma->items->first()->description);
+        $this->assertSame('ACCONTO RIF. NS. PROFORMA NR. ---', $balanceProforma->items->last()->description);
+        $this->assertNull($balanceProforma->items->last()->item_code);
+        $this->assertSame('-81.97', $balanceProforma->items->last()->unit_price);
+        $this->assertSame('0.01', $balanceProforma->rounding_adjustment);
+
+        $deletedProformaId = $balanceProforma->id;
+        $this->delete(route('admin.documents.destroy', $balanceProforma))->assertSessionHasNoErrors();
+        $this->assertNull($balance->fresh()->admin_document_id);
+        $this->assertSame('balance_pending', $balance->fresh()->order_status);
+        $this->assertSame('balance_pending', $deposit->fresh()->order_status);
+        $this->get(route('admin.checkout-orders.show', $balance))
+            ->assertRedirect(route('admin.checkout-orders.show', $deposit));
+        $this->get(route('admin.checkout-orders.show', $deposit))
+            ->assertOk()
+            ->assertSee('Proforma da generare')
+            ->assertSee('Checkout saldo completato')
+            ->assertSee('Genera proforma saldo');
+
+        $this->post(route('admin.checkout-orders.proforma.store', $balance))->assertSessionHasNoErrors();
+        $balance->refresh();
+        $this->assertNotNull($balance->admin_document_id);
+        $this->assertNotSame($deletedProformaId, $balance->admin_document_id);
+        $this->assertDatabaseHas('admin_documents', ['id' => $balance->admin_document_id, 'type' => 'proforma']);
+
+        $this->delete(route('admin.documents.destroy', $deposit->proforma))->assertSessionHasNoErrors();
+        $this->assertNull($deposit->fresh()->admin_document_id);
+        $this->assertSame('proforma_pending', $deposit->fresh()->order_status);
+        $this->get(route('admin.checkout-orders.show', $deposit))
+            ->assertOk()
+            ->assertSee('Piano di pagamento')
+            ->assertSee('Acconto')
+            ->assertSee('Saldo')
+            ->assertSee('Proforma da generare');
+
+        $this->post(route('admin.checkout-orders.proforma.store', $deposit))->assertSessionHasNoErrors();
+        $deposit->refresh()->update(['status' => 'bank_transfer_pending']);
+        $this->mock(CheckoutOrderCustomerNotificationService::class, function ($mock) {
+            $mock->shouldReceive('orderProcessing')->once()->andReturn(['sent' => true, 'channel' => 'whatsapp']);
+        });
+        $this->patch(route('admin.checkout-orders.payment.paid', $deposit))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('status');
+        $this->assertSame('paid', $deposit->fresh()->status);
+        $this->assertSame('paid', $deposit->proforma->fresh()->payment_status);
+        $this->assertSame('in_production', $deposit->fresh()->order_status);
+
+        $this->patch(route('admin.checkout-orders.payment.paid', $balance))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('status');
+        $this->assertSame('paid', $balance->fresh()->status);
+        $this->assertSame('paid', $balance->proforma->fresh()->payment_status);
+        $this->assertSame('ready', $deposit->fresh()->order_status);
+        $this->assertSame('ready', $balance->fresh()->order_status);
+
+        $this->patch(route('admin.checkout-orders.payment.paid', $deposit))
+            ->assertSessionHas('status', fn ($status) => str_contains($status, 'già pagato'));
+
+        $paidDepositProforma = $deposit->fresh()->proforma;
+        $this->delete(route('admin.documents.destroy', $paidDepositProforma))->assertSessionHasNoErrors();
+        $this->assertNull($deposit->fresh()->admin_document_id);
+        $this->assertSame('bank_transfer_pending', $deposit->fresh()->status);
+        $this->assertSame('proforma_pending', $deposit->fresh()->order_status);
+        $this->assertSame('proforma_pending', $balance->fresh()->order_status);
+
+        $this->post(route('admin.checkout-orders.proforma.store', $deposit))->assertSessionHasNoErrors();
+        $this->assertSame('bank_transfer_pending', $deposit->fresh()->status);
+        $this->assertSame('proforma_pending', $deposit->fresh()->order_status);
+        $this->assertSame('proforma_pending', $balance->fresh()->order_status);
+
+        $this->mock(CheckoutOrderCustomerNotificationService::class, function ($mock) {
+            $mock->shouldReceive('orderProcessing')->once()->andReturn(['sent' => true, 'channel' => 'whatsapp']);
+            $mock->shouldReceive('shipped')->once()->andReturn(['sent' => true, 'channel' => 'whatsapp']);
+        });
+
+        $this->patch(route('admin.checkout-orders.status.update', $deposit), [
+            'order_status' => 'in_production',
+        ])->assertSessionHasNoErrors();
+        $this->assertSame('in_production', $deposit->fresh()->order_status);
+
+        $this->patch(route('admin.checkout-orders.status.update', $deposit), [
+            'order_status' => 'shipped',
+        ])->assertSessionHasNoErrors();
+        $this->assertSame('shipped', $deposit->fresh()->order_status);
+
+        $this->get(route('admin.checkout-orders.show', $deposit))
+            ->assertOk()
+            ->assertSee('Aggiorna stato')
+            ->assertDontSee('value="completed"', false)
+            ->assertDontSee('Segna come completato');
     }
 
     public function test_product_mockup_accepts_webp_and_normalizes_it_for_the_pdf(): void
@@ -569,8 +814,8 @@ class AdminCrmDashboardTest extends TestCase
         $item = $lead->fresh()->salesSheet->items()->firstOrFail();
         $sheet = $lead->fresh()->salesSheet;
         $this->assertSame('250.00', $sheet->product_revenue_total);
-        $this->assertSame('9.90', $sheet->shipping_charge);
-        $this->assertSame('259.90', $sheet->revenue_total);
+        $this->assertSame('8.12', $sheet->shipping_charge);
+        $this->assertSame('258.12', $sheet->revenue_total);
         $this->assertSame('200.00', $sheet->margin_total);
 
         Livewire::test(LeadSalesSheetComponent::class, ['leadId' => $lead->id])
@@ -581,8 +826,8 @@ class AdminCrmDashboardTest extends TestCase
         $sheet = $lead->fresh()->salesSheet;
         $this->assertSame('260.00', $sheet->product_revenue_total);
         $this->assertSame('0.00', $sheet->shipping_charge);
-        $this->assertSame('9.90', $sheet->shipping_cost);
-        $this->assertSame('200.10', $sheet->margin_total);
+        $this->assertSame('8.12', $sheet->shipping_cost);
+        $this->assertSame('201.88', $sheet->margin_total);
 
         Livewire::test(LeadSalesSheetComponent::class, ['leadId' => $lead->id])
             ->set('shippingFee', '12.50')
@@ -617,8 +862,8 @@ class AdminCrmDashboardTest extends TestCase
             ->assertSee('Questo è il primo ordine del cliente: il CAC medio degli ultimi 30 giorni viene sottratto qui una sola volta.')
             ->assertSee('€ 20,00')
             ->assertSee('€ 30,00')
-            ->assertSee('€ 17,03')
-            ->assertSee('27,3%')
+            ->assertSee('€ 17,56')
+            ->assertSee('27,7%')
             ->assertSee('Non sostenibile');
     }
 
@@ -694,9 +939,9 @@ class AdminCrmDashboardTest extends TestCase
             ->assertSee('Prodotto aggiunto alla scheda vendita.')
             ->assertSee('90,00')
             ->assertSee('IVA 22%')
-            ->assertSee('21,98')
+            ->assertSee('21,59')
             ->assertSee('Totale da pagare IVA inclusa')
-            ->assertSee('121,88')
+            ->assertSee('119,71')
             ->set('shippingFee', '0')
             ->call('saveShipping')
             ->assertHasNoErrors()
@@ -959,7 +1204,7 @@ class AdminCrmDashboardTest extends TestCase
         $print = CrmPrintType::create(['code' => 'ST', 'name' => 'Stampa', 'is_active' => true]);
         $print->priceTiers()->create(['min_quantity' => 1, 'max_quantity' => 19, 'unit_cost' => 3, 'unit_price' => 5]);
         $print->priceTiers()->create(['min_quantity' => 20, 'max_quantity' => null, 'unit_cost' => 1, 'unit_price' => 2]);
-        $sheet = $lead->salesSheets()->create(['order_number' => 'ORD-TEST', 'name' => 'Test gruppi']);
+        $sheet = $lead->salesSheets()->create(['order_number' => 'ORD-TEST', 'name' => 'Test gruppi', 'prices_include_vat' => false]);
 
         foreach (range(1, 4) as $variant) {
             $item = $sheet->items()->create([
@@ -1072,7 +1317,7 @@ class AdminCrmDashboardTest extends TestCase
             ->assertSee('Premium')
             ->assertSee('Black')
             ->assertSee('Anteprima live')
-            ->assertSee('lg:row-start-3', false)
+            ->assertSee('lg:row-start-2', false)
             ->assertSee(route('admin.leads.mockup-base.show', [$lead, 'front']), false)
             ->assertSee('top: 22%; left: 62%; width: 16%; height: 16%;', false)
             ->assertSee('Logo lato cuore')

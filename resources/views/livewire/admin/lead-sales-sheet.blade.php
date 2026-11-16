@@ -64,7 +64,7 @@
 
                 <div class="mt-10 grid gap-8 sm:grid-cols-2">
                     <label>
-                        <span class="text-10 font-extrabold uppercase text-gray">Tariffa spedizione</span>
+                        <span class="text-10 font-extrabold uppercase text-gray">Tariffa spedizione · IVA esclusa</span>
                         <div class="mt-4 flex overflow-hidden rounded-10 border border-gray-mid bg-white focus-within:border-bullstar focus-within:ring-1 focus-within:ring-bullstar">
                             <span class="flex shrink-0 items-center border-r border-gray-mid bg-white px-10 text-12 font-bold text-gray">€</span>
                             <input wire:model="shippingFee" required type="number" min="0" step="0.01" class="min-w-0 flex-1 border-0 bg-white px-10 py-8 text-12 font-semibold focus:border-0 focus:ring-0">
@@ -83,7 +83,7 @@
 
                 <div class="mt-10 grid grid-cols-3 gap-4 rounded-10 border border-gray-mid bg-white p-8 text-center">
                     <div><p class="text-10 font-extrabold uppercase text-gray">Prodotti</p><p class="mt-3 text-12 font-black">€ {{ number_format((float)($salesSheet?->product_revenue_total ?? 0), 2, ',', '.') }}</p></div>
-                    <div><p class="text-10 font-extrabold uppercase text-gray">Spedizione cliente</p><p class="mt-3 text-12 font-black">€ {{ number_format((float)($salesSheet?->shipping_charge ?? 0), 2, ',', '.') }}</p></div>
+                    <div><p class="text-10 font-extrabold uppercase text-gray">Spedizione cliente IVA escl.</p><p class="mt-3 text-12 font-black">€ {{ number_format((float)($salesSheet?->shipping_charge ?? 0), 2, ',', '.') }}</p></div>
                     <div><p class="text-10 font-extrabold uppercase text-gray">Costo spedizione</p><p class="mt-3 text-12 font-black">€ {{ number_format((float)($salesSheet?->shipping_cost ?? 0), 2, ',', '.') }}</p></div>
                 </div>
 
@@ -198,15 +198,29 @@
             {{-- Elenco prodotti --}}
             <main class="min-w-0 space-y-10">
                 @forelse($salesSheet?->items ?? [] as $item)
-                    @php($groupQuantity = ($salesSheet?->items ?? collect())->where('pricing_group_uuid', $item->pricing_group_uuid)->sum('quantity'))
+                    @php
+                        $groupQuantity = ($salesSheet?->items ?? collect())
+                            ->where('pricing_group_uuid', $item->pricing_group_uuid)
+                            ->sum('quantity');
+                        $hasCatalogVariants = $item->crmProduct
+                            && $item->crmProduct->colors->isNotEmpty()
+                            && $item->crmProduct->sizes->isNotEmpty();
+                    @endphp
                     <details wire:key="sales-item-{{ $item->id }}" open class="group overflow-hidden rounded-10 border border-gray-mid bg-white shadow-sm">
                         <summary class="cursor-pointer list-none border-b border-gray-mid bg-gray-light px-10 py-8 sm:px-12">
                             <div class="flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
                                 <div class="flex min-w-0 items-center gap-8">
                                     <span class="flex h-28 w-28 shrink-0 items-center justify-center rounded-full bg-black-nike text-10 font-black text-white">{{ $loop->iteration }}</span>
                                     <div class="min-w-0">
-                                        <h3 class="truncate text-14 font-black">{{ $item->configuration_name ?: $item->product_name }}</h3>
-                                        <p class="mt-3 text-10 font-bold text-gray">{{ $item->product_code }} · {{ $item->product_name }} · {{ number_format((float)$item->quantity, 2, ',', '.') }} pz @if($groupQuantity != $item->quantity) · fascia calcolata su {{ number_format((float)$groupQuantity, 0, ',', '.') }} pz @endif</p>
+                                        <div class="flex min-w-0 items-center gap-4">
+                                            <h3 class="truncate text-14 font-black">{{ $item->configuration_name ?: $item->product_name }}</h3>
+                                            <span class="shrink-0 text-10 font-semibold text-bullstar">· Visibile nel carrello</span>
+                                        </div>
+                                        <p class="mt-3 text-10 font-bold text-gray">
+                                            {{ $item->product_code }} · {{ $item->product_name }}
+                                            · {{ number_format((float)$item->quantity, 2, ',', '.') }} pz
+                                            @if($groupQuantity != $item->quantity) · fascia calcolata su {{ number_format((float)$groupQuantity, 0, ',', '.') }} pz @endif
+                                        </p>
                                     </div>
                                 </div>
                                 <div class="flex items-center justify-between gap-10 sm:justify-end">
@@ -234,13 +248,64 @@
                                 </div>
 
                                 <div class="mt-8 grid gap-8 sm:grid-cols-2">
+                                    <div>
+                                        <span class="flex min-h-16 items-center gap-4 text-10 font-extrabold uppercase text-gray">Taglie, colori e quantità <span class="font-semibold normal-case text-bullstar">· Visibile nel carrello</span></span>
+                                        @if($hasCatalogVariants)
+                                            @php
+                                                $selectedVariantColorId = (string) ($item->variants->first()?->crm_product_color_id
+                                                    ?: $item->crmProduct->colors->first()->id);
+                                                $filledVariantColors = $item->crmProduct->colors->mapWithKeys(function ($color) use ($itemVariants, $item) {
+                                                    $quantities = data_get($itemVariants, $item->id.'.'.$color->id, []);
+
+                                                    return [(string) $color->id => collect($quantities)->contains(fn ($quantity) => (float) $quantity > 0)];
+                                                })->all();
+                                            @endphp
+                                            <div class="mt-4" x-data="{ color: @js($selectedVariantColorId), filled: @js($filledVariantColors) }">
+                                                <label class="block">
+                                                    <span class="text-10 font-bold text-gray">Colore</span>
+                                                    <select x-model="color" class="mt-3 w-full rounded-10 border-gray-mid bg-white px-8 py-7 text-11 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                                        @foreach($item->crmProduct->colors as $color)<option value="{{ $color->id }}" x-text="filled[@js((string) $color->id)] ? @js($color->name.' · quantità inserite') : @js($color->name)"></option>@endforeach
+                                                    </select>
+                                                    <span class="mt-3 block text-10 font-semibold leading-relaxed text-gray">Puoi compilare più colori: cambia colore dal menu, le quantità già inserite rimangono memorizzate.</span>
+                                                </label>
+                                            <div class="mt-5 overflow-x-auto rounded-10 border border-gray-mid bg-white">
+                                                <table class="w-full border-collapse text-10">
+                                                    <thead class="sticky top-0 bg-gray-light">
+                                                        <tr>@foreach($item->crmProduct->sizes as $size)<th class="min-w-44 px-2 py-4 text-center font-extrabold">{{ $size->name }}</th>@endforeach</tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach($item->crmProduct->colors as $color)
+                                                            @php
+                                                                $allowedSizeIds = $color->sizes_restricted
+                                                                    ? $color->sizes->pluck('id')
+                                                                    : $item->crmProduct->sizes->pluck('id');
+                                                            @endphp
+                                                            <tr x-show="color === @js((string) $color->id)" x-cloak>
+                                                                @foreach($item->crmProduct->sizes as $size)
+                                                                    <td class="p-3 text-center">
+                                                                        @if($allowedSizeIds->contains($size->id))
+                                                                            <input wire:model="itemVariants.{{ $item->id }}.{{ $color->id }}.{{ $size->id }}" @input="filled[@js((string) $color->id)] = Array.from($el.closest('tr').querySelectorAll('input')).some(element => Number(element.value) > 0)" type="number" min="0" step="1" inputmode="numeric" aria-label="{{ $color->name }} {{ $size->name }}" class="catalog-variant-quantity h-26 w-40 rounded-6 border-gray-mid px-2 py-1 text-center text-10 font-bold focus:border-bullstar focus:ring-bullstar">
+                                                                        @else
+                                                                            <span class="text-gray-mid">—</span>
+                                                                        @endif
+                                                                    </td>
+                                                                @endforeach
+                                                            </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                            </div>
+                                            <p class="mt-4 text-10 font-semibold text-gray">La somma deve essere {{ number_format((float) $item->quantity, 0, ',', '.') }} pezzi.</p>
+                                            @error('itemVariants.'.$item->id)<span class="mt-4 block text-10 font-bold text-red-600">{{ $message }}</span>@enderror
+                                            @error('itemVariants.'.$item->id.'.*.*')<span class="mt-4 block text-10 font-bold text-red-600">{{ $message }}</span>@enderror
+                                        @else
+                                            <textarea wire:model="itemColors.{{ $item->id }}" rows="4" maxlength="2000" placeholder="Blu navy — 50 pz&#10;Bianco — 30 pz" class="mt-4 w-full rounded-10 border-gray-mid bg-white px-10 py-8 text-11 font-semibold focus:border-bullstar focus:ring-bullstar"></textarea>
+                                            @error('itemColors.'.$item->id)<span class="mt-4 block text-10 font-bold text-red-600">{{ $message }}</span>@enderror
+                                        @endif
+                                    </div>
                                     <label>
-                                        <span class="text-10 font-extrabold uppercase text-gray">Colori e quantità</span>
-                                        <textarea wire:model="itemColors.{{ $item->id }}" rows="4" maxlength="2000" placeholder="Blu navy — 50 pz&#10;Bianco — 30 pz" class="mt-4 w-full rounded-10 border-gray-mid bg-white px-10 py-8 text-11 font-semibold focus:border-bullstar focus:ring-bullstar"></textarea>
-                                        @error('itemColors.'.$item->id)<span class="mt-4 block text-10 font-bold text-red-600">{{ $message }}</span>@enderror
-                                    </label>
-                                    <label>
-                                        <span class="text-10 font-extrabold uppercase text-gray">Note operative</span>
+                                        <span class="flex min-h-16 items-center text-10 font-extrabold uppercase text-gray">Note operative</span>
                                         <textarea wire:model="itemNotes.{{ $item->id }}" rows="4" maxlength="10000" placeholder="Posizione stampa, riferimenti, urgenze…" class="mt-4 w-full rounded-10 border-gray-mid bg-white px-10 py-8 text-11 font-semibold focus:border-bullstar focus:ring-bullstar"></textarea>
                                         @error('itemNotes.'.$item->id)<span class="mt-4 block text-10 font-bold text-red-600">{{ $message }}</span>@enderror
                                     </label>
@@ -407,6 +472,72 @@
                         </div>
                         <button type="submit" class="mt-8 w-full rounded-10 bg-black-nike px-10 py-10 text-10 font-extrabold uppercase text-white transition hover:bg-bullstar">Genera PDF dall’ordine</button>
                     </form>
+
+                    <?php
+                        $orderCheckouts = $salesSheet->checkouts->sortBy('id');
+                        $activeOrderCheckouts = $orderCheckouts->whereIn('status', ['draft', 'details_completed', 'bank_transfer_pending']);
+                        $hasFullCheckout = $activeOrderCheckouts->contains('payment_type', 'full');
+                        $hasDepositCheckout = $activeOrderCheckouts->contains('payment_type', 'deposit');
+                        $hasBalanceCheckout = $activeOrderCheckouts->contains('payment_type', 'balance');
+                    ?>
+                    @foreach ($orderCheckouts as $orderCheckout)
+                        <?php $checkoutUrl = rtrim(config('services.public_site.url'), '/').'/checkout/'.$orderCheckout->token; ?>
+                        <div class="rounded-10 border border-bullstar bg-bullstar/5 p-10" x-data="{ copied: false }">
+                            <div class="flex items-start justify-between gap-8">
+                                <div>
+                                    <p class="text-10 font-extrabold uppercase text-gray">{{ $orderCheckout->payment_label }}</p>
+                                    <p class="mt-4 text-13 font-black">€ {{ number_format((float) $orderCheckout->total_amount, 2, ',', '.') }}</p>
+                                    <p class="mt-3 text-10 font-semibold text-gray">Ordine {{ $orderCheckout->order_number }}.</p>
+                                </div>
+                                <span class="shrink-0 rounded-full px-8 py-5 text-10 font-extrabold uppercase text-white {{ in_array($orderCheckout->status, ['draft', 'details_completed', 'bank_transfer_pending']) ? 'bg-bullstar' : 'bg-gray' }}">{{ match($orderCheckout->status) { 'details_completed' => 'Completato', 'bank_transfer_pending' => 'Proforma richiesta', 'expired' => 'Scaduto', 'invalidated' => 'Ordine modificato', 'revoked' => 'Revocato', 'paid' => 'Pagato', default => 'Bozza' } }}</span>
+                            </div>
+                            <p class="mt-5 text-10 font-semibold text-gray">{{ $orderCheckout->expires_at ? 'Scadenza: '.$orderCheckout->expires_at->format('d/m/Y H:i') : 'Nessuna scadenza registrata' }}</p>
+                            @if(in_array($orderCheckout->status, ['draft', 'details_completed', 'bank_transfer_pending']))
+                            <div class="mt-8 grid gap-6">
+                                <a href="{{ $checkoutUrl }}" target="_blank" rel="noopener" class="inline-flex w-full items-center justify-center rounded-10 bg-black-nike px-10 py-10 text-10 font-extrabold uppercase text-white transition hover:bg-bullstar">Apri checkout</a>
+                                <button type="button" @click="navigator.clipboard.writeText(@js($checkoutUrl)); copied = true; setTimeout(() => copied = false, 1800)" class="w-full rounded-10 border border-bullstar bg-white px-10 py-10 text-10 font-extrabold uppercase text-bullstar transition hover:bg-bullstar hover:text-white">
+                                    <span x-text="copied ? 'Copiato' : 'Copia link'">Copia link</span>
+                                </button>
+                                <form method="POST" action="{{ route('admin.leads.orders.checkout.revoke', [$leadId, $salesSheet, $orderCheckout]) }}">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit" onclick="return confirm('Revocare questo checkout? Il link non sarà più utilizzabile.')" class="w-full rounded-10 border border-red-300 bg-white px-10 py-10 text-10 font-extrabold uppercase text-red-600 transition hover:bg-red-50">Revoca checkout</button>
+                                </form>
+                            </div>
+                            @endif
+                        </div>
+                    @endforeach
+
+                    @if (! $hasFullCheckout && ! $hasBalanceCheckout)
+                        <form method="POST" action="{{ route('admin.leads.orders.checkout.store', [$leadId, $salesSheet]) }}" class="rounded-10 border border-black-nike bg-gray-light p-10" x-data="{ paymentType: @js(old('payment_type', $hasDepositCheckout ? 'balance' : 'full')) }">
+                            @csrf
+                            <div class="flex h-32 w-32 items-center justify-center rounded-full bg-black-nike text-14 font-black text-white">✓</div>
+                            <p class="mt-8 text-13 font-black">Nuovo checkout</p>
+                            <p class="mt-3 text-10 font-semibold leading-relaxed text-gray">Puoi creare il pagamento completo oppure due link separati per acconto e saldo.</p>
+                            <label class="mt-8 block">
+                                <span class="text-10 font-extrabold uppercase text-gray">Tipo pagamento</span>
+                                <select name="payment_type" x-model="paymentType" class="mt-4 w-full rounded-10 border-gray-mid bg-white px-10 py-8 text-11 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                    @if (! $hasDepositCheckout)<option value="full">Pagamento completo</option>@endif
+                                    @if (! $hasDepositCheckout)<option value="deposit">Acconto</option>@endif
+                                    @if ($hasDepositCheckout)<option value="balance">Saldo rimanente</option>@endif
+                                </select>
+                            </label>
+                            <label class="mt-6 block" x-show="paymentType === 'deposit'" x-cloak>
+                                <span class="text-10 font-extrabold uppercase text-gray">Importo acconto IVA inclusa</span>
+                                <input name="deposit_amount" type="number" min="0.01" step="0.01" value="{{ old('deposit_amount') }}" placeholder="Es. 200,00" class="mt-4 w-full rounded-10 border-gray-mid bg-white px-10 py-8 text-11 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                @error('deposit_amount')<span class="mt-4 block text-10 font-bold text-red-600">{{ $message }}</span>@enderror
+                            </label>
+                            <label class="mt-6 block">
+                                <span class="text-10 font-extrabold uppercase text-gray">Valido fino al</span>
+                                <input name="expires_at" required type="date" min="{{ now()->addDay()->toDateString() }}" max="{{ now()->addDays(90)->toDateString() }}" value="{{ old('expires_at', now()->addDays(7)->toDateString()) }}" class="mt-4 w-full rounded-10 border-gray-mid bg-white px-10 py-8 text-11 font-semibold focus:border-bullstar focus:ring-bullstar">
+                                @error('expires_at')<span class="mt-4 block text-10 font-bold text-red-600">{{ $message }}</span>@enderror
+                            </label>
+                            <button type="submit" class="mt-8 w-full rounded-10 bg-black-nike px-10 py-10 text-10 font-extrabold uppercase text-white transition hover:bg-bullstar">
+                                Genera link checkout
+                            </button>
+                            @error('checkout')<span class="mt-5 block text-10 font-bold text-red-600">{{ $message }}</span>@enderror
+                        </form>
+                    @endif
 
                     <form wire:submit="sendOrder" class="rounded-10 border border-gray-mid bg-gray-light p-10">
                         <div class="flex h-32 w-32 items-center justify-center rounded-full bg-bullstar text-14 font-black text-white">→</div>

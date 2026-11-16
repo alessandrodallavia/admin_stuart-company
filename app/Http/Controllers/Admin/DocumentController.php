@@ -7,9 +7,12 @@ use App\Enums\DocumentType;
 use App\Models\AdminDocument;
 use App\Models\DocumentRelation;
 use App\Models\DocumentsPaymentMethod;
+use App\Models\LeadOrderCheckout;
 use App\Services\AdminDocumentPdfService;
 use App\Services\AdminDocumentService;
 use App\Services\AdminDocumentXmlService;
+use App\Services\CheckoutOrderCustomerNotificationService;
+use App\Services\CheckoutOrderLeadStatusService;
 use App\Services\DocumentGeneratorService;
 use App\Services\DocumentRelationService;
 use Illuminate\Http\RedirectResponse;
@@ -73,6 +76,9 @@ class DocumentController extends Controller
     public function show(AdminDocument $document): View
     {
         $document->load(['items', 'paymentSchedules.paymentMethod', 'paymentMethod', 'sourceDocument', 'generatedDocuments', 'shipments.parcels']);
+        $checkoutOrder = $document->type === 'proforma'
+            ? LeadOrderCheckout::query()->where('admin_document_id', $document->id)->first()
+            : null;
 
         return view('admin.documents.show', [
             'document' => $document,
@@ -80,6 +86,7 @@ class DocumentController extends Controller
             'statuses' => AdminDocument::statusesFor($document->type),
             'directRelations' => $this->directRelations($document),
             'relationCandidates' => $this->relationCandidates($document),
+            'checkoutOrder' => $checkoutOrder,
         ]);
     }
 
@@ -150,22 +157,57 @@ class DocumentController extends Controller
     public function edit(AdminDocument $document): View
     {
         $document->load(['items', 'paymentSchedules.paymentMethod']);
+        $checkoutOrder = $document->type === 'proforma'
+            ? LeadOrderCheckout::query()->where('admin_document_id', $document->id)->first()
+            : null;
 
         return view('admin.documents.edit', [
             'document' => $document,
             'types' => AdminDocument::TYPES,
             'statuses' => AdminDocument::statusesFor($document->type),
             'paymentMethods' => DocumentsPaymentMethod::query()->where('is_active', true)->orderBy('code')->get(),
+            'checkoutOrder' => $checkoutOrder,
         ]);
     }
 
-    public function update(Request $request, AdminDocument $document, AdminDocumentService $service): RedirectResponse
+    public function update(
+        Request $request,
+        AdminDocument $document,
+        AdminDocumentService $service,
+        AdminDocumentPdfService $pdfService,
+        CheckoutOrderCustomerNotificationService $notifications,
+        CheckoutOrderLeadStatusService $leadStatuses,
+    ): RedirectResponse
     {
+        $wasSent = $document->status === 'sent';
         $document = $service->update($document, $this->validatedData($request));
 
-        return redirect()
+        $notification = null;
+        if ($document->type === 'proforma' && $document->status === 'sent' && ! $wasSent) {
+            $checkout = LeadOrderCheckout::query()->where('admin_document_id', $document->id)->first();
+            if ($checkout) {
+                LeadOrderCheckout::query()
+                    ->where('lead_sales_sheet_id', $checkout->lead_sales_sheet_id)
+                    ->update(['order_status' => 'payment_pending']);
+                $notification = $notifications->proformaSent(
+                    $checkout,
+                    $document,
+                    $pdfService->output($document),
+                    $pdfService->filename($document),
+                );
+                $leadStatuses->proformaSent($checkout);
+            }
+        }
+
+        $response = redirect()
             ->route('admin.documents.show', $document)
             ->with('status', 'Documento aggiornato.');
+
+        if ($notification && ! $notification['sent']) {
+            $response->with('notification_warning', 'Proforma aggiornata, ma la notifica al cliente non è stata inviata: '.$notification['error']);
+        }
+
+        return $response;
     }
 
     public function destroy(AdminDocument $document): RedirectResponse
@@ -256,7 +298,13 @@ class DocumentController extends Controller
         return back()->with('status', 'Collegamento eliminato.');
     }
 
-    public function updatePayment(Request $request, AdminDocument $document, AdminDocumentService $service): RedirectResponse
+    public function updatePayment(
+        Request $request,
+        AdminDocument $document,
+        AdminDocumentService $service,
+        CheckoutOrderCustomerNotificationService $notifications,
+        CheckoutOrderLeadStatusService $leadStatuses,
+    ): RedirectResponse
     {
         $data = $request->validate([
             'schedule_id' => ['required', 'integer', Rule::exists('admin_document_payment_schedules', 'id')],
@@ -264,9 +312,31 @@ class DocumentController extends Controller
             'paid_at' => ['nullable', 'date'],
         ]);
 
+        $wasPaid = $document->payment_status === 'paid';
         $service->markPayment($document, (int) $data['schedule_id'], (float) $data['paid_amount'], $data['paid_at'] ?? null);
+        $document->refresh();
+        $checkout = LeadOrderCheckout::query()->where('admin_document_id', $document->id)->first();
+        $notification = null;
 
-        return back()->with('status', 'Pagamento aggiornato.');
+        if ($checkout && ! $wasPaid && $document->payment_status === 'paid') {
+            $checkout->forceFill(['status' => 'paid'])->save();
+            $orderStatus = $checkout->payment_type === 'balance' ? 'ready' : 'in_production';
+            LeadOrderCheckout::query()
+                ->where('lead_sales_sheet_id', $checkout->lead_sales_sheet_id)
+                ->update(['order_status' => $orderStatus]);
+
+            if ($orderStatus === 'in_production') {
+                $notification = $notifications->orderProcessing($checkout->forceFill(['order_status' => $orderStatus]));
+            }
+            $leadStatuses->paymentReceived($checkout);
+        }
+
+        $response = back()->with('status', 'Pagamento aggiornato.'.($checkout && $document->payment_status === 'paid' ? ' Stato dell’ordine aggiornato.' : ''));
+        if ($notification && ! $notification['sent']) {
+            $response->with('notification_warning', 'Pagamento registrato, ma la notifica al cliente non è stata inviata: '.$notification['error']);
+        }
+
+        return $response;
     }
 
     private function validatedData(Request $request): array
@@ -314,6 +384,7 @@ class DocumentController extends Controller
             'items' => ['required', 'array', 'min:1'],
             'items.*.item_code' => ['nullable', 'string', 'max:80'],
             'items.*.description' => ['nullable', 'string', 'max:5000'],
+            'items.*.informational' => ['nullable', 'boolean'],
             'items.*.quantity' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
             'items.*.unit_price' => ['nullable', 'numeric', 'decimal:0,2', 'min:-99999999.99', 'max:99999999.99'],
             'items.*.vat_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],

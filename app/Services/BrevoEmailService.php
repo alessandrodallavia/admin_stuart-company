@@ -5,6 +5,7 @@ namespace App\Services;
 use Brevo\Brevo;
 use Brevo\Exceptions\BrevoApiException;
 use Brevo\TransactionalEmails\Requests\SendTransacEmailRequest;
+use Brevo\TransactionalEmails\Types\SendTransacEmailRequestAttachmentItem;
 use Brevo\TransactionalEmails\Types\SendTransacEmailRequestReplyTo;
 use Brevo\TransactionalEmails\Types\SendTransacEmailRequestSender;
 use Brevo\TransactionalEmails\Types\SendTransacEmailRequestToItem;
@@ -34,6 +35,11 @@ class BrevoEmailService
 
     public function sendAdminHtmlNotification(array $to, string $subject, string $html, array $tags = ['admin-notification'])
     {
+        return $this->sendTransactionalEmail($to, $subject, $html, null, $tags);
+    }
+
+    public function sendTransactionalEmail(array $to, string $subject, string $html, ?string $text = null, array $tags = ['customer-notification'], array $attachments = [])
+    {
         $from = config('admin_notifications.from');
 
         $payload = [
@@ -51,7 +57,12 @@ class BrevoEmailService
             ]],
             'subject' => $subject,
             'htmlContent' => $html,
+            'textContent' => $text,
             'tags' => $tags,
+            'attachment' => array_map(fn (array $attachment) => [
+                'name' => $attachment['name'],
+                'content' => base64_encode($attachment['content']),
+            ], $attachments),
         ];
 
         try {
@@ -74,10 +85,11 @@ class BrevoEmailService
         $sender = $payload['sender'];
         $replyTo = $payload['replyTo'] ?? $sender;
 
-        $request = new SendTransacEmailRequest([
+        $requestData = [
             'templateId' => $payload['templateId'] ?? null,
             'subject' => $payload['subject'] ?? null,
             'htmlContent' => $payload['htmlContent'] ?? null,
+            'textContent' => $payload['textContent'] ?? null,
             'params' => $payload['params'] ?? null,
             'tags' => $payload['tags'] ?? null,
             'sender' => new SendTransacEmailRequestSender([
@@ -95,7 +107,16 @@ class BrevoEmailService
                 ]),
                 $payload['to'],
             ),
-        ]);
+        ];
+
+        if (! empty($payload['attachment'])) {
+            $requestData['attachment'] = array_map(
+                fn (array $attachment) => new SendTransacEmailRequestAttachmentItem($attachment),
+                $payload['attachment'],
+            );
+        }
+
+        $request = new SendTransacEmailRequest($requestData);
 
         return (array) $this->brevo()->transactionalEmails->sendTransacEmail($request);
     }
