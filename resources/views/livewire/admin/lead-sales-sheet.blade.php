@@ -349,7 +349,8 @@
                                 </label>
 
                                 @if($item->attachments->isNotEmpty())
-                                    <div class="mt-8 grid gap-4 sm:grid-cols-2">
+                                    <p class="mt-8 text-10 font-semibold leading-relaxed text-gray">I file elencati vengono inseriti nello ZIP dell’ordine inviato ad Alessandro e, in copia, a Daniele. Puoi escludere un file rimuovendolo con × prima dell’invio.</p>
+                                    <div class="mt-4 grid gap-4 sm:grid-cols-2">
                                         @foreach($item->attachments as $attachment)
                                             <div class="flex min-w-0 items-center justify-between gap-5 rounded-10 border border-gray-mid px-8 py-6">
                                                 <span class="truncate text-10 font-bold" title="{{ $attachment->filename }}">

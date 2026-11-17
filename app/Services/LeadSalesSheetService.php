@@ -90,6 +90,18 @@ class LeadSalesSheetService
 
     public function tier($tiers, float $quantity)
     {
-        return $tiers->first(fn ($tier) => $quantity >= (float) $tier->min_quantity && ($tier->max_quantity === null || $quantity <= (float) $tier->max_quantity));
+        $matchingTier = $tiers->first(fn ($tier) => $quantity >= (float) $tier->min_quantity && ($tier->max_quantity === null || $quantity <= (float) $tier->max_quantity));
+
+        if ($matchingTier) {
+            return $matchingTier;
+        }
+
+        // Nell'ordine amministrativo la quantità è libera: sotto il minimo
+        // commerciale proponiamo il prezzo della prima fascia disponibile.
+        $lowestTier = $tiers->sortBy(fn ($tier) => (float) $tier->min_quantity)->first();
+
+        return $lowestTier && $quantity < (float) $lowestTier->min_quantity
+            ? $lowestTier
+            : null;
     }
 }

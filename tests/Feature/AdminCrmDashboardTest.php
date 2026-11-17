@@ -798,6 +798,32 @@ class AdminCrmDashboardTest extends TestCase
         $this->assertSame('108.00', $lead->fresh()->margin_amount);
     }
 
+    public function test_admin_order_can_use_a_quantity_below_the_catalog_minimum(): void
+    {
+        $admin = $this->owner();
+        $lead = $this->lead();
+        $product = CrmProduct::create(['code' => 'FREE-QTY', 'name' => 'Prodotto quantità libera', 'unit_cost' => 5, 'is_active' => true]);
+        $product->priceTiers()->create(['min_quantity' => 10, 'max_quantity' => 19, 'unit_price' => 12]);
+        $print = CrmPrintType::create(['code' => 'FREE-PRINT', 'name' => 'Stampa quantità libera', 'is_active' => true]);
+        $print->priceTiers()->create(['min_quantity' => 10, 'max_quantity' => 19, 'unit_cost' => 1, 'unit_price' => 3]);
+
+        $this->actingAs($admin, 'admin')
+            ->post("/leads/{$lead->id}/sales-sheet/items", ['product_id' => $product->id, 'quantity' => 3])
+            ->assertSessionHasNoErrors();
+
+        $item = $lead->fresh()->salesSheet->items()->firstOrFail();
+        $this->assertSame('12.0000', $item->product_unit_price);
+
+        $this->actingAs($admin, 'admin')
+            ->post("/leads/{$lead->id}/sales-sheet/items/{$item->id}/prints", ['print_type_id' => $print->id])
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('lead_sales_item_prints', [
+            'lead_sales_item_id' => $item->id,
+            'unit_price' => 3,
+        ]);
+    }
+
     public function test_shipping_is_charged_through_250_and_absorbed_above_the_threshold(): void
     {
         $this->actingAs($this->owner(), 'admin');
