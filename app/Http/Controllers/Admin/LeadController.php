@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\CrmPrintType;
 use App\Models\CrmProduct;
+use App\Models\CrmProductColor;
 use App\Models\EmailAccount;
 use App\Models\EmailConversation;
 use App\Models\EmailMessage;
@@ -110,6 +111,8 @@ class LeadController extends Controller
         $liveMockupFiles = collect([
             'front' => $selectedLead?->live_mockup_front_file,
             'back' => $selectedLead?->live_mockup_back_file,
+            'sleeve_left' => $selectedLead?->live_mockup_sleeve_left_file,
+            'sleeve_right' => $selectedLead?->live_mockup_sleeve_right_file,
             'sleeve' => $selectedLead?->live_mockup_sleeve_file,
         ])->map(fn (?string $path) => [
             'path' => $path,
@@ -161,6 +164,21 @@ class LeadController extends Controller
 
     public function showMockupBase(Lead $lead, string $side): StreamedResponse
     {
+        abort_unless(in_array($side, ['front', 'back', 'sleeve_left', 'sleeve_right'], true), 404);
+
+        $colorId = data_get($lead->calculator_crm_snapshot, 'color.id');
+        $catalogPath = $colorId
+            ? CrmProductColor::whereKey($colorId)->value('mockup_'.$side.'_path')
+            : null;
+
+        if ($catalogPath && Storage::disk('live_mockup_assets')->exists($catalogPath)) {
+            return Storage::disk('live_mockup_assets')->response($catalogPath, null, [
+                'Content-Type' => Storage::disk('live_mockup_assets')->mimeType($catalogPath) ?: 'application/octet-stream',
+                'Cache-Control' => 'private, max-age=3600',
+                'X-Content-Type-Options' => 'nosniff',
+            ]);
+        }
+
         abort_unless(in_array($side, ['front', 'back'], true), 404);
 
         $model = Str::slug((string) $lead->calculator_model);
@@ -179,13 +197,13 @@ class LeadController extends Controller
 
     private function mockupFile(Lead $lead, string $side): array
     {
-        abort_unless(in_array($side, ['front', 'back', 'sleeve'], true), 404);
+        abort_unless(in_array($side, ['front', 'back', 'sleeve_left', 'sleeve_right', 'sleeve'], true), 404);
 
         $path = $lead->{'live_mockup_'.$side.'_file'};
         abort_if(blank($path) || ! Storage::disk('live_mockups')->exists($path), 404);
 
         $extension = pathinfo($path, PATHINFO_EXTENSION);
-        $filename = 'grafica-'.(['front' => 'fronte', 'back' => 'retro', 'sleeve' => 'manica'][$side]).($extension ? '.'.$extension : '');
+        $filename = 'grafica-'.(['front' => 'fronte', 'back' => 'retro', 'sleeve_left' => 'manica-sinistra', 'sleeve_right' => 'manica-destra', 'sleeve' => 'manica'][$side]).($extension ? '.'.$extension : '');
         $mimeType = Storage::disk('live_mockups')->mimeType($path) ?: 'application/octet-stream';
 
         return [$path, $filename, $mimeType];

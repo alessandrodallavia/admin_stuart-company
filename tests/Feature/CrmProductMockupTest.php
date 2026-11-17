@@ -39,11 +39,13 @@ class CrmProductMockupTest extends TestCase
         [$product, $color] = $this->setupCatalog();
         $product->priceTiers()->create(['min_quantity' => 15, 'max_quantity' => null, 'unit_cost' => 3, 'unit_price' => 6]);
         $url = route('admin.crm-catalog.products.mockups.update', [$product, $color]);
-        $this->patch($url, ['front_action' => 'library', 'front_asset' => 'basic/black-front.png', 'back_action' => 'upload', 'back_file' => UploadedFile::fake()->image('back.png', 60, 80)])
+        $this->patch($url, ['front_action' => 'library', 'front_asset' => 'basic/black-front.png', 'back_action' => 'upload', 'back_file' => UploadedFile::fake()->image('back.png', 60, 80), 'sleeve_left_action' => 'upload', 'sleeve_left_file' => UploadedFile::fake()->image('left.png', 60, 80), 'sleeve_right_action' => 'upload', 'sleeve_right_file' => UploadedFile::fake()->image('right.png', 60, 80)])
             ->assertSessionHasNoErrors()->assertRedirect(route('admin.crm-catalog.products.mockups.index', ['product' => $product, 'color' => $color->id]));
         $color->refresh();
         $this->assertSame('basic/black-front.png', $color->mockup_front_path);
         $this->assertStringStartsWith('crm/', $color->mockup_back_path);
+        $this->assertStringStartsWith('crm/', $color->mockup_sleeve_left_path);
+        $this->assertStringStartsWith('crm/', $color->mockup_sleeve_right_path);
         $this->assertTrue((bool) $color->mockup_customized);
         Storage::disk('live_mockup_assets')->assertExists($color->mockup_back_path);
         $this->assertSame('3.0000', $product->fresh()->unit_cost);
