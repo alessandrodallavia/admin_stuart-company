@@ -52,6 +52,8 @@ return [
                 ?: (env('LIVE_MOCKUP_STORAGE_PATH')
                     ? dirname(env('LIVE_MOCKUP_STORAGE_PATH'), 3).'/public/assets/images/landing/live-mockup'
                     : base_path('../public_html/public/assets/images/landing/live-mockup')),
+            'visibility' => 'public',
+            'directory_visibility' => 'public',
             'serve' => false,
             'throw' => false,
             'report' => false,
