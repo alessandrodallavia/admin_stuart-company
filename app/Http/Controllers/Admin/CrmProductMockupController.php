@@ -46,14 +46,17 @@ class CrmProductMockupController extends Controller
     {
         abort_unless($color->crm_product_id === $product->id, 404);
         $rules = [];
-        foreach (['front', 'back'] as $side) {
+        foreach (['front', 'back', 'sleeve_left', 'sleeve_right'] as $side) {
+            if (! $request->has($side.'_action')) {
+                $request->merge([$side.'_action' => 'keep']);
+            }
             $rules[$side.'_action'] = ['required', Rule::in(['keep', 'library', 'upload', 'clear'])];
             $rules[$side.'_asset'] = ['nullable', 'string', 'max:1024'];
             $rules[$side.'_file'] = [Rule::requiredIf($request->input($side.'_action') === 'upload'), 'nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:8192', 'dimensions:max_width=5000,max_height=5000'];
         }
         $data = $request->validate($rules);
         $paths = [];
-        foreach (['front', 'back'] as $side) {
+        foreach (['front', 'back', 'sleeve_left', 'sleeve_right'] as $side) {
             if ($data[$side.'_action'] === 'library') {
                 $path = $data[$side.'_asset'] ?? '';
                 if (! $this->image($path)) {
@@ -66,7 +69,7 @@ class CrmProductMockupController extends Controller
         try {
             DB::transaction(function () use ($request, $color, $product, $data, $paths, &$created) {
                 $locked = CrmProductColor::whereKey($color->id)->where('crm_product_id', $product->id)->lockForUpdate()->firstOrFail();
-                foreach (['front', 'back'] as $side) {
+                foreach (['front', 'back', 'sleeve_left', 'sleeve_right'] as $side) {
                     $column = 'mockup_'.$side.'_path';
                     switch ($data[$side.'_action']) {
                         case 'clear': $locked->{$column} = null;
@@ -83,7 +86,7 @@ class CrmProductMockupController extends Controller
                             break;
                     }
                 }
-                if ($data['front_action'] !== 'keep' || $data['back_action'] !== 'keep') {
+                if (collect(['front', 'back', 'sleeve_left', 'sleeve_right'])->contains(fn ($side) => $data[$side.'_action'] !== 'keep')) {
                     $locked->mockup_customized = true;
                 }
                 $locked->save();

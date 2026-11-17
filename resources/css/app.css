@@ -487,7 +487,8 @@ input[type="file"] {
 
 /* Product/color mockup library */
 .catalog-mockup-layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); }
-.catalog-mockup-colors { padding: 12px; border-right: 1px solid #dfe5ed; max-height: 760px; overflow-y: auto; }
+.catalog-mockup-colors-shell { position: relative; min-height: 0; border-right: 1px solid #dfe5ed; }
+.catalog-mockup-colors { position: absolute; inset: 0; padding: 12px; overflow-y: auto; }
 .catalog-mockup-colors a { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 8px; }
 .catalog-mockup-colors a[aria-current="page"] { background: #eef4ff; }
 .catalog-mockup-colors i { width: 24px; height: 24px; border-radius: 50%; border: 1px solid #cbd5e1; flex-shrink: 0; }
@@ -504,7 +505,7 @@ input[type="file"] {
 .catalog-mockup-library-item:hover { border-color: #206ae9; background: #eef4ff; }
 .catalog-mockup-library-item img { width: 100%; height: 150px; object-fit: contain; background: #f2f4f7; }
 .catalog-mockup-library-item span { display: block; margin-top: 8px; overflow-wrap: anywhere; font-size: 11px; }
-@media (max-width: 850px) { .catalog-mockup-layout { grid-template-columns: 1fr; } .catalog-mockup-colors { max-height: 220px; border-right: 0; border-bottom: 1px solid #dfe5ed; } }
+@media (max-width: 850px) { .catalog-mockup-layout { grid-template-columns: 1fr; } .catalog-mockup-colors-shell { position: static; border-right: 0; border-bottom: 1px solid #dfe5ed; } .catalog-mockup-colors { position: static; max-height: 220px; } }
 @media (max-width: 640px) { .catalog-mockup-sides { grid-template-columns: 1fr; } .catalog-mockup-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* WhatsApp workspace: shared catalog controls and surfaces. */

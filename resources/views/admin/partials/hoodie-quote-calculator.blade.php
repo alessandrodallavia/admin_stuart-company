@@ -11,7 +11,7 @@
                         <label data-quote-model-wrap class="catalog-field"><span>Tipo di felpa</span><select data-quote-model></select></label>
                         <label class="catalog-field"><span>Quantità</span><input data-quote-quantity type="number" step="1" inputmode="numeric"></label>
                         <input type="hidden" data-quote-print value="positions:">
-                        @foreach(['front'=>'Fronte','back'=>'Retro','sleeve'=>'Manica'] as $position=>$label)<label class="catalog-field catalog-span-full" hidden><span>{{ $label }}</span><select data-quote-position="{{ $position }}"><option value="">Nessuna</option></select></label>@endforeach
+                        @foreach(['front'=>'Fronte','back'=>'Retro','sleeve_left'=>'Manica sinistra','sleeve_right'=>'Manica destra'] as $position=>$label)<label class="catalog-field catalog-span-full" hidden><span>{{ $label }}</span><select data-quote-position="{{ $position }}"><option value="">Nessuna</option></select></label>@endforeach
                     </div>
                     <fieldset class="wa-quote-quality-field"><legend>Qualità da confrontare</legend><div data-quote-qualities></div></fieldset>
                     <button type="button" data-quote-generate class="catalog-button catalog-button-primary">Genera messaggio</button>
@@ -46,7 +46,7 @@
     const preview = find('preview');
     const positionSelects = [...panel.querySelectorAll('[data-quote-position]')];
     const selectedPositions = () => Object.fromEntries(positionSelects.filter(s => s.value).map(s => [s.dataset.quotePosition, Number(s.value)]));
-    const encodePositions = selected => 'positions:' + ['front', 'back', 'sleeve'].filter(side => selected[side]).map(side => side + '=' + selected[side]).join(';');
+    const encodePositions = selected => 'positions:' + ['front', 'back', 'sleeve_left', 'sleeve_right'].filter(side => selected[side]).map(side => side + '=' + selected[side]).join(';');
     let catalog = null;
     let loading = false;
     let revision = 0;

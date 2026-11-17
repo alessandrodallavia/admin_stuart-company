@@ -27,7 +27,7 @@ class CrmProductPersonalizationController extends Controller
     public function update(Request $request, CrmProduct $product): RedirectResponse
     {
         $data = $request->validate([
-            'areas' => ['sometimes', 'array:front,back,sleeve'],
+            'areas' => ['sometimes', 'array:front,back,sleeve_left,sleeve_right'],
             'areas.*' => ['array:width_cm,height_cm,x_percent,y_percent,width_percent,height_percent'],
             'areas.*.width_cm' => ['nullable', 'numeric', 'min:0.1', 'max:200'],
             'areas.*.height_cm' => ['nullable', 'numeric', 'min:0.1', 'max:200'],
@@ -35,7 +35,7 @@ class CrmProductPersonalizationController extends Controller
             'areas.*.y_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'areas.*.width_percent' => ['nullable', 'numeric', 'min:0.1', 'max:100'],
             'areas.*.height_percent' => ['nullable', 'numeric', 'min:0.1', 'max:100'],
-            'positions' => ['sometimes', 'array:front,back,sleeve'],
+            'positions' => ['sometimes', 'array:front,back,sleeve_left,sleeve_right'],
             'positions.*' => ['array', 'max:100'],
             'positions.*.*' => ['integer', 'exists:crm_print_types,id'],
         ]);

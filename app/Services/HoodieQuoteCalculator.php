@@ -69,7 +69,9 @@ class HoodieQuoteCalculator
 
         $saved = $lead->calculator_crm_snapshot['positions'] ?? null;
         try {
-            $defaults['positions'] = $saved ?? CrmPositionPricing::decode($catalog, (string) $lead->calculator_personalization);
+            $defaults['positions'] = $saved
+                ? CrmPositionPricing::decode($catalog, CrmPositionPricing::encode($saved))
+                : CrmPositionPricing::decode($catalog, (string) $lead->calculator_personalization);
         } catch (\InvalidArgumentException) {
             $defaults['positions'] = [];
         }

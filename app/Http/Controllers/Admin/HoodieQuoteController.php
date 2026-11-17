@@ -48,7 +48,7 @@ class HoodieQuoteController extends Controller
                 'model' => ['required', Rule::in($family === 'tshirt' ? ['tshirt'] : array_keys($c['models']))],
                 'quantity' => ['required', 'integer', 'min:'.$c['minimum_quantity'], 'max:'.$c['custom_quote_above_quantity']],
                 'personalization' => ['nullable', 'string', 'max:100'],
-                'positions' => ['sometimes', 'array:front,back,sleeve'],
+                'positions' => ['sometimes', 'array:front,back,sleeve_left,sleeve_right'],
                 'positions.*' => ['nullable', 'integer', 'min:1'],
                 'qualities' => ['required', 'array', 'min:1', 'max:'.count($qualities)],
                 'qualities.*' => ['required', 'distinct', Rule::in(array_keys($qualities))],

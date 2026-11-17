@@ -470,7 +470,7 @@
                                         'big_front_print_big_back_print' => 'Stampa grande frontale + stampa grande retro',
                                     ];
                                     $mockupPersonalization = $selectedLead->calculator_crm_snapshot['personalization_label'] ?? $selectedLead->calculator_crm_snapshot['quote_cents']['selection_label'] ?? $personalizationLabels[$selectedLead->calculator_personalization] ?? $selectedLead->calculator_personalization;
-                                    $hasLiveMockupGraphics = filled($selectedLead->live_mockup_front_file) || filled($selectedLead->live_mockup_back_file) || filled($selectedLead->live_mockup_sleeve_file);
+                                    $hasLiveMockupGraphics = filled($selectedLead->live_mockup_front_file) || filled($selectedLead->live_mockup_back_file) || filled($selectedLead->live_mockup_sleeve_left_file) || filled($selectedLead->live_mockup_sleeve_right_file) || filled($selectedLead->live_mockup_sleeve_file);
                                     $mockupModelKey = Illuminate\Support\Str::slug((string) $selectedLead->calculator_model);
                                     $mockupColorKey = Illuminate\Support\Str::slug((string) $selectedLead->live_mockup_color);
                                     $hasMockupBase = filled($mockupModelKey) && filled($mockupColorKey);
@@ -485,13 +485,15 @@
                                         'back' => $isLargePrint
                                             ? ['top' => '18%', 'left' => '50%', 'width' => '40%', 'height' => '44%']
                                             : ['top' => '22%', 'left' => '50%', 'width' => '40%', 'height' => '24%'],
+                                        'sleeve_left' => ['top' => '25%', 'left' => '50%', 'width' => '40%', 'height' => '40%'],
+                                        'sleeve_right' => ['top' => '25%', 'left' => '50%', 'width' => '40%', 'height' => '40%'],
                                     ];
                             @endphp
                             @if(!empty($selectedLead->calculator_crm_snapshot['artwork_composition']))
                             <section class="rounded-xl border border-gray-200 p-4"><h3 class="font-semibold">Composizione richiesta · anteprima indicativa</h3>
                             <p class="text-xs text-gray-500">Posizioni misurate dall’angolo superiore sinistro dell’area personalizzabile. Verificare prima della produzione.</p>
                             @foreach($selectedLead->calculator_crm_snapshot['artwork_composition'] as $side=>$drawing)
-                            <p class="mt-2 text-sm"><strong>{{ ['front'=>'Fronte','back'=>'Retro','sleeve'=>'Manica'][$side] ?? $side }} · {{ $drawing['print_name'] }}</strong>: {{ $drawing['width_cm'] }} × {{ $drawing['height_cm'] }} cm; da sinistra {{ $drawing['x_cm'] }} cm, dall’alto {{ $drawing['y_cm'] }} cm.</p>
+                            <p class="mt-2 text-sm"><strong>{{ ['front'=>'Fronte','back'=>'Retro','sleeve'=>'Manica','sleeve_left'=>'Manica sinistra','sleeve_right'=>'Manica destra'][$side] ?? $side }} · {{ $drawing['print_name'] }}</strong>: {{ $drawing['width_cm'] }} × {{ $drawing['height_cm'] }} cm; da sinistra {{ $drawing['x_cm'] }} cm, dall’alto {{ $drawing['y_cm'] }} cm.</p>
                             @if($liveMockupFiles[$side]['exists'])
                             <div class="relative mt-3 max-w-[250px] border border-dashed border-gray-400 bg-gray-100" style="aspect-ratio: {{ $drawing['area']['width_cm'] }} / {{ $drawing['area']['height_cm'] }}" aria-label="Composizione nell’area personalizzabile">
                             <img class="absolute" alt="Composizione {{ $side }}" src="{{ route('admin.leads.mockup-files.show', [$selectedLead, $side]) }}" style="left: {{ $drawing['x_cm'] / $drawing['area']['width_cm'] * 100 }}%; top: {{ $drawing['y_cm'] / $drawing['area']['height_cm'] * 100 }}%; width: {{ $drawing['width_cm'] / $drawing['area']['width_cm'] * 100 }}%; height: {{ $drawing['height_cm'] / $drawing['area']['height_cm'] * 100 }}%;">
@@ -538,7 +540,7 @@
                                         </dl>
 
                                         <div class="grid gap-10 sm:grid-cols-2">
-                                            @foreach (['front' => 'Fronte', 'back' => 'Retro', 'sleeve' => 'Manica'] as $side => $label)
+                                            @foreach (['front' => 'Fronte', 'back' => 'Retro', 'sleeve_left' => 'Manica sinistra', 'sleeve_right' => 'Manica destra', 'sleeve' => 'Manica (storico)'] as $side => $label)
                                                 <article class="overflow-hidden rounded-10 border border-gray-mid bg-gray-light">
                                                     <div class="flex items-center justify-between border-b border-gray-mid bg-white px-10 py-8">
                                                         <p class="text-11 font-black uppercase">{{ $label }}</p>

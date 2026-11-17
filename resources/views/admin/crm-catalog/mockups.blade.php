@@ -7,22 +7,24 @@
     $canManage = auth('admin')->user()?->hasAdminPermission('crm_catalog.manage');
 @endphp
 <div class="catalog-workspace" data-crm-mockups>
-    <header class="catalog-page-header"><div><p class="catalog-eyebrow">{{ $product->code }} · {{ $product->name }}</p><h1>Mockup per colore</h1><p>Associa immagini fronte e retro al colore del prodotto. Verranno usate dal configuratore.</p></div><a href="{{ route('admin.crm-catalog.index') }}" class="catalog-button catalog-button-secondary">Torna al catalogo</a></header>
+    <header class="catalog-page-header"><div><p class="catalog-eyebrow">{{ $product->code }} · {{ $product->name }}</p><h1>Mockup per colore</h1><p>Associa fronte, retro, manica sinistra e manica destra al colore del prodotto. Verranno usati dal configuratore.</p></div><a href="{{ route('admin.crm-catalog.index') }}" class="catalog-button catalog-button-secondary">Torna al catalogo</a></header>
     @if($errors->any())<div class="catalog-error" role="alert"><strong>Controlla le immagini selezionate</strong><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
     <div class="catalog-surface catalog-mockup-layout">
+        <div class="catalog-mockup-colors-shell">
         <nav class="catalog-mockup-colors" aria-label="Colori del prodotto">
             @forelse($product->colors as $item)
-                <a href="{{ route('admin.crm-catalog.products.mockups.index', ['product' => $product, 'color' => $item->id]) }}" @if($color?->id === $item->id) aria-current="page" @endif><i style="background:{{ $item->hex ?: '#eeeeee' }}"></i><span><strong>{{ $item->name }}</strong><small>{{ $item->code }} · {{ (int)(bool)$item->mockup_front_path + (int)(bool)$item->mockup_back_path }}/2 immagini</small></span></a>
+                <a href="{{ route('admin.crm-catalog.products.mockups.index', ['product' => $product, 'color' => $item->id]) }}" @if($color?->id === $item->id) aria-current="page" @endif><i style="background:{{ $item->hex ?: '#eeeeee' }}"></i><span><strong>{{ $item->name }}</strong><small>{{ $item->code }} · {{ collect(['front','back','sleeve_left','sleeve_right'])->filter(fn($side) => filled($item->{'mockup_'.$side.'_path'}))->count() }}/4 immagini</small></span></a>
             @empty<p class="catalog-help">Aggiungi prima i colori nella scheda prodotto.</p>@endforelse
         </nav>
+        </div>
         <div class="catalog-modal-body">
         @if($color)
             <h2 class="text-20 font-bold">{{ $color->name }} · {{ $color->code }}</h2>
-            <p class="catalog-help" style="margin:8px 0 20px">Scegli immagini del prodotto e colore corretti. PNG, JPG o WebP, massimo 8 MB e 5000 × 5000 px. Per sovrapporre le grafiche sono consigliati PNG o WebP con sfondo trasparente.</p>
+            <p class="catalog-help" style="margin:8px 0 20px">Scegli immagini del prodotto e colore corretti. Sinistra e destra sono riferite a chi indossa il capo. PNG, JPG o WebP, massimo 8 MB e 5000 × 5000 px.</p>
             <form method="POST" enctype="multipart/form-data" action="{{ route('admin.crm-catalog.products.mockups.update', [$product, $color]) }}" data-mockup-form>
                 @csrf @method('PATCH')
                 <div class="catalog-mockup-sides">
-                @foreach(['front' => 'Fronte', 'back' => 'Retro'] as $side => $label)
+                @foreach(['front' => 'Fronte', 'back' => 'Retro', 'sleeve_left' => 'Manica sinistra', 'sleeve_right' => 'Manica destra'] as $side => $label)
                     @php
                         $path = $color->{'mockup_'.$side.'_path'};
                         $preview = $path ? route('admin.crm-catalog.mockup-assets.show', ['path' => $path]) : '';
