@@ -10,7 +10,8 @@ class OrderCheckoutFingerprint
     {
         $sheet = DB::table('lead_sales_sheets')->where('id', $sheetId)->first([
             'id', 'prices_include_vat', 'product_revenue_total', 'shipping_charge',
-            'discount_type', 'discount_value', 'discount_amount', 'rounding_adjustment', 'revenue_total',
+            'discount_type', 'discount_value', 'discount_amount', 'rounding_adjustment',
+            'minimum_order_amount', 'minimum_order_adjustment', 'revenue_total',
         ]);
         $items = DB::table('lead_sales_items')->where('lead_sales_sheet_id', $sheetId)->orderBy('id')->get([
             'id', 'product_code', 'product_name', 'configuration_name', 'quantity',

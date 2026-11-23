@@ -84,6 +84,10 @@ class LeadOrderCheckoutService
             'product_subtotal' => $this->netValue((float) $sheet->product_revenue_total, $pricesIncludeVat),
             'discount_amount' => $this->netValue((float) $sheet->discount_amount, $pricesIncludeVat),
             'rounding_adjustment' => $this->netValue((float) $sheet->rounding_adjustment, $pricesIncludeVat),
+            'minimum_order_amount' => $sheet->minimum_order_amount === null
+                ? null
+                : $this->netValue((float) $sheet->minimum_order_amount, $pricesIncludeVat),
+            'minimum_order_adjustment' => $this->netValue((float) $sheet->minimum_order_adjustment, $pricesIncludeVat),
             'shipping_amount' => $this->netValue((float) $sheet->shipping_charge, $pricesIncludeVat),
             'order_taxable_amount' => $orderTotal['net'],
             'order_vat_amount' => $orderTotal['vat'],

@@ -789,12 +789,12 @@ class AdminCrmDashboardTest extends TestCase
         $this->actingAs($admin, 'admin')->post("/leads/{$lead->id}/sales-sheet/items/{$item->id}/prints", ['print_type_id' => $print->id])->assertSessionHasNoErrors();
 
         $sheet = $lead->fresh()->salesSheet;
-        $this->assertSame('189.90', $sheet->revenue_total);
-        $this->assertSame('81.90', $sheet->cost_total);
+        $this->assertSame('188.12', $sheet->revenue_total);
+        $this->assertSame('80.12', $sheet->cost_total);
         $this->assertSame('108.00', $sheet->margin_total);
         $this->assertSame('180.00', $sheet->product_revenue_total);
-        $this->assertSame('9.90', $sheet->shipping_charge);
-        $this->assertSame('9.90', $sheet->shipping_cost);
+        $this->assertSame('8.12', $sheet->shipping_charge);
+        $this->assertSame('8.12', $sheet->shipping_cost);
         $this->assertSame('108.00', $lead->fresh()->margin_amount);
     }
 
@@ -821,6 +821,40 @@ class AdminCrmDashboardTest extends TestCase
         $this->assertDatabaseHas('lead_sales_item_prints', [
             'lead_sales_item_id' => $item->id,
             'unit_price' => 3,
+        ]);
+
+        $sheet = $lead->fresh()->salesSheet;
+        $this->assertSame('45.00', $sheet->product_revenue_total);
+        $this->assertSame('105.00', $sheet->minimum_order_adjustment);
+        $this->assertSame('158.12', $sheet->revenue_total);
+
+        $this->actingAs($admin, 'admin')->post(route('admin.leads.orders.checkout.store', [$lead, $sheet]), [
+            'payment_type' => 'full',
+            'expires_at' => now()->addDays(7)->toDateString(),
+        ])->assertSessionHasNoErrors();
+
+        $checkout = $sheet->fresh()->checkouts()->firstOrFail();
+        $this->assertSame('45.00', $checkout->product_subtotal);
+        $this->assertSame('150.00', $checkout->minimum_order_amount);
+        $this->assertSame('105.00', $checkout->minimum_order_adjustment);
+        $this->assertSame('158.12', $checkout->order_taxable_amount);
+        $this->assertSame('34.79', $checkout->order_vat_amount);
+        $this->assertSame('192.91', $checkout->order_total_amount);
+
+        $this->post(route('admin.checkout-orders.proforma.store', $checkout))->assertSessionHasNoErrors();
+        $proforma = $checkout->fresh()->proforma()->with('items')->firstOrFail();
+        $this->assertSame('158.12', $proforma->subtotal);
+        $this->assertSame('192.91', $proforma->total);
+        $this->assertDatabaseHas('admin_document_items', [
+            'admin_document_id' => $proforma->id,
+            'description' => 'IMPORTO MINIMO ORDINE',
+            'unit_price' => 150,
+            'informational' => false,
+        ]);
+        $this->assertDatabaseHas('admin_document_items', [
+            'admin_document_id' => $proforma->id,
+            'description' => 'PRODOTTO QUANTITÀ LIBERA',
+            'informational' => true,
         ]);
     }
 
@@ -887,10 +921,11 @@ class AdminCrmDashboardTest extends TestCase
             ->assertSee('CAC medio')
             ->assertSee('Questo è il primo ordine del cliente: il CAC medio degli ultimi 30 giorni viene sottratto qui una sola volta.')
             ->assertSee('€ 20,00')
-            ->assertSee('€ 30,00')
-            ->assertSee('€ 17,56')
-            ->assertSee('27,7%')
-            ->assertSee('Non sostenibile');
+            ->assertSee('Minimo d’ordine applicato: € 150,00')
+            ->assertSee('€ 100,00')
+            ->assertSee('€ 80,00')
+            ->assertSee('50,6%')
+            ->assertSee('Redditizio');
     }
 
     public function test_reorder_does_not_apply_customer_acquisition_cost_again(): void
@@ -964,15 +999,16 @@ class AdminCrmDashboardTest extends TestCase
             ->assertHasNoErrors()
             ->assertSee('Prodotto aggiunto alla scheda vendita.')
             ->assertSee('90,00')
+            ->assertSee('Minimo d’ordine applicato: € 150,00')
             ->assertSee('IVA 22%')
-            ->assertSee('21,59')
+            ->assertSee('34,79')
             ->assertSee('Totale da pagare IVA inclusa')
-            ->assertSee('119,71')
+            ->assertSee('192,91')
             ->set('shippingFee', '0')
             ->call('saveShipping')
             ->assertHasNoErrors()
-            ->assertSee('19,80')
-            ->assertSee('109,80');
+            ->assertSee('33,00')
+            ->assertSee('183,00');
 
         $this->assertDatabaseHas('lead_sales_items', [
             'product_code' => 'POLO01',

@@ -64,15 +64,19 @@ class LeadSalesSheetService
         };
         $adjustedProductRevenue = max(0, $productRevenue - $discountAmount + (float) $sheet->rounding_adjustment);
         $hasProducts = $sheet->items->isNotEmpty();
+        $minimumOrderAmount = $hasProducts && $sheet->minimum_order_amount !== null ? (float) $sheet->minimum_order_amount : 0;
+        $billableProductRevenue = max($adjustedProductRevenue, $minimumOrderAmount);
+        $minimumOrderAdjustment = $billableProductRevenue - $adjustedProductRevenue;
         $shippingFee = $hasProducts ? (float) $sheet->shipping_fee : 0;
-        $shippingCharge = $hasProducts && $adjustedProductRevenue <= (float) $sheet->free_shipping_threshold ? $shippingFee : 0;
+        $shippingCharge = $hasProducts && $billableProductRevenue <= (float) $sheet->free_shipping_threshold ? $shippingFee : 0;
         $shippingCost = $hasProducts ? $shippingFee : 0;
-        $revenue = $adjustedProductRevenue + $shippingCharge;
+        $revenue = $billableProductRevenue + $shippingCharge;
         $cost = $productCost + $shippingCost;
         $margin = $revenue - $cost;
         $sheet->forceFill([
             'product_revenue_total' => $productRevenue,
             'discount_amount' => $discountAmount,
+            'minimum_order_adjustment' => $minimumOrderAdjustment,
             'shipping_charge' => $shippingCharge,
             'shipping_cost' => $shippingCost,
             'revenue_total' => $revenue,

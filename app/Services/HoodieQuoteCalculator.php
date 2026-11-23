@@ -110,7 +110,13 @@ class HoodieQuoteCalculator
             $subtotal = $quote['subtotal'];
             $vat = $quote['vat'];
             $shipping = $quote['shipping'];
-            $rows[] = ['setup_total' => $quote['setup_total'] ?? 0, 'setup_count' => $quote['setup_count'] ?? 0, 'items_subtotal' => $quote['items_subtotal'] ?? $subtotal, 'quality' => $quality, 'label' => $qualities[$quality], 'unit' => $unitCents, 'subtotal' => $subtotal, 'vat' => $vat, 'shipping' => $shipping, 'total' => $subtotal + $vat + $shipping];
+            $rows[] = ['setup_total' => $quote['setup_total'] ?? 0, 'setup_count' => $quote['setup_count'] ?? 0,
+                'items_subtotal' => $quote['items_subtotal'] ?? $subtotal,
+                'calculated_subtotal' => $quote['calculated_subtotal'] ?? $subtotal,
+                'minimum_order_amount' => $quote['minimum_order_amount'] ?? 0,
+                'minimum_order_applied' => $quote['minimum_order_applied'] ?? false,
+                'quality' => $quality, 'label' => $qualities[$quality], 'unit' => $unitCents,
+                'subtotal' => $subtotal, 'vat' => $vat, 'shipping' => $shipping, 'total' => $subtotal + $vat + $shipping];
         }
         $shippingDays = $quote['shipping_days'];
         $money = static fn (int $cents): string => 'EUR '.number_format($cents / 100, 2, ',', '.');
@@ -124,6 +130,11 @@ class HoodieQuoteCalculator
             $lines[] = 'Totale '.$quantity.' pz: '.$money($row['items_subtotal']).' + IVA';
             if ($row['setup_count']) {
                 $lines[] = 'Impianti ricamo: '.$row['setup_count'].' · costo unico totale '.$money($row['setup_total']).' + IVA';
+            }
+            if ($row['minimum_order_applied']) {
+                $lines[] = 'Imponibile calcolato: '.$money($row['calculated_subtotal']);
+                $lines[] = 'Minimo d’ordine applicato: '.$money($row['minimum_order_amount']).' + IVA';
+            } elseif ($row['setup_count']) {
                 $lines[] = 'Imponibile ordine: '.$money($row['subtotal']);
             }
             $lines[] = 'IVA '.$c['vat_rate'].'%: '.$money($row['vat']);

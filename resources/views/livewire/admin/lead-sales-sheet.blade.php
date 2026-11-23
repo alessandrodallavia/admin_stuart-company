@@ -32,6 +32,15 @@
     <div class="p-10 sm:p-12">
         <section aria-label="Riepilogo IVA e pagamento" class="mb-12 rounded-10 border border-bullstar/30 bg-bullstar/5 p-10 sm:p-12">
             <h3 class="text-12 font-black uppercase">Riepilogo pagamento</h3>
+            @if((float) ($salesSheet?->minimum_order_adjustment ?? 0) > 0)
+                @php
+                    $calculatedOrderAmount = max(0, (float) $salesSheet->product_revenue_total - (float) $salesSheet->discount_amount + (float) $salesSheet->rounding_adjustment);
+                @endphp
+                <div class="mt-8 flex flex-wrap items-center gap-x-16 gap-y-4 rounded-10 border border-bullstar/20 bg-white px-10 py-8 text-11 font-semibold">
+                    <span class="text-gray">Imponibile calcolato: <span class="line-through">€ {{ number_format($calculatedOrderAmount, 2, ',', '.') }}</span></span>
+                    <span class="font-black text-bullstar">Minimo d’ordine applicato: € {{ number_format((float) $salesSheet->minimum_order_amount, 2, ',', '.') }}</span>
+                </div>
+            @endif
             <div class="mt-8 grid gap-8 sm:grid-cols-3">
                 <div><p class="text-10 font-extrabold uppercase text-gray">Imponibile IVA esclusa</p><p class="mt-3 text-16 font-black">€ {{ number_format($vatTotals['net'], 2, ',', '.') }}</p></div>
                 <div><p class="text-10 font-extrabold uppercase text-gray">IVA {{ $vatTotals['rate'] }}%</p><p class="mt-3 text-16 font-black">€ {{ number_format($vatTotals['vat'], 2, ',', '.') }}</p></div>
