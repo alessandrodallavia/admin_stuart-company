@@ -56,8 +56,13 @@ class CrmPersonalizationSettingsTest extends TestCase
         $response = $this->postJson(route('admin.conversations.hoodie-quote.preview', $conversation), $selection)->assertOk()->assertJsonPath('quotes.0.unit', 900)->assertJsonPath('quotes.0.setup_total', 3500)->assertJsonPath('quotes.0.subtotal', 30500)->assertJsonPath('quotes.0.total', 37210);
         $this->assertStringContainsString('spedizione entro 12 giorni lavorativi', $response->json('message'));
         $this->assertStringContainsString('Impianti ricamo: 1 · costo unico totale EUR 35,00 + IVA', $response->json('message'));
-        $tooSmall = $this->postJson(route('admin.conversations.hoodie-quote.preview', $conversation), [...$selection, 'quantity' => 20])->assertUnprocessable();
-        $this->assertStringContainsString('almeno 30 pezzi', $tooSmall->json('errors.qualities.0'));
+        $belowOldTier = $this->postJson(route('admin.conversations.hoodie-quote.preview', $conversation), [...$selection, 'quantity' => 20])
+            ->assertOk()
+            ->assertJsonPath('quotes.0.unit', 900)
+            ->assertJsonPath('quotes.0.setup_total', 3500)
+            ->assertJsonPath('quotes.0.subtotal', 21500)
+            ->assertJsonPath('quotes.0.total', 26230);
+        $this->assertStringNotContainsString('Minimo d’ordine applicato', $belowOldTier->json('message'));
         $this->postJson(route('admin.conversations.hoodie-quote.preview', $conversation), [...$selection, 'personalization' => 'crm_'.$ricamo->id.'_front_crm_'.$ricamo->id.'_back'])->assertOk()->assertJsonPath('quotes.0.setup_total', 7000)->assertJsonPath('quotes.0.setup_count', 2);
     }
 

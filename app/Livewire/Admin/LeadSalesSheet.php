@@ -638,6 +638,7 @@ class LeadSalesSheet extends Component
             'name' => 'Nuovo ordine',
             'status' => 'draft',
             'prices_include_vat' => false,
+            'minimum_order_amount' => config('orders.minimum_amount_ex_vat'),
             'shipping_fee' => 8.12,
             'free_shipping_threshold' => 250,
             'revenue_total' => 0,

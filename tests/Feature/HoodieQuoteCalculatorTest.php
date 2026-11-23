@@ -91,7 +91,7 @@ class HoodieQuoteCalculatorTest extends TestCase
         $conversation = $this->conversation(['lead_id' => $lead->id]);
         $this->actingAs($this->owner(), 'admin')->getJson(route('admin.conversations.hoodie-quote.catalog', $conversation))
             ->assertOk()->assertJsonPath('family', 'tshirt')->assertJsonPath('defaults.model', 'tshirt')->assertJsonPath('defaults.qualities', ['premium'])
-            ->assertJsonPath('defaults.quantity', 50)->assertJsonPath('products.basic.basic.code', 'TS-basic')->assertJsonPath('minimum_quantity', 15);
+            ->assertJsonPath('defaults.quantity', 50)->assertJsonPath('products.basic.basic.code', 'TS-basic')->assertJsonPath('minimum_quantity', 1);
         $calculator = app(HoodieQuoteCalculator::class);
         $max = $calculator->generate(['family' => 'tshirt', 'model' => 'tshirt', 'quantity' => 20, 'personalization' => 'max_front_print_max_back_print', 'qualities' => ['basic']]);
         $this->assertSame(1500, $max['quotes'][0]['unit']);
@@ -106,7 +106,7 @@ class HoodieQuoteCalculatorTest extends TestCase
         $conversation = $this->conversation();
         $this->actingAs($this->owner(), 'admin');
         $selection = ['family' => 'tshirt', 'model' => 'tshirt', 'quantity' => 20, 'personalization' => 'heart_logo', 'qualities' => ['basic']];
-        foreach ([['family' => 'invalid'], ['model' => 'hood'], ['quantity' => 14], ['quantity' => 3000], ['qualities' => ['organic']]] as $change) {
+        foreach ([['family' => 'invalid'], ['model' => 'hood'], ['quantity' => 0], ['quantity' => 3000], ['qualities' => ['organic']]] as $change) {
             $this->postJson(route('admin.conversations.hoodie-quote.preview', $conversation), [...$selection, ...$change])->assertUnprocessable();
         }
         CrmCalculatorSlot::where('family', 'tshirt')->where('quality', 'basic')->update(['crm_product_id' => null]);
@@ -152,12 +152,15 @@ class HoodieQuoteCalculatorTest extends TestCase
     {
         $result = app(HoodieQuoteCalculator::class)->generate($this->selection(['quantity' => 11, 'personalization' => 'heart_logo']));
         $this->assertSame(990, $result['quotes'][0]['shipping']);
-        $this->assertSame(15752, $result['quotes'][0]['total']);
+        $this->assertSame(19290, $result['quotes'][0]['total']);
+        $this->assertTrue($result['quotes'][0]['minimum_order_applied']);
+        $this->assertSame(15000, $result['quotes'][0]['minimum_order_amount']);
         $this->assertSame(0, $result['quotes'][1]['shipping']);
         $this->assertSame(28182, $result['quotes'][1]['total']);
         $belowThreshold = app(HoodieQuoteCalculator::class)->generate($this->selection(['quantity' => 10, 'personalization' => 'heart_logo', 'qualities' => ['economic']]));
         $this->assertSame(990, $belowThreshold['quotes'][0]['shipping']);
-        $this->assertSame(14410, $belowThreshold['quotes'][0]['total']);
+        $this->assertSame(19290, $belowThreshold['quotes'][0]['total']);
+        $this->assertStringContainsString('Minimo d’ordine applicato: EUR 150,00 + IVA', $result['message']);
         $this->assertStringContainsString('Spedizione: EUR 9,90 IVA inclusa', $result['message']);
         $this->assertStringContainsString('Spedizione: gratuita', $result['message']);
         $this->assertStringContainsString('max 25 x 15 cm', app(HoodieQuoteCalculator::class)->generate($this->selection(['personalization' => 'front_print']))['message']);
@@ -190,7 +193,7 @@ class HoodieQuoteCalculatorTest extends TestCase
     {
         $conversation = $this->conversation();
         $this->actingAs($this->owner(), 'admin');
-        foreach ([['quantity' => 9], ['quantity' => 3001], ['quantity' => 10.5], ['qualities' => []], ['qualities' => ['premium']], ['qualities' => ['basic', 'basic']], ['model' => 'bad'], ['personalization' => 'bad']] as $change) {
+        foreach ([['quantity' => 0], ['quantity' => 3001], ['quantity' => 10.5], ['qualities' => []], ['qualities' => ['premium']], ['qualities' => ['basic', 'basic']], ['model' => 'bad'], ['personalization' => 'bad']] as $change) {
             $this->postJson(route('admin.conversations.hoodie-quote.preview', $conversation), $this->selection($change))->assertUnprocessable();
         }
         $this->postJson(route('admin.conversations.hoodie-quote.preview', $conversation), $this->selection(['model' => 'hood', 'personalization' => 'big_front_print']))

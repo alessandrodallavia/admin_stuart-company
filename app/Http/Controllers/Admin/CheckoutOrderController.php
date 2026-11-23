@@ -376,6 +376,8 @@ class CheckoutOrderController extends Controller
 
     private function proformaData(LeadOrderCheckout $checkout): array
     {
+        $minimumOrderApplied = (float) $checkout->minimum_order_adjustment > 0;
+
         if ($checkout->payment_type === 'deposit') {
             $items = [[
                 'item_code' => null,
@@ -415,6 +417,17 @@ class CheckoutOrderController extends Controller
                 ];
             }
 
+            if ($minimumOrderApplied) {
+                $items[] = [
+                    'item_code' => null,
+                    'description' => 'MINIMO D’ORDINE APPLICATO',
+                    'quantity' => 1,
+                    'unit_price' => $checkout->minimum_order_amount,
+                    'vat_rate' => $checkout->vat_rate,
+                    'informational' => true,
+                ];
+            }
+
             if ((float) $checkout->shipping_amount > 0) {
                 $items[] = [
                     'item_code' => null,
@@ -426,7 +439,7 @@ class CheckoutOrderController extends Controller
                 ];
             }
         } else {
-            $items = collect($checkout->items)->map(fn (array $item) => [
+            $orderItems = collect($checkout->items)->map(fn (array $item) => [
                 'item_code' => $item['code'] ?? null,
                 'description' => $this->itemDescription($item),
                 'quantity' => $item['quantity'],
@@ -434,10 +447,39 @@ class CheckoutOrderController extends Controller
                 'vat_rate' => $checkout->vat_rate,
             ])->all();
 
-            if ((float) $checkout->discount_amount > 0) {
+            if ($minimumOrderApplied) {
+                $items = [[
+                    'item_code' => null,
+                    'description' => 'IMPORTO MINIMO ORDINE',
+                    'quantity' => 1,
+                    'unit_price' => $checkout->minimum_order_amount,
+                    'vat_rate' => $checkout->vat_rate,
+                ], [
+                    'item_code' => null,
+                    'description' => "\u{00A0}",
+                    'quantity' => 0,
+                    'unit_price' => 0,
+                    'vat_rate' => 0,
+                    'informational' => true,
+                ], [
+                    'item_code' => null,
+                    'description' => 'RIEPILOGO ORDINE',
+                    'quantity' => 0,
+                    'unit_price' => 0,
+                    'vat_rate' => 0,
+                    'informational' => true,
+                ]];
+                foreach ($orderItems as $item) {
+                    $items[] = $item + ['informational' => true];
+                }
+            } else {
+                $items = $orderItems;
+            }
+
+            if (! $minimumOrderApplied && (float) $checkout->discount_amount > 0) {
                 $items[] = ['item_code' => 'SCONTO', 'description' => 'SCONTO ORDINE', 'quantity' => 1, 'unit_price' => -(float) $checkout->discount_amount, 'vat_rate' => $checkout->vat_rate];
             }
-            if ((float) $checkout->rounding_adjustment !== 0.0) {
+            if (! $minimumOrderApplied && (float) $checkout->rounding_adjustment !== 0.0) {
                 $items[] = ['item_code' => 'ARROT', 'description' => 'ARROTONDAMENTO', 'quantity' => 1, 'unit_price' => $checkout->rounding_adjustment, 'vat_rate' => $checkout->vat_rate];
             }
             if ((float) $checkout->shipping_amount > 0) {

@@ -282,6 +282,10 @@
                     <div class="flex justify-between gap-12"><dt>Prodotti</dt><dd>{{ $money($checkout->product_subtotal) }}</dd></div>
                     @if((float) $checkout->discount_amount > 0)<div class="flex justify-between gap-12"><dt>Sconto</dt><dd>− {{ $money($checkout->discount_amount) }}</dd></div>@endif
                     @if((float) $checkout->rounding_adjustment !== 0.0)<div class="flex justify-between gap-12"><dt>Arrotondamento</dt><dd>{{ $money($checkout->rounding_adjustment) }}</dd></div>@endif
+                    @if((float) $checkout->minimum_order_adjustment > 0)
+                        <div class="flex justify-between gap-12 text-gray"><dt>Imponibile calcolato</dt><dd class="line-through">{{ $money(max(0, (float) $checkout->product_subtotal - (float) $checkout->discount_amount + (float) $checkout->rounding_adjustment)) }}</dd></div>
+                        <div class="flex justify-between gap-12 font-black"><dt>Minimo d’ordine applicato</dt><dd>{{ $money($checkout->minimum_order_amount) }}</dd></div>
+                    @endif
                     <div class="flex justify-between gap-12"><dt>Spedizione</dt><dd>{{ $money($checkout->shipping_amount) }}</dd></div>
                     <div class="flex justify-between gap-12 border-t border-gray-mid pt-10"><dt>Imponibile ordine</dt><dd>{{ $money($checkout->order_taxable_amount) }}</dd></div>
                     <div class="flex justify-between gap-12 text-gray"><dt>IVA {{ number_format((float) $checkout->vat_rate, 0) }}%</dt><dd>{{ $money($checkout->order_vat_amount) }}</dd></div>

@@ -10,9 +10,9 @@ class LeadSalesSheet extends Model
 {
     public const VAT_RATE = 22;
 
-    protected $fillable = ['lead_id', 'order_number', 'name', 'status', 'prices_include_vat', 'product_revenue_total', 'shipping_fee', 'free_shipping_threshold', 'shipping_charge', 'shipping_cost', 'discount_type', 'discount_value', 'discount_amount', 'rounding_adjustment', 'revenue_total', 'cost_total', 'margin_total', 'margin_percentage', 'notes'];
+    protected $fillable = ['lead_id', 'order_number', 'name', 'status', 'prices_include_vat', 'product_revenue_total', 'shipping_fee', 'free_shipping_threshold', 'shipping_charge', 'shipping_cost', 'discount_type', 'discount_value', 'discount_amount', 'rounding_adjustment', 'minimum_order_amount', 'minimum_order_adjustment', 'revenue_total', 'cost_total', 'margin_total', 'margin_percentage', 'notes'];
 
-    protected $casts = ['prices_include_vat' => 'boolean', 'product_revenue_total' => 'decimal:2', 'shipping_fee' => 'decimal:2', 'free_shipping_threshold' => 'decimal:2', 'shipping_charge' => 'decimal:2', 'shipping_cost' => 'decimal:2', 'discount_value' => 'decimal:2', 'discount_amount' => 'decimal:2', 'rounding_adjustment' => 'decimal:2', 'revenue_total' => 'decimal:2', 'cost_total' => 'decimal:2', 'margin_total' => 'decimal:2', 'margin_percentage' => 'decimal:2'];
+    protected $casts = ['prices_include_vat' => 'boolean', 'product_revenue_total' => 'decimal:2', 'shipping_fee' => 'decimal:2', 'free_shipping_threshold' => 'decimal:2', 'shipping_charge' => 'decimal:2', 'shipping_cost' => 'decimal:2', 'discount_value' => 'decimal:2', 'discount_amount' => 'decimal:2', 'rounding_adjustment' => 'decimal:2', 'minimum_order_amount' => 'decimal:2', 'minimum_order_adjustment' => 'decimal:2', 'revenue_total' => 'decimal:2', 'cost_total' => 'decimal:2', 'margin_total' => 'decimal:2', 'margin_percentage' => 'decimal:2'];
 
     /** @return array{net: float, vat: float, gross: float, rate: int} */
     public function vatTotals(): array

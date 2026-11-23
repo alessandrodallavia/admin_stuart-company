@@ -114,6 +114,7 @@ class LeadSalesSheetController extends Controller
             'name' => trim($data['name']),
             'status' => 'draft',
             'prices_include_vat' => false,
+            'minimum_order_amount' => config('orders.minimum_amount_ex_vat'),
             'shipping_fee' => 8.12,
             'free_shipping_threshold' => 250,
             'revenue_total' => 0,
@@ -167,7 +168,16 @@ class LeadSalesSheetController extends Controller
         if (! $tier) {
             return back()->withErrors(['quantity' => 'Nessuna fascia prezzo configurata per questa quantità.']);
         }
-        $sheet = $lead->salesSheet()->firstOrCreate([], ['prices_include_vat' => false, 'revenue_total' => 0, 'cost_total' => 0, 'margin_total' => 0, 'margin_percentage' => 0]);
+        $sheet = $lead->salesSheet()->firstOrCreate([], [
+            'prices_include_vat' => false,
+            'minimum_order_amount' => config('orders.minimum_amount_ex_vat'),
+            'shipping_fee' => 8.12,
+            'free_shipping_threshold' => 250,
+            'revenue_total' => 0,
+            'cost_total' => 0,
+            'margin_total' => 0,
+            'margin_percentage' => 0,
+        ]);
         $sheet->items()->create(['crm_product_id' => $product->id, 'product_code' => $product->code, 'product_name' => $product->name, 'configuration_name' => filled($data['configuration_name'] ?? null) ? trim($data['configuration_name']) : null, 'quantity' => $data['quantity'], 'product_unit_cost' => $product->unit_cost, 'product_unit_price' => $tier->unit_price]);
         $calculator->recalculate($sheet);
 

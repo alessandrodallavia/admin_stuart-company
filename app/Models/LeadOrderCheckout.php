@@ -15,6 +15,8 @@ class LeadOrderCheckout extends Model
         'product_subtotal' => 'decimal:2',
         'discount_amount' => 'decimal:2',
         'rounding_adjustment' => 'decimal:2',
+        'minimum_order_amount' => 'decimal:2',
+        'minimum_order_adjustment' => 'decimal:2',
         'shipping_amount' => 'decimal:2',
         'order_taxable_amount' => 'decimal:2',
         'order_vat_amount' => 'decimal:2',
