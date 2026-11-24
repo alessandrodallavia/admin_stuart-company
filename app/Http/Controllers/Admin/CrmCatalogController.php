@@ -7,6 +7,7 @@ use App\Models\CrmBrand;
 use App\Models\CrmPrintPriceTier;
 use App\Models\CrmPrintType;
 use App\Models\CrmProduct;
+use App\Models\CrmProductCategory;
 use App\Models\CrmProductPriceTier;
 use App\Models\CrmSupplier;
 use App\Models\LeadCategory;
@@ -26,10 +27,11 @@ class CrmCatalogController extends Controller
         $search = trim($request->string('q')->toString());
 
         return view('admin.crm-catalog.index', [
+            'productCategories' => CrmProductCategory::with('parent')->withCount(['products', 'children'])->orderBy('sort_order')->orderBy('name')->get(),
             'categories' => LeadCategory::orderBy('sort_order')->orderBy('name')->get(),
             'brands' => CrmBrand::with('suppliers')->orderBy('name')->get(),
             'suppliers' => CrmSupplier::with('brands')->orderBy('name')->get(),
-            'products' => CrmProduct::with(['priceTiers', 'brand', 'suppliers', 'colors.sizes', 'sizes', 'supplierDetails.supplier'])
+            'products' => CrmProduct::with(['priceTiers', 'category', 'brand', 'suppliers', 'colors.sizes', 'sizes', 'supplierDetails.supplier'])
                 ->when($search !== '', fn ($query) => $query->where(fn ($query) => $query->where('code', 'like', "%{$search}%")->orWhere('name', 'like', "%{$search}%")
                     ->orWhereHas('brand', fn ($query) => $query->where('name', 'like', "%{$search}%"))
                     ->orWhereHas('suppliers', fn ($query) => $query->where('name', 'like', "%{$search}%"))))

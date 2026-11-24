@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\CrmCalculatorSlotController;
 use App\Http\Controllers\Admin\CrmCatalogController as AdminCrmCatalogController;
 use App\Http\Controllers\Admin\CrmCatalogDirectoryController;
 use App\Http\Controllers\Admin\CrmProductMockupController;
+use App\Http\Controllers\Admin\CrmProductCategoryController;
 use App\Http\Controllers\Admin\CrmProductPersonalizationController;
 use App\Http\Controllers\Admin\CheckoutOrderController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
@@ -168,6 +169,9 @@ Route::name('admin.')->group(function () {
             Route::post('/settings/crm-catalog/suppliers', [CrmCatalogDirectoryController::class, 'storeSupplier'])->name('crm-catalog.suppliers.store');
             Route::patch('/settings/crm-catalog/suppliers/{supplier}', [CrmCatalogDirectoryController::class, 'updateSupplier'])->name('crm-catalog.suppliers.update');
             Route::delete('/settings/crm-catalog/suppliers/{supplier}', [CrmCatalogDirectoryController::class, 'destroySupplier'])->name('crm-catalog.suppliers.destroy');
+            Route::post('/settings/crm-catalog/product-categories', [CrmProductCategoryController::class, 'store'])->name('crm-catalog.product-categories.store');
+            Route::patch('/settings/crm-catalog/product-categories/{productCategory}', [CrmProductCategoryController::class, 'update'])->name('crm-catalog.product-categories.update');
+            Route::delete('/settings/crm-catalog/product-categories/{productCategory}', [CrmProductCategoryController::class, 'destroy'])->name('crm-catalog.product-categories.destroy');
             Route::post('/settings/crm-catalog/categories', [AdminCrmCatalogController::class, 'storeCategory'])->name('crm-catalog.categories.store');
             Route::patch('/settings/crm-catalog/categories/{category}/toggle', [AdminCrmCatalogController::class, 'toggleCategory'])->name('crm-catalog.categories.toggle');
             Route::delete('/settings/crm-catalog/categories/{category}', [AdminCrmCatalogController::class, 'destroyCategory'])->name('crm-catalog.categories.destroy');

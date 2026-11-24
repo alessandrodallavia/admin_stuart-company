@@ -6,7 +6,7 @@
 @section('content')
 @php
     $canManageCatalog = auth('admin')->user()?->hasAdminPermission('crm_catalog.manage');
-    $catalogTabs = ['products' => ['Prodotti', $products->count()], 'prints' => ['Stampe', $printTypes->count()], 'brands' => ['Brand', $brands->count()], 'suppliers' => ['Fornitori', $suppliers->count()], 'categories' => ['Categorie lead', $categories->count()]];
+    $catalogTabs = ['products' => ['Prodotti', $products->count()], 'product-categories' => ['Categorie prodotti', $productCategories->count()], 'prints' => ['Stampe', $printTypes->count()], 'brands' => ['Brand', $brands->count()], 'suppliers' => ['Fornitori', $suppliers->count()], 'categories' => ['Categorie lead', $categories->count()]];
     $catalogSection = old('catalog_section', request('section', 'products'));
     if (!is_string($catalogSection) || !array_key_exists($catalogSection, $catalogTabs)) $catalogSection = 'products';
     $restoreDialog = old('catalog_dialog', '');
@@ -35,7 +35,7 @@
             <div class="catalog-table-scroll"><table class="catalog-table catalog-products-table"><thead><tr><th scope="col">Prodotto</th><th scope="col">Brand</th><th scope="col">Fornitori</th><th scope="col" class="catalog-number">Costo unitario</th><th scope="col">Varianti</th><th scope="col">Sito</th><th scope="col"><span class="sr-only">Azioni</span></th></tr></thead><tbody>
                 @foreach($products as $product)
                     <tr data-catalog-product-row data-brand="{{ $product->crm_brand_id }}" data-visibility="{{ $product->is_visible_on_site ? 'visible' : 'hidden' }}">
-                        <td><strong>{{ $product->name }}</strong><span class="catalog-secondary catalog-code">{{ $product->code }}</span></td>
+                        <td><strong>{{ $product->name }}</strong><span class="catalog-secondary catalog-code">{{ $product->code }}</span><span class="catalog-secondary">{{ $product->category?->name ?: 'Senza categoria' }}</span></td>
                         <td data-label="Brand">{{ $product->brand?->name ?: '—' }}</td>
                         <td data-label="Fornitori" class="catalog-supplier-cell">{{ $product->suppliers->pluck('name')->implode(', ') ?: '—' }}</td>
                         <td data-label="Costo unitario" class="catalog-number"><strong>€ {{ number_format((float)$product->unit_cost, 2, ',', '.') }}</strong><span class="catalog-secondary">{{ $product->priceTiers->count() }} {{ $product->priceTiers->count() === 1 ? 'fascia prezzo' : 'fasce prezzo' }}</span></td>
@@ -56,6 +56,7 @@
             </tbody></table></div>
         </section>
 
+        @include('admin.crm-catalog.product-categories')
         @include('admin.crm-catalog.directories')
 
         <section id="catalog-panel-categories" data-catalog-panel role="tabpanel" aria-labelledby="catalog-tab-categories" @if($catalogSection !== 'categories') hidden @endif>
@@ -66,6 +67,7 @@
         </section>
     </div>
 
+    @include('admin.crm-catalog.product-category-dialogs')
     @include('admin.crm-catalog.product-dialogs')
     @include('admin.crm-catalog.print-dialogs')
     @include('admin.crm-catalog.directory-dialogs')

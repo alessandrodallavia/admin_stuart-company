@@ -1,6 +1,7 @@
 @php
     $formKey = (string) ($catalogProduct?->id ?? 'new');
     $restore = (string) old('catalog_product_key') === $formKey;
+    $categoryValue = $restore ? old('crm_product_category_id') : $catalogProduct?->crm_product_category_id;
     $brandValue = $restore ? old('crm_brand_id') : $catalogProduct?->crm_brand_id;
     $supplierValues = $restore ? old('supplier_ids', []) : ($catalogProduct?->suppliers->modelKeys() ?? []);
     $colorValues = $restore ? old('colors', []) : ($catalogProduct?->colors->map(fn ($color) => ['code' => $color->code, 'name' => $color->name, 'hex' => $color->hex, 'sizes_restricted' => $color->sizes_restricted, 'sizes' => $color->sizes->pluck('name')->all()])->all() ?? []);
@@ -10,6 +11,10 @@
     $brandSuppliers = $brands->mapWithKeys(fn ($brand) => [(string) $brand->id => $brand->suppliers->modelKeys()]);
 @endphp
 <input type="hidden" name="metadata_present" value="1"><input type="hidden" name="catalog_product_key" value="{{ $formKey }}">
+<section class="catalog-form-section">
+    <div class="catalog-form-section-title"><h3>Categoria prodotto</h3><p>Classifica il prodotto nel catalogo ecommerce.</p></div>
+    <label class="catalog-field"><span>Categoria</span><select name="crm_product_category_id"><option value="">Non assegnata</option>@foreach($productCategories as $categoryOption)<option value="{{ $categoryOption->id }}" @selected((string) $categoryValue === (string) $categoryOption->id)>{{ $categoryOption->name }} · {{ $categoryOption->slug }}{{ $categoryOption->is_active ? '' : ' (disattivata)' }}</option>@endforeach</select><small>Crea e modifica le voci nella sezione Categorie prodotti.</small></label>
+</section>
 <section class="catalog-form-section" x-data="{ brand: @js((string) $brandValue), allowed: @js($brandSuppliers) }">
     <div class="catalog-form-section-title"><h3>Brand e fornitori</h3><p>Seleziona i distributori da cui acquisti questo prodotto.</p></div>
     <div class="catalog-form-grid">
@@ -17,6 +22,17 @@
         <fieldset class="catalog-field"><legend>Fornitori del prodotto</legend><div class="catalog-checkbox-list">
             @forelse($suppliers as $supplier)<label class="catalog-check" :class="!(allowed[brand] || []).includes({{ $supplier->id }}) && 'catalog-disabled'"><input type="checkbox" name="supplier_ids[]" value="{{ $supplier->id }}" @checked(in_array($supplier->id, $supplierValues)) :disabled="!(allowed[brand] || []).includes({{ $supplier->id }})"><span>{{ $supplier->name }}</span></label>@empty<p class="catalog-help">Nessun fornitore configurato.</p>@endforelse
         </div><small>Puoi selezionare più fornitori tra quelli associati al brand.</small></fieldset>
+    </div>
+</section>
+<section class="catalog-form-section">
+    <div class="catalog-form-section-title"><h3>Attributi per il catalogo ecommerce</h3><p>Questi dati alimentano i filtri del sito. Lascia vuoti gli attributi non applicabili.</p></div>
+    <div class="catalog-form-grid">
+        @foreach(['model' => 'Modello', 'gender' => 'Per chi', 'fit' => 'Vestibilità', 'range' => 'Fascia prodotto', 'composition' => 'Composizione', 'dye' => 'Tintura e finitura'] as $attribute => $label)
+            @php $attributeKey = 'catalog_'.$attribute; @endphp
+            <label class="catalog-field"><span>{{ $label }}</span><input name="{{ $attributeKey }}" value="{{ $restore ? old($attributeKey) : $catalogProduct?->{$attributeKey} }}" maxlength="255"></label>
+        @endforeach
+        <label class="catalog-field"><span>Grammatura (g/m²)</span><input name="catalog_weight_gsm" type="number" min="1" max="10000" value="{{ $restore ? old('catalog_weight_gsm') : $catalogProduct?->catalog_weight_gsm }}"><small>Se non compilata, il sito usa la grammatura della scheda fornitore.</small></label>
+        <label class="catalog-field catalog-span-full"><span>Utilizzi</span><textarea name="catalog_usage_text" rows="2" maxlength="2000">{{ $restore ? old('catalog_usage_text') : implode(', ', $catalogProduct?->catalog_usage ?? []) }}</textarea><small>Separa gli utilizzi con una virgola, ad esempio Azienda, Eventi, Sport.</small></label>
     </div>
 </section>
 @include('admin.crm-catalog.supplier-details')

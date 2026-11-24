@@ -19,7 +19,17 @@ class CrmProductCatalogService
         $data = $request->validate([
             'code' => ['required', 'string', 'max:100', Rule::unique('crm_products', 'code')->ignore($product)],
             'name' => ['required', 'string', 'max:255'],
+            'slug' => ['nullable', 'string', 'max:255', 'regex:/^(?=.*[a-z])[a-z0-9]+(?:-[a-z0-9]+)*$/', Rule::unique('crm_products', 'slug')->ignore($product)],
             'unit_cost' => ['required', 'numeric', 'min:0'],
+            'catalog_model' => ['nullable', 'string', 'max:255'],
+            'catalog_gender' => ['nullable', 'string', 'max:255'],
+            'catalog_fit' => ['nullable', 'string', 'max:255'],
+            'catalog_range' => ['nullable', 'string', 'max:255'],
+            'catalog_composition' => ['nullable', 'string', 'max:255'],
+            'catalog_dye' => ['nullable', 'string', 'max:255'],
+            'catalog_weight_gsm' => ['nullable', 'integer', 'min:1', 'max:10000'],
+            'catalog_usage_text' => ['sometimes', 'nullable', 'string', 'max:2000'],
+            'crm_product_category_id' => ['nullable', 'integer', 'exists:crm_product_categories,id'],
             'crm_brand_id' => ['nullable', 'integer', 'exists:crm_brands,id'],
             'supplier_ids' => ['sometimes', 'array', 'max:100'],
             'supplier_ids.*' => ['required', 'integer', 'distinct', 'exists:crm_suppliers,id'],
@@ -41,6 +51,22 @@ class CrmProductCatalogService
             'datasheet' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
             'remove_datasheet' => ['sometimes', 'boolean'],
         ]);
+        foreach (['model', 'gender', 'fit', 'range', 'composition', 'dye'] as $attribute) {
+            $key = 'catalog_'.$attribute;
+            if (array_key_exists($key, $data)) {
+                $data[$key] = filled(trim($data[$key] ?? '')) ? trim($data[$key]) : null;
+            }
+        }
+        if (array_key_exists('catalog_usage_text', $data)) {
+            $usage = array_values(array_unique(array_filter(array_map('trim', preg_split('/[,;\r\n]+/', $data['catalog_usage_text'] ?? '')))));
+            if (count($usage) > 20 || collect($usage)->contains(fn ($value) => mb_strlen($value) > 100)) {
+                throw ValidationException::withMessages(['catalog_usage_text' => 'Inserisci fino a 20 utilizzi, ciascuno entro 100 caratteri.']);
+            }
+            $data['catalog_usage'] = $usage;
+        }
+        if (empty($data['slug'])) {
+            unset($data['slug']);
+        }
         $product ??= new CrmProduct(['is_active' => true]);
         $suppliers = array_key_exists('supplier_ids', $data) ? $data['supplier_ids'] : null;
         // An HTML form sends no values for an empty checkbox group.
@@ -68,7 +94,7 @@ class CrmProductCatalogService
                 if (array_diff($selectedSuppliers, $allowed)) {
                     throw ValidationException::withMessages(['supplier_ids' => 'Seleziona un brand e fornitori associati a quel brand.']);
                 }
-                $product->fill(collect($data)->only(['code', 'name', 'unit_cost', 'crm_brand_id', 'is_visible_on_site', 'supplier_product_url'])->all());
+                $product->fill(collect($data)->only(['code', 'name', 'slug', 'unit_cost', 'crm_brand_id', 'crm_product_category_id', 'is_visible_on_site', 'supplier_product_url', 'catalog_model', 'catalog_gender', 'catalog_fit', 'catalog_range', 'catalog_composition', 'catalog_dye', 'catalog_weight_gsm', 'catalog_usage'])->all());
                 if ($request->boolean('remove_datasheet')) {
                     $product->datasheet_path = null;
                     $product->datasheet_filename = null;
