@@ -4,12 +4,12 @@ use App\Models\{EcommerceOrder, EcommerceOrderEvent};
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 class EcommerceOrderManagement {
- public function update(EcommerceOrder $order, array $data, int $actor, bool $notifyCustomer = true): void {
-  DB::transaction(function () use ($order, $data, $actor, $notifyCustomer) {
+ public function update(EcommerceOrder $order, array $data, int $actor, bool $notifyCustomer = true): ?EcommerceOrderEvent {
+  return DB::transaction(function () use ($order, $data, $actor, $notifyCustomer) {
    $order = EcommerceOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
    if ($order->status === 'cancelled') throw ValidationException::withMessages(['order' => 'Un ordine annullato non può essere modificato.']);
    $before = $order->only(array_keys($data));
-   if ($before == $data) return;
+   if ($before == $data) return null;
    $notification = null;
    if (isset($data['order_status']) && $order->order_status !== $data['order_status']) {
     $notification = match($data['order_status']) { 'in_production' => 'in_production', 'shipped' => 'shipped', default => null };
@@ -32,7 +32,7 @@ class EcommerceOrderManagement {
     elseif ($order->fulfillment_status === 'shipped' && $data['fulfillment_status'] === 'shipped' && (($data['fulfillment_tracking'] ?? null) !== $order->fulfillment_tracking || ($data['fulfillment_carrier'] ?? null) !== $order->fulfillment_carrier)) $notification = 'tracking_updated';
    }
    $order->fill($data)->save();
-   EcommerceOrderEvent::create(['ecommerce_order_id' => $order->id, 'admin_user_id' => $actor, 'kind' => $notification ?: 'updated',
+   return EcommerceOrderEvent::create(['ecommerce_order_id' => $order->id, 'admin_user_id' => $actor, 'kind' => $notification ?: 'updated',
     'details' => ['before' => $before, 'after' => $order->only(array_keys($data)), 'carrier' => $order->fulfillment_carrier, 'tracking' => $order->fulfillment_tracking, 'notify_customer' => $notifyCustomer],
     'notification_status' => $notification ? ($notifyCustomer ? 'pending' : 'suppressed') : null]);
   }, 3);

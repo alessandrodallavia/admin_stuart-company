@@ -136,6 +136,17 @@ class AdminDocument extends Model
     protected static function booted(): void
     {
         static::deleting(function (AdminDocument $document) {
+            EcommerceOrder::where('offline_document_id', $document->id)->update(['offline_document_id' => null]);
+            LeadOrderCheckout::where('offline_document_id', $document->id)->update(['offline_document_id' => null]);
+            $ecommerceOrders = EcommerceOrder::where('admin_document_id', $document->id)->get();
+            foreach ($ecommerceOrders as $order) {
+                $attributes = ['admin_document_id' => null, 'proforma_sent_at' => null];
+                if ($order->payment_method === 'bank' && !$order->paid_at && !in_array($order->status, ['paid', 'cancelled'], true)) {
+                    $attributes['status'] = 'proforma_pending';
+                }
+                $order->update($attributes);
+            }
+
             $checkoutQuery = LeadOrderCheckout::query()->where('admin_document_id', $document->id);
             $linkedCheckouts = $checkoutQuery->get(['id', 'lead_sales_sheet_id', 'payment_type']);
             $checkoutIds = $linkedCheckouts->pluck('id');

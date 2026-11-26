@@ -13,7 +13,7 @@ class EcommerceOrderController extends Controller {
         return view('admin.ecommerce-orders.index', compact('orders', 'search', 'workStatus'));
     }
     public function show(EcommerceOrder $order) {
-        $order->load(['proforma', 'invoice', 'deliveryDocument', 'events' => fn ($query) => $query->with('actor')->latest('id')->limit(100)]);
+        $order->load(['proforma', 'invoice', 'deliveryDocument', 'offlineDocument', 'events' => fn ($query) => $query->with('actor')->latest('id')->limit(100)]);
         $variantProducts = \App\Models\CrmProduct::with(['colors.sizes','sizes'])->whereIn('id', array_filter(array_column($order->items, 'product_id')))->get()->keyBy('id');
         return view('admin.ecommerce-orders.show', compact('order', 'variantProducts'));
     }
@@ -21,8 +21,8 @@ class EcommerceOrderController extends Controller {
         $data = $request->validate(['notify_customer' => ['sometimes','boolean'], 'order_status' => ['required', \Illuminate\Validation\Rule::in(array_keys(EcommerceOrder::ORDER_STATUSES))]]);
         $notifyCustomer = $request->boolean('notify_customer', true);
         unset($data['notify_customer']);
-        $service->update($order, $data, (int) $request->user('admin')->id, $notifyCustomer);
-        return back()->with('status', $notifyCustomer ? 'Stato operativo aggiornato. Le eventuali notifiche sono in coda.' : 'Stato operativo aggiornato senza inviare comunicazioni al cliente.');
+        $event = $service->update($order, $data, (int) $request->user('admin')->id, $notifyCustomer);
+        return $this->updateNotificationResponse($event, 'Stato operativo aggiornato.');
     }
     public function fulfillment(Request $request, EcommerceOrder $order, \App\Services\EcommerceOrderManagement $service) {
         $data = $request->validate([
@@ -35,9 +35,24 @@ class EcommerceOrderController extends Controller {
         if ($data['fulfillment_method'] !== 'shipping') { $data['fulfillment_carrier'] = null; $data['fulfillment_tracking'] = null; }
         $notifyCustomer = $request->boolean('notify_customer', true);
         unset($data['notify_customer']);
-        $service->update($order, $data, (int) $request->user('admin')->id, $notifyCustomer);
-        return back()->with('status', $notifyCustomer ? 'Consegna aggiornata. Le eventuali notifiche sono in coda.' : 'Consegna aggiornata senza inviare comunicazioni al cliente.');
+        $event = $service->update($order, $data, (int) $request->user('admin')->id, $notifyCustomer);
+        return $this->updateNotificationResponse($event, 'Consegna aggiornata.');
     }
+    private function updateNotificationResponse(?\App\Models\EcommerceOrderEvent $event, string $message)
+    {
+        if ($event && $event->notification_status === 'pending') {
+            app(\App\Services\EcommerceOrderUpdateNotification::class)->send($event);
+            $event->refresh();
+        }
+        if ($event?->notification_status === 'sent') $message .= ' Comunicazione inviata al cliente.';
+        if ($event?->notification_status === 'suppressed') $message .= ' Nessuna comunicazione inviata per scelta dell’operatore.';
+        $response = back()->with('status', $message);
+        if (in_array($event?->notification_status, ['pending', 'failed'], true)) {
+            $response->with('notification_warning', 'Aggiornamento salvato, ma la comunicazione non è stata inviata. Il sistema ritenterà automaticamente.');
+        }
+        return $response;
+    }
+
     public function notes(Request $request, EcommerceOrder $order, \App\Services\EcommerceOrderManagement $service) {
         $data = $request->validate(['internal_notes' => ['nullable','string','max:5000']]);
         $service->update($order, $data, (int) $request->user('admin')->id);
@@ -49,7 +64,7 @@ class EcommerceOrderController extends Controller {
         return back()->with('status', 'Colori e taglie aggiornati. Quantità totale e prezzi restano invariati.');
     }
     public function document(Request $request, EcommerceOrder $order, \App\Services\EcommerceOrderDocuments $service) {
-        $data = $request->validate(['type' => ['required','in:invoice,delivery_note']]);
+        $data = $request->validate(['type' => ['required','in:invoice,delivery_note,offline_order']]);
         $document = $service->create($order,$data['type'],(int) $request->user('admin')->id);
         return to_route('admin.documents.show',$document)->with('status', 'Documento generato dall’ordine '.$order->reference.'.');
     }
@@ -66,25 +81,35 @@ class EcommerceOrderController extends Controller {
         $document = $order->proforma;
         abort_unless($document && $order->payment_method === 'bank', 422);
         try {
-            $service->send($order, $document, $pdf->output($document), $pdf->filename($document));
-            $document->update(['status' => 'sent']);
+            \Illuminate\Support\Facades\DB::transaction(function () use ($order, $document, $service, $pdf) {
+                $document = app(\App\Services\AdminDocumentService::class)->markAsSent($document);
+                $service->send($order, $document, $pdf->output($document), $pdf->filename($document));
+            });
         } catch (\Throwable $exception) { report($exception); return back()->withErrors(['proforma' => 'Invio della proforma non riuscito. Riprova.']); }
         return back()->with('status', 'Proforma inviata al cliente.');
     }
-    public function markPaid(EcommerceOrder $order, \App\Services\AdminDocumentService $service) {
+    public function markPaid(Request $request, EcommerceOrder $order, \App\Services\AdminDocumentService $service) {
+        $request->validate(['notify_customer' => ['sometimes', 'boolean']]);
+        $notifyCustomer = $request->boolean('notify_customer', true);
         abort_unless($order->payment_method === 'bank' && $order->status !== 'cancelled', 422);
         if ($order->status === 'paid') return back()->with('status', 'Il pagamento risulta già registrato.');
         $document = $order->proforma;
         if ($document && ($document->currency !== 'EUR' || round((float) $document->total, 2) !== round((float) $order->gross, 2))) throw \Illuminate\Validation\ValidationException::withMessages(['payment' => 'Il totale della proforma non corrisponde all’ordine.']);
         if (! $document || $document->paymentSchedules->isEmpty()) throw \Illuminate\Validation\ValidationException::withMessages(['payment' => 'Genera prima la proforma con la scadenza di pagamento.']);
-        \Illuminate\Support\Facades\DB::transaction(function () use ($order, $document, $service) {
+        $event = \Illuminate\Support\Facades\DB::transaction(function () use ($order, $document, $service, $notifyCustomer) {
             $order = EcommerceOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
             abort_unless($order->status !== 'cancelled', 422, 'Ordine annullato.');
             if ($order->status === 'paid') return;
             foreach ($document->paymentSchedules as $schedule) $service->markPayment($document, $schedule->id, (float) $schedule->amount, now()->toDateString());
             $order->update(['status' => 'paid', 'paid_at' => now()]);
+            return \App\Models\EcommerceOrderEvent::create(['ecommerce_order_id' => $order->id, 'admin_user_id' => auth('admin')->id(), 'kind' => 'payment_received', 'details' => ['notify_customer' => $notifyCustomer], 'notification_status' => $notifyCustomer ? 'pending' : 'suppressed']);
         });
-        return back()->with('status', 'Accredito del bonifico registrato.');
+        if ($event && $notifyCustomer) app(\App\Services\EcommerceOrderUpdateNotification::class)->send($event);
+        $response = back()->with('status', 'Accredito del bonifico registrato.'.($event && $event->fresh()->notification_status === 'sent' ? ' Comunicazione inviata al cliente.' : ''));
+        if ($event && $notifyCustomer && $event->fresh()->notification_status !== 'sent') {
+            $response->with('notification_warning', 'Pagamento registrato, ma la comunicazione non è stata inviata. Il sistema ritenterà automaticamente.');
+        }
+        return $response;
     }
     public function file(Request $request, EcommerceOrder $order, string $item, string $position) {
         $file = $order->items[$item]['artworks'][$position] ?? null;

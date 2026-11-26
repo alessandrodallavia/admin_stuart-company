@@ -4,7 +4,7 @@ const { readFileSync } = require('node:fs');
 const { runInNewContext } = require('node:vm');
 function fixture({ value = 'in_production', checked = true } = {}) {
   const documentHandlers = {}, dialogHandlers = {}, buttonHandlers = {};
-  const notify = {}, message = {}, help = {}, choice = { checked };
+  const notify = {}, message = {}, help = {}, choice = { value: checked ? '1' : '0' };
   const button = { disabled: false, focus() {} };
   let requests = 0;
   const field = { value, selectedOptions: [{ textContent: value === 'ready' ? 'Pronto' : 'In lavorazione' }] };
@@ -21,10 +21,10 @@ test('cancelling the confirmation never submits the state change', () => {
 });
 test('deselecting notifications is forwarded to the confirmed form and a second submit is blocked', () => {
   const state = fixture(); state.submit(); state.notify.checked = false; state.confirm();
-  assert.equal(state.choice.checked,false); assert.equal(state.requests(),1); assert.equal(state.button.disabled,true);
+  assert.equal(state.choice.value,'0'); assert.equal(state.requests(),1); assert.equal(state.button.disabled,true);
   state.submit(); assert.equal(state.requests(),1);
 });
 test('the preselected notification preference is preserved and unsupported states are explained', () => {
-  const silent = fixture({ checked: false }); silent.submit(); assert.equal(silent.notify.checked,false); silent.confirm(); assert.equal(silent.choice.checked,false);
-  const ready = fixture({ value: 'ready' }); ready.submit(); assert.equal(ready.notify.disabled,true); assert.match(ready.help.textContent,/non è prevista/); ready.confirm(); assert.equal(ready.choice.checked,false);
+  const silent = fixture({ checked: false }); silent.submit(); assert.equal(silent.notify.checked,false); silent.confirm(); assert.equal(silent.choice.value,'0');
+  const ready = fixture({ value: 'ready' }); ready.submit(); assert.equal(ready.notify.disabled,true); assert.match(ready.help.textContent,/non è prevista/); ready.confirm(); assert.equal(ready.choice.value,'0');
 });

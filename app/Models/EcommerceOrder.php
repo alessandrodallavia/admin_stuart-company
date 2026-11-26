@@ -11,6 +11,11 @@ class EcommerceOrder extends Model {
     public function events() { return $this->hasMany(EcommerceOrderEvent::class); }
     public function invoice() { return $this->belongsTo(AdminDocument::class, 'invoice_document_id'); }
     public function deliveryDocument() { return $this->belongsTo(AdminDocument::class, 'delivery_document_id'); }
+    public function offlineDocument(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(AdminDocument::class, 'offline_document_id');
+    }
+
     public function proforma() { return $this->belongsTo(AdminDocument::class, 'admin_document_id'); }
     public function getReferenceAttribute(): string { return 'EC-'.str_pad((string) $this->id, 6, '0', STR_PAD_LEFT); }
 }

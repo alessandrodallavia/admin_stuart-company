@@ -24,8 +24,8 @@
         <div>
             <a href="{{ route('admin.ecommerce-orders.index') }}" class="catalog-eyebrow inline-block hover:text-bullstar">← Ordini ecommerce</a>
             <div class="flex flex-wrap items-center gap-12">
-                <h1>{{ $order->reference }}</h1><span class="catalog-badge">{{ $order->status === 'cancelled' ? 'Annullato' : (\App\Models\EcommerceOrder::ORDER_STATUSES[$order->order_status] ?? 'Da gestire') }}</span>
-                <span class="catalog-badge {{ $paid ? 'catalog-badge-green' : '' }}">{{ $statusLabel }}</span>
+                <h1>{{ $order->reference }}</h1><span class="catalog-badge {{ $order->status === 'cancelled' ? 'border-red-200! bg-red-50! text-red-700!' : '' }}">{{ $order->status === 'cancelled' ? 'Annullato' : (\App\Models\EcommerceOrder::ORDER_STATUSES[$order->order_status] ?? 'Da gestire') }}</span>
+                <span class="catalog-badge {{ $order->status === 'cancelled' ? 'border-red-200! bg-red-50! text-red-700!' : ($paid ? 'catalog-badge-green' : '') }}">{{ $statusLabel }}</span>
             </div>
             <p>Ricevuto il {{ $order->created_at->format('d/m/Y') }} alle {{ $order->created_at->format('H:i') }} · {{ $order->customer_name }}</p>
         </div>
@@ -120,15 +120,15 @@
                 <p class="mt-16 text-13 font-semibold">{{ $order->payment_method === 'bank' ? 'Bonifico bancario' : 'Stripe' }}</p>
                 <p class="mt-8 text-12 leading-relaxed text-gray">{{ $statusLabel }}</p>
                 @if($order->paid_at)<p class="mt-8 text-12 text-gray">Confermato il {{ $order->paid_at->format('d/m/Y H:i') }}</p>@endif
-                @if($order->stripe_last_error && !$paid)<p class="mt-12 rounded-xl bg-red-50 p-12 text-12 leading-relaxed text-red-700">{{ $order->stripe_last_error }}</p>@endif
+                @if($order->payment_method === 'online' && $order->status !== 'cancelled' && $order->stripe_last_error && !$paid)<p class="mt-12 rounded-xl bg-red-50 p-12 text-12 leading-relaxed text-red-700">{{ $order->stripe_last_error }}</p>@endif
 
                 @if($order->payment_method === 'bank')
                     <div class="mt-20 space-y-12 border-t border-gray-mid pt-16">
                         @if($order->proforma)<a class="catalog-button catalog-button-secondary w-full" href="{{ route('admin.documents.show', $order->proforma) }}">Apri proforma {{ $order->proforma->display_code }} ↗</a>@endif
                         @if($canManageDocuments && $order->status !== 'cancelled')
                             @if(!$order->proforma && !$paid)<p class="text-12 leading-relaxed text-gray">Genera la proforma per inviare al cliente importo e coordinate del bonifico.</p><form method="POST" action="{{ route('admin.ecommerce-orders.proforma', $order) }}">@csrf<button class="catalog-button catalog-button-primary w-full">Genera proforma</button></form>@endif
-                            @if($order->proforma && !$order->proforma_sent_at)<form method="POST" action="{{ route('admin.ecommerce-orders.proforma.send', $order) }}">@csrf<button class="catalog-button catalog-button-secondary w-full">Invia proforma al cliente</button></form>@endif
-                            @if($order->proforma && !$paid)<p class="text-12 leading-relaxed text-gray">Registra il pagamento dopo aver verificato l’accredito.</p><form method="POST" action="{{ route('admin.ecommerce-orders.payment', $order) }}" data-confirm-order-update data-order-confirm-message="Confermi di aver verificato l’accredito del bonifico?" data-order-notify-available="false">@csrf @method('PATCH')<button class="catalog-button catalog-button-primary w-full">Registra bonifico ricevuto</button></form>@endif
+                            @if($order->proforma && !$order->proforma_sent_at)<form method="POST" action="{{ route('admin.ecommerce-orders.proforma.send', $order) }}" onsubmit="return window.confirm('Confermi l’invio della proforma? Il cliente riceverà una e-mail con la proforma allegata.')">@csrf<button class="catalog-button catalog-button-secondary w-full">Invia proforma al cliente</button></form>@endif
+                            @if($order->proforma && !$paid)<p class="text-12 leading-relaxed text-gray">Registra il pagamento dopo aver verificato l’accredito.</p><form method="POST" action="{{ route('admin.ecommerce-orders.payment', $order) }}" data-confirm-order-update data-order-confirm-message="Confermi di aver verificato l’accredito del bonifico?" data-order-notify-available="true">@csrf @method('PATCH') @include('admin.orders.notification-choice')<button class="catalog-button catalog-button-primary w-full">Registra bonifico ricevuto</button></form>@endif
                         @endif
                     </div>
                 @endif

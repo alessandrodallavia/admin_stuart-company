@@ -15,10 +15,8 @@ class CheckoutOrderCustomerNotificationService
 
     public function orderProcessing(LeadOrderCheckout $checkout): array
     {
-        $orderNumber = $this->displayOrderNumber($checkout->order_number);
-
-        return $this->deliver($checkout, 'Ordine nr. '.$orderNumber,
-            "Gentile Cliente,\n\nil tuo ordine nr. {$orderNumber} è in lavorazione.\n\nTi aggiorneremo non appena sarà pronto.\n\nCordiali saluti");
+        $message = \App\Support\OrderCustomerMessage::forEvent('in_production', $this->displayOrderNumber($checkout->order_number));
+        return $this->deliver($checkout, $message['subject'], $message['body']);
     }
 
     public function balanceRequested(LeadOrderCheckout $checkout, string $checkoutUrl): array
@@ -29,25 +27,21 @@ class CheckoutOrderCustomerNotificationService
 
     public function shipped(LeadOrderCheckout $checkout): array
     {
-        $orderNumber = $this->displayOrderNumber($checkout->order_number);
-        $trackingUrl = $this->trackingUrl($checkout->fulfillment_carrier, $checkout->fulfillment_tracking);
-        $tracking = collect([
-            $checkout->fulfillment_carrier,
-            $checkout->fulfillment_tracking ? 'tracking '.$checkout->fulfillment_tracking : null,
-            $trackingUrl ? 'Segui la spedizione: '.$trackingUrl : null,
-        ])->filter()->join(' · ');
-
-        return $this->deliver($checkout, 'Ordine nr. '.$orderNumber.' spedito',
-            "Gentile Cliente,\n\nil tuo ordine nr. {$orderNumber} è stato spedito.".($tracking ? "\n\n{$tracking}" : '')."\n\nCordiali saluti");
+        $message = \App\Support\OrderCustomerMessage::forEvent(
+            'shipped', $this->displayOrderNumber($checkout->order_number),
+            $checkout->fulfillment_carrier, $checkout->fulfillment_tracking,
+            $this->trackingUrl($checkout->fulfillment_carrier, $checkout->fulfillment_tracking)
+        );
+        return $this->deliver($checkout, $message['subject'], $message['body']);
     }
 
     public function proformaSent(LeadOrderCheckout $checkout, AdminDocument $document, string $pdf, string $filename): array
     {
         $number = $document->number ?: $document->display_code;
         $orderNumber = $this->displayOrderNumber($checkout->order_number);
-        $body = "Gentile Cliente,\n\nin allegato può trovare la proforma nr. {$number} relativa all'ordine nr. {$orderNumber}.\n\nCordiali saluti";
+        $body = \App\Support\ProformaCustomerMessage::body($number, $orderNumber);
 
-        return $this->deliver($checkout, 'Proforma nr. '.$number, $body, [
+        return $this->deliver($checkout, \App\Support\ProformaCustomerMessage::subject($number), $body, [
             'name' => $filename,
             'content' => $pdf,
         ]);
@@ -72,11 +66,9 @@ class CheckoutOrderCustomerNotificationService
         }
 
         try {
-            $htmlBody = nl2br(e($body));
-            $htmlBody = preg_replace('~https://[^\s<]+~', '<a href="$0">$0</a>', $htmlBody);
             $this->brevo->sendTransactionalEmail(
                 ['name' => trim($checkout->contact_first_name.' '.$checkout->contact_last_name) ?: $email, 'email' => $email],
-                $subject, '<p>'.$htmlBody.'</p>', $body, ['checkout-order'], $attachment ? [$attachment] : []
+                $subject, \App\Support\OrderCustomerMessage::html($body), $body, ['checkout-order'], $attachment ? [$attachment] : []
             );
 
             return ['sent' => true, 'channel' => 'email'];

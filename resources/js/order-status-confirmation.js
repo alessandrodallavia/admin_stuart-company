@@ -24,7 +24,7 @@ if (dialog) {
         const choice = form.querySelector('[data-notify-customer]');
         message.textContent = form.dataset.orderConfirmMessage || (label ? `Confermi l’aggiornamento a “${label}”?` : 'Confermi l’aggiornamento dell’ordine?');
         notify.disabled = !available;
-        notify.checked = available && Boolean(choice?.checked);
+        notify.checked = available && choice?.value === '1';
         help.textContent = available ? 'La scelta vale solo per questo aggiornamento. Togli la spunta per modificare lo stato senza inviare comunicazioni.' : 'Per questo aggiornamento non è prevista alcuna comunicazione automatica al cliente.';
         pending = { form, submitter: event.submitter, choice, available };
         returnFocus = event.submitter;
@@ -34,7 +34,7 @@ if (dialog) {
     dialog.querySelector('[data-order-confirm-submit]').addEventListener('click', () => {
         if (!pending) return;
         const { form, submitter, choice, available } = pending;
-        if (choice) choice.checked = available && notify.checked;
+        if (choice) choice.value = available && notify.checked ? '1' : '0';
         approved.add(form);
         dialog.close();
         form.requestSubmit(submitter || undefined);

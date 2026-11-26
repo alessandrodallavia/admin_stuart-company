@@ -52,7 +52,7 @@
     }
 @endphp
 
-<form method="POST" action="{{ $document->exists ? route('admin.documents.update', $document) : route('admin.documents.store') }}" class="space-y-24 font-montserrat" data-document-form data-checkout-proforma="{{ isset($checkoutOrder) && $checkoutOrder ? '1' : '0' }}" data-initial-status="{{ $document->status }}">
+<form method="POST" action="{{ $document->exists ? route('admin.documents.update', $document) : route('admin.documents.store') }}" class="space-y-24 font-montserrat" data-document-form data-ecommerce-proforma="{{ isset($ecommerceOrder) && $ecommerceOrder ? '1' : '0' }}" data-checkout-proforma="{{ isset($checkoutOrder) && $checkoutOrder ? '1' : '0' }}" data-initial-status="{{ $document->status }}">
     @csrf
     @if ($document->exists)
         @method('PATCH')
@@ -502,6 +502,10 @@
 
         form?.addEventListener('submit', (event) => {
             const status = form.querySelector('[data-document-status]')?.value;
+            if (form.dataset.ecommerceProforma === '1' && form.dataset.initialStatus !== 'sent' && status === 'sent') {
+                const confirmed = window.confirm('Confermi di impostare la proforma come inviata? La proforma verrà inviata automaticamente al cliente tramite e-mail.');
+                if (! confirmed) event.preventDefault();
+            }
             if (form.dataset.checkoutProforma === '1' && form.dataset.initialStatus !== 'sent' && status === 'sent') {
                 const confirmed = window.confirm('Confermi di impostare la proforma come inviata? La proforma verrà inviata automaticamente al cliente tramite WhatsApp oppure, se non disponibile, tramite e-mail.');
                 if (! confirmed) event.preventDefault();

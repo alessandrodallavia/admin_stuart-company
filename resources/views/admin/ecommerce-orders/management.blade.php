@@ -30,7 +30,7 @@
 <section class="catalog-surface p-20 md:p-24">
     <h2 class="text-base font-semibold">Documenti</h2>
     <div class="mt-16 space-y-12">
-        @foreach(['invoice' => ['Fattura', 'invoice'], 'delivery_note' => ['DDT', 'deliveryDocument']] as $type => [$label, $relation])
+        @foreach(['offline_order' => ['ordine offline', 'offlineDocument'], 'invoice' => ['Fattura', 'invoice'], 'delivery_note' => ['DDT', 'deliveryDocument']] as $type => [$label, $relation])
             @if($order->$relation)<a class="catalog-button catalog-button-secondary w-full" href="{{ route('admin.documents.show', $order->$relation) }}">Apri {{ $label }} {{ $order->$relation->display_code }} ↗</a>
             @elseif($canManageDocuments && $order->status !== 'cancelled')<form method="POST" action="{{ route('admin.ecommerce-orders.documents', $order) }}">@csrf<input type="hidden" name="type" value="{{ $type }}"><button class="catalog-button catalog-button-secondary w-full">Genera {{ $label }}</button></form>@endif
         @endforeach

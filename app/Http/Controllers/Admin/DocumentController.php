@@ -87,6 +87,7 @@ class DocumentController extends Controller
             'directRelations' => $this->directRelations($document),
             'relationCandidates' => $this->relationCandidates($document),
             'checkoutOrder' => $checkoutOrder,
+            'ecommerceOrder' => $document->type === 'proforma' ? \App\Models\EcommerceOrder::where('admin_document_id', $document->id)->first() : null,
         ]);
     }
 
@@ -167,6 +168,7 @@ class DocumentController extends Controller
             'statuses' => AdminDocument::statusesFor($document->type),
             'paymentMethods' => DocumentsPaymentMethod::query()->where('is_active', true)->orderBy('code')->get(),
             'checkoutOrder' => $checkoutOrder,
+            'ecommerceOrder' => $document->type === 'proforma' ? \App\Models\EcommerceOrder::where('admin_document_id', $document->id)->first() : null,
         ]);
     }
 
@@ -222,7 +224,7 @@ class DocumentController extends Controller
 
     public function destroy(AdminDocument $document): RedirectResponse
     {
-        $document->delete();
+        \Illuminate\Support\Facades\DB::transaction(fn () => $document->delete());
 
         return redirect()
             ->route('admin.documents.index')

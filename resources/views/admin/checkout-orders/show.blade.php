@@ -195,6 +195,11 @@
                     </form>
 
                     <div class="mt-8 flex flex-wrap items-center gap-8 border-t border-gray-mid pt-8">
+                        @if($checkout->offlineDocument)
+                            <a href="{{ route('admin.documents.show', $checkout->offlineDocument) }}" class="catalog-button catalog-button-secondary">Apri ordine offline</a>
+                        @elseif(auth('admin')->user()?->hasAdminPermission('documents.manage') && $checkout->order_status !== 'cancelled' && !in_array($checkout->status, ['invalidated', 'expired', 'revoked'], true))
+                            <form method="POST" action="{{ route('admin.checkout-orders.offline-order.store', $checkout) }}" class="inline-flex">@csrf<button class="catalog-button catalog-button-secondary">Genera ordine offline</button></form>
+                        @endif
                         @if(auth('admin')->user()?->hasAdminPermission('documents.manage') && $checkout->status !== 'paid')
                             @if($checkout->proforma)
                                 <a href="{{ route('admin.documents.show', $checkout->proforma) }}" class="catalog-button catalog-button-primary">Apri proforma {{ $proformaPaymentLabel }}</a>

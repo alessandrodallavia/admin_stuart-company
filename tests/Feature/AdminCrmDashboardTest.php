@@ -30,6 +30,37 @@ class AdminCrmDashboardTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_checkout_offline_order_covers_full_purchase_and_is_not_duplicated(): void
+    {
+        $this->actingAs($this->owner(), 'admin');
+        foreach (['full', 'deposit', 'balance'] as $paymentType) {
+            $lead = $this->lead();
+            $sheet = $lead->salesSheets()->create(['order_number' => 'ORD-OFF-'.$paymentType, 'name' => 'Ordine offline', 'status' => 'draft']);
+            $checkout = LeadOrderCheckout::create([
+                'lead_id' => $lead->id, 'lead_sales_sheet_id' => $sheet->id, 'token' => \Illuminate\Support\Str::random(64),
+                'proposal_number' => $sheet->order_number, 'order_number' => $sheet->order_number, 'status' => 'bank_transfer_pending',
+                'payment_type' => $paymentType, 'currency' => 'EUR', 'vat_rate' => 22, 'billing_first_name' => 'Mario', 'billing_last_name' => 'Rossi',
+                'taxable_amount' => 50, 'vat_amount' => 11, 'total_amount' => 61,
+                'order_taxable_amount' => 100, 'order_vat_amount' => 22, 'order_total_amount' => 122,
+                'items' => [['name' => 'Maglietta', 'code' => 'TS', 'quantity' => 20, 'unit_price' => 5, 'variants' => [['color' => 'Nero', 'size' => 'M', 'quantity' => 20]]]],
+            ]);
+            $url = route('admin.checkout-orders.offline-order.store', $checkout);
+            $this->post($url)->assertSessionHasNoErrors()->assertRedirect();
+            $document = $checkout->fresh()->offlineDocument;
+            $this->assertSame('offline_order', $document->type);
+            $this->assertEquals(122, $document->total);
+            $this->assertEquals(20, $document->items->first()->quantity);
+            $this->assertStringContainsString('col. Nero tg. M/20', $document->items->first()->description);
+            $this->post($url)->assertRedirect(route('admin.documents.show', $document));
+            $this->assertSame($document->id, $checkout->fresh()->offline_document_id);
+            $document->delete();
+            $this->assertNull($checkout->fresh()->offline_document_id);
+            $this->post($url)->assertSessionHasNoErrors();
+            $checkout->update(['order_status' => 'cancelled']);
+            $this->post($url)->assertStatus(422);
+        }
+    }
+
     public function test_color_and_size_distribution_updates_completed_checkout_without_changing_totals(): void
     {
         $lead = $this->lead(['name' => 'Cliente varianti']);

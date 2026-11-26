@@ -2,6 +2,7 @@
 namespace App\Services;
 use App\Models\{EcommerceOrder, AdminDocument};
 use Illuminate\Support\Facades\DB;
+use App\Support\OrderItemVariantFormatter;
 use Illuminate\Validation\ValidationException;
 class EcommerceOrderProforma {
     public function create(EcommerceOrder $order): AdminDocument {
@@ -18,12 +19,26 @@ class EcommerceOrderProforma {
     }
     public function data(EcommerceOrder $order): array {
             $c = $order->customer;
-            $items = collect($order->items)->map(function ($item) {
-                $variants = collect($item['rows'])->map(fn ($row) => $row['color'].' · '.$row['size'].' · '.$row['quantity'].' pezzi')->join("\n");
-                return ['item_code' => $item['code'], 'description' => $item['name'].' · '.$item['quantity']." pezzi\n".$variants."\n".implode("\n", $item['print_labels']), 'quantity' => 1, 'unit_price' => $item['net'], 'vat_rate' => 22];
+            $items = collect($order->items)->flatMap(function ($item) {
+                $details = OrderItemVariantFormatter::proformaDetails(['variants' => $item['rows'] ?? []]);
+                $description = mb_strtoupper($item['name']).($details !== '' ? "\n".$details : '');
+                $labels = implode("\n", $item['print_labels'] ?? []);
+                if ($labels !== '') $description .= "\n".$labels;
+
+                $quantity = (int) $item['quantity'];
+                $setup = round((float) ($item['setup'] ?? 0), 2);
+                $minimumAdjustment = round((float) ($item['minimum_order_adjustment'] ?? 0), 2);
+                $unit = round((float) ($item['unit'] ?? (((float) $item['net'] - $setup - $minimumAdjustment) / max(1, $quantity))), 2);
+                $lines = [['item_code' => $item['code'], 'description' => $description, 'quantity' => $quantity, 'unit_price' => $unit, 'vat_rate' => 22]];
+                if ($setup > 0) $lines[] = ['item_code' => null, 'description' => 'IMPIANTI DI PERSONALIZZAZIONE - '.mb_strtoupper($item['name']), 'quantity' => 1, 'unit_price' => $setup, 'vat_rate' => 22];
+                if ($minimumAdjustment > 0) $lines[] = ['item_code' => null, 'description' => 'ADEGUAMENTO MINIMO D’ORDINE - '.mb_strtoupper($item['name']), 'quantity' => 1, 'unit_price' => $minimumAdjustment, 'vat_rate' => 22];
+                // Older snapshots may contain only a line total, not an exact unit price.
+                $difference = round((float) $item['net'] - round($unit * $quantity, 2) - $setup - $minimumAdjustment, 2);
+                if ($difference != 0.0) $lines[] = ['item_code' => null, 'description' => 'ARROTONDAMENTO ARTICOLO - '.mb_strtoupper($item['name']), 'quantity' => 1, 'unit_price' => $difference, 'vat_rate' => 22];
+                return $lines;
             })->values()->all();
-            if ($order->shipping_gross > 0) $items[] = ['item_code' => null, 'description' => 'SPESE DI TRASPORTO', 'quantity' => 1, 'unit_price' => round((float) $order->shipping_gross / 1.22, 2), 'vat_rate' => 22];
-            $net = round(array_sum(array_column($items, 'unit_price')), 2);
+            if ($order->shipping_gross > 0) $items[] = ['item_code' => null, 'description' => 'SPESE DI TRASPORTO', 'quantity' => 1, 'unit_price' => ceil(((float) $order->shipping_gross / 1.22) * 100 - 0.00000001) / 100, 'vat_rate' => 22];
+            $net = round(array_sum(array_map(fn ($item) => round($item['quantity'] * $item['unit_price'], 2), $items)), 2);
             return [
                 'type' => 'proforma', 'document_date' => now()->toDateString(), 'status' => 'draft', 'currency' => 'EUR', 'prices_include_vat' => false,
                 'customer_name' => $c['billing_name'], 'customer_email' => $order->email, 'customer_phone' => $c['phone'],
@@ -41,8 +56,9 @@ class EcommerceOrderProforma {
         $order = EcommerceOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
         if ($order->proforma_sent_at) return;
         if ($order->status === 'cancelled' || $document->type !== 'proforma' || $document->currency !== 'EUR' || $order->payment_method !== 'bank' || $order->admin_document_id !== $document->id || round((float) $document->total, 2) !== round((float) $order->gross, 2)) throw ValidationException::withMessages(['proforma' => 'La proforma non corrisponde all’ordine.']);
-        $body = 'Gentile Cliente, in allegato la proforma relativa all’ordine '.$order->reference.'. Per il bonifico utilizza importo e coordinate indicati nel documento.';
-        app(BrevoEmailService::class)->sendTransactionalEmail(['name' => $order->customer_name, 'email' => $order->email], 'Proforma ordine '.$order->reference, '<p>'.e($body).'</p>', $body, ['ecommerce-order', 'proforma'], [['name' => $filename, 'content' => $pdf]]);
+        $number = $document->number ?: $document->display_code;
+        $body = \App\Support\ProformaCustomerMessage::body($number, $order->reference);
+        app(BrevoEmailService::class)->sendTransactionalEmail(['name' => $order->customer_name, 'email' => $order->email], \App\Support\ProformaCustomerMessage::subject($number), '<p>'.nl2br(e($body)).'</p>', $body, ['ecommerce-order', 'proforma'], [['name' => $filename, 'content' => $pdf]]);
         $order->update(['proforma_sent_at' => now(), 'status' => $order->status === 'paid' ? 'paid' : 'bank_transfer_pending']);
         });
     }

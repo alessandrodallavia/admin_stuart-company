@@ -37,6 +37,21 @@ class AdminDocumentService
         });
     }
 
+    public function markAsSent(AdminDocument $document): AdminDocument
+    {
+        return DB::transaction(function () use ($document) {
+            $document = AdminDocument::whereKey($document->id)->lockForUpdate()->firstOrFail();
+            $attributes = $this->documentAttributes([
+                'type' => $document->type,
+                'document_date' => $document->document_date->toDateString(),
+                'status' => 'sent',
+            ], $document);
+            $document->update(Arr::only($attributes, ['year', 'number', 'code', 'status']));
+
+            return $document->fresh(['items', 'paymentSchedules']);
+        });
+    }
+
     public function duplicateAs(AdminDocument $source, string $type, bool $preservePaymentProgress = false): AdminDocument
     {
         return DB::transaction(function () use ($source, $type, $preservePaymentProgress) {

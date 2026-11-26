@@ -138,6 +138,7 @@ Route::name('admin.')->group(function () {
             Route::post('/ecommerce-orders/{order}/proforma', [\App\Http\Controllers\Admin\EcommerceOrderController::class, 'proforma'])->name('ecommerce-orders.proforma');
             Route::patch('/ecommerce-orders/{order}/payment', [\App\Http\Controllers\Admin\EcommerceOrderController::class, 'markPaid'])->name('ecommerce-orders.payment');
 
+            Route::post('/checkout-orders/{checkout}/offline-order', [CheckoutOrderController::class, 'storeOfflineOrder'])->name('checkout-orders.offline-order.store');
             Route::post('/checkout-orders/{checkout}/proforma', [CheckoutOrderController::class, 'storeProforma'])->name('checkout-orders.proforma.store');
             Route::patch('/checkout-orders/{checkout}/payment', [CheckoutOrderController::class, 'markPaid'])->name('checkout-orders.payment.paid');
             Route::post('/documents', [AdminDocumentController::class, 'store'])->name('documents.store');

@@ -47,6 +47,11 @@ class LeadOrderCheckout extends Model
         return $this->belongsTo(LeadSalesSheet::class, 'lead_sales_sheet_id');
     }
 
+    public function offlineDocument(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(AdminDocument::class, 'offline_document_id');
+    }
+
     public function proforma(): BelongsTo
     {
         return $this->belongsTo(AdminDocument::class, 'admin_document_id');

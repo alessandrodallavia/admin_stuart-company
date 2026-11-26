@@ -7,7 +7,7 @@
     <h2 class="text-base font-semibold">Storico gestione</h2>
     <ol class="mt-16 divide-y divide-gray-mid">
         @forelse($order->events as $event)
-            @php($eventLabel = match($event->kind) { 'in_production' => 'Ordine in lavorazione', 'shipped' => 'Ordine spedito', 'delivered' => 'Consegna registrata', 'collected' => 'Ritiro registrato', 'tracking_updated' => 'Tracking aggiornato', 'variants' => 'Varianti aggiornate', 'document' => 'Documento generato', default => 'Gestione ordine aggiornata' })
+            @php($eventLabel = match($event->kind) { 'payment_received' => 'Bonifico ricevuto', 'in_production' => 'Ordine in lavorazione', 'shipped' => 'Ordine spedito', 'delivered' => 'Consegna registrata', 'collected' => 'Ritiro registrato', 'tracking_updated' => 'Tracking aggiornato', 'variants' => 'Varianti aggiornate', 'document' => 'Documento generato', default => 'Gestione ordine aggiornata' })
             <li class="py-16 first:pt-0 last:pb-0"><p class="text-13 font-semibold">{{ $eventLabel }}</p><p class="mt-4 text-11 text-gray">{{ $event->created_at->format('d/m/Y H:i') }} · {{ $event->actor?->name ?: 'Sistema' }}</p>
                 @if(isset($event->details['after']['order_status']))<p class="mt-8 text-12">Stato: {{ \App\Models\EcommerceOrder::ORDER_STATUSES[$event->details['after']['order_status']] ?? $event->details['after']['order_status'] }}</p>@endif
                 @if(isset($event->details['after']['fulfillment_status']))<p class="mt-8 text-12">Consegna: {{ \App\Models\EcommerceOrder::FULFILLMENT_STATUSES[$event->details['after']['fulfillment_status']] ?? $event->details['after']['fulfillment_status'] }}</p>@endif

@@ -9,7 +9,7 @@ class EcommerceOrderVariants {
    $order = EcommerceOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
    $fail = fn ($text) => throw ValidationException::withMessages(['variants' => $text]);
    if ($order->status === 'cancelled') $fail('Ordine annullato.');
-   if ($order->proforma || $order->invoice || $order->deliveryDocument) $fail('Rimuovi prima i documenti generati per modificare le varianti.');
+   if ($order->proforma || $order->invoice || $order->deliveryDocument || $order->offlineDocument) $fail('Rimuovi prima i documenti generati per modificare le varianti.');
    $items = $order->items;
    if (!isset($items[$key])) abort(404);
    $item = $items[$key];

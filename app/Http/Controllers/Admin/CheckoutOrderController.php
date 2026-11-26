@@ -67,7 +67,7 @@ class CheckoutOrderController extends Controller
             return redirect()->route('admin.checkout-orders.show', $primaryCheckout);
         }
 
-        $checkout->load(['lead', 'salesSheet.items.variants', 'salesSheet.items.crmProduct.sizes', 'salesSheet.items.crmProduct.colors.sizes', 'proforma']);
+        $checkout->load(['lead', 'salesSheet.items.variants', 'salesSheet.items.crmProduct.sizes', 'salesSheet.items.crmProduct.colors.sizes', 'proforma', 'offlineDocument']);
         $payments = LeadOrderCheckout::query()
             ->with('proforma')
             ->where('lead_sales_sheet_id', $checkout->lead_sales_sheet_id)
@@ -123,6 +123,34 @@ class CheckoutOrderController extends Controller
         ])->save();
 
         return $this->storeProforma($balance, $documentService);
+    }
+
+    public function storeOfflineOrder(LeadOrderCheckout $checkout, AdminDocumentService $service): RedirectResponse
+    {
+        $document = DB::transaction(function () use ($checkout, $service) {
+            $sheet = \App\Models\LeadSalesSheet::whereKey($checkout->lead_sales_sheet_id)->lockForUpdate()->firstOrFail();
+            $checkout = $checkout->fresh();
+            abort_if($checkout->order_status === 'cancelled' || in_array($checkout->status, ['invalidated', 'expired', 'revoked'], true), 422, 'Ordine non disponibile.');
+            $existing = LeadOrderCheckout::where('lead_sales_sheet_id', $sheet->id)->whereNotNull('offline_document_id')->first()?->offlineDocument;
+            if ($existing) return $existing;
+            // An offline order covers the full purchase, including when checkout is a deposit or balance.
+            $snapshot = clone $checkout;
+            $snapshot->payment_type = 'full';
+            $snapshot->taxable_amount = $checkout->order_taxable_amount ?? $checkout->taxable_amount;
+            $snapshot->vat_amount = $checkout->order_vat_amount ?? $checkout->vat_amount;
+            $snapshot->total_amount = $checkout->order_total_amount ?? $checkout->total_amount;
+            $data = $this->proformaData($snapshot);
+            $data['type'] = 'offline_order';
+            $document = $service->create($data);
+            LeadOrderCheckout::where('lead_sales_sheet_id', $sheet->id)->update(['offline_document_id' => $document->id]);
+            $proformas = \App\Models\AdminDocument::whereIn('id', LeadOrderCheckout::where('lead_sales_sheet_id', $sheet->id)->whereNotNull('admin_document_id')->pluck('admin_document_id'))->get();
+            foreach ($proformas as $proforma) {
+                \App\Services\DocumentRelationService::link($proforma->currentDocumentType(), $proforma->id, $document->currentDocumentType(), $document->id, 'checkout-order');
+            }
+            return $document;
+        });
+
+        return to_route('admin.documents.show', $document);
     }
 
     public function storeProforma(LeadOrderCheckout $checkout, AdminDocumentService $service): RedirectResponse
