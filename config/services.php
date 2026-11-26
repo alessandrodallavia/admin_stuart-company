@@ -60,6 +60,7 @@ return [
     ],
 
     'stripe' => [
+        'ecommerce_secret_key' => env('STRIPE_ECOMMERCE_SECRET_KEY'),
         'secret_key' => env('STRIPE_SECRET_KEY', env('STRIPE_PRIVATE_KEY')),
         'public_key' => env('STRIPE_PUBLIC_KEY'),
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),

@@ -1416,6 +1416,32 @@ class AdminCrmDashboardTest extends TestCase
             ->assertSee('Grafica non caricata.');
     }
 
+    public function test_checkout_state_and_shipping_changes_can_be_saved_without_customer_messages(): void
+    {
+        $lead = $this->lead(); $this->actingAs($this->owner(),'admin');
+        $sheet = $lead->salesSheets()->create(['order_number' => 'ORD-NOTIFY','name' => 'Ordine']);
+        $checkout = LeadOrderCheckout::create(['lead_id' => $lead->id,'lead_sales_sheet_id' => $sheet->id,'token' => str_repeat('n',64),'proposal_number' => 'ORD-NOTIFY','order_number' => 'ORD-NOTIFY','status' => 'bank_transfer_pending','order_status' => 'new','items' => [],'details_completed_at' => now()]);
+        $this->mock(CheckoutOrderCustomerNotificationService::class,function ($mock) { $mock->shouldNotReceive('orderProcessing'); $mock->shouldNotReceive('shipped'); });
+        $this->patch(route('admin.checkout-orders.status.update',$checkout),['order_status' => 'in_production','notify_customer' => '0'])->assertSessionHasNoErrors();
+        $this->assertSame('in_production',$checkout->fresh()->order_status);
+        $this->patch(route('admin.checkout-orders.fulfillment.update',$checkout),['fulfillment_method' => 'shipping','fulfillment_status' => 'shipped','fulfillment_tracking' => 'TEST','notify_customer' => '0'])->assertSessionHasNoErrors();
+        $this->assertSame('shipped',$checkout->fresh()->order_status);
+        $this->assertSame('TEST',$checkout->fresh()->fulfillment_tracking);
+        $this->get(route('admin.checkout-orders.show',$checkout))->assertOk()->assertSee('data-confirm-order-update',false)->assertSee('Invia comunicazione al cliente')->assertDontSee('window.confirm',false);
+    }
+
+    public function test_checkout_payment_can_be_registered_without_sending_the_production_notification(): void
+    {
+        $lead = $this->lead(); $this->actingAs($this->owner(),'admin');
+        $sheet = $lead->salesSheets()->create(['order_number' => 'ORD-SILENT','name' => 'Ordine']);
+        $document = app(\App\Services\AdminDocumentService::class)->create(['type' => 'proforma','document_date' => now()->toDateString(),'status' => 'draft','currency' => 'EUR','customer_name' => $lead->name,'items' => [['description' => 'Prodotto','quantity' => 1,'unit_price' => 100,'vat_rate' => 22]],'payments' => [['due_date' => now()->toDateString(),'amount' => 122,'payment_method_code' => 'MP05']]]);
+        $checkout = LeadOrderCheckout::create(['lead_id' => $lead->id,'lead_sales_sheet_id' => $sheet->id,'token' => str_repeat('q',64),'proposal_number' => 'ORD-SILENT','order_number' => 'ORD-SILENT','status' => 'bank_transfer_pending','order_status' => 'payment_pending','payment_type' => 'full','total_amount' => 122,'admin_document_id' => $document->id,'items' => []]);
+        $this->mock(CheckoutOrderCustomerNotificationService::class,fn ($mock) => $mock->shouldNotReceive('orderProcessing'));
+        $this->mock(\App\Services\CheckoutOrderLeadStatusService::class,fn ($mock) => $mock->shouldReceive('paymentReceived')->once());
+        $this->patch(route('admin.checkout-orders.payment.paid',$checkout),['notify_customer' => '0'])->assertSessionHasNoErrors();
+        $this->assertSame('paid',$checkout->fresh()->status); $this->assertSame('in_production',$checkout->fresh()->order_status); $this->assertSame('paid',$document->fresh()->payment_status);
+    }
+
     private function owner(): AdminUser
     {
         return AdminUser::create([

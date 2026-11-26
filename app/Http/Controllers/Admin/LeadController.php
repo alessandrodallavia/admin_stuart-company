@@ -135,7 +135,7 @@ class LeadController extends Controller
             'excludePreLeads' => $excludePreLeads,
             'leadCategories' => LeadCategory::where('is_active', true)->orderBy('sort_order')->orderBy('name')->get(),
             'crmProducts' => CrmProduct::where('is_active', true)->whereHas('priceTiers')->orderBy('name')->get(),
-            'crmPrintTypes' => CrmPrintType::where('is_active', true)->whereHas('priceTiers')->orderBy('name')->get(),
+            'crmPrintTypes' => CrmPrintType::where('is_active', true)->where(fn ($query) => $query->whereHas('priceTiers')->orWhere(fn ($q) => $q->where('technique','setup')->whereNotNull('fixed_price')))->orderBy('name')->get(),
         ]);
     }
 

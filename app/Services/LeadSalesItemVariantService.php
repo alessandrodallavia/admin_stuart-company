@@ -16,9 +16,30 @@ class LeadSalesItemVariantService
             throw ValidationException::withMessages([$errorKey => 'Il prodotto non è collegato al catalogo CRM.']);
         }
 
+        $rows = $this->resolveRows($item->crmProduct, $input, (float) $item->quantity, $errorKey);
+
+        DB::transaction(function () use ($item, $rows) {
+            $item->variants()->delete();
+            foreach ($rows as $row) {
+                $item->variants()->create($row);
+            }
+
+            $details = collect($rows)->groupBy('color_name')->map(function ($variants, $color) {
+                $sizes = $variants->map(fn (array $variant) => $variant['size_name'].'/'.$this->formatQuantity((float) $variant['quantity']))->join(', ');
+
+                return $color.' — '.$sizes;
+            })->values()->all();
+            $item->forceFill(['colors' => $details])->save();
+            $this->synchronizeCheckoutSnapshots($item->fresh('variants'));
+        });
+    }
+
+    public function resolveRows(\App\Models\CrmProduct $product, array $input, float $expectedQuantity, string $errorKey = 'variants'): array
+    {
+        $product->loadMissing(['colors.sizes', 'sizes']);
         $rows = [];
-        foreach ($item->crmProduct->colors as $color) {
-            $allowedSizes = $color->sizes_restricted ? $color->sizes : $item->crmProduct->sizes;
+        foreach ($product->colors as $color) {
+            $allowedSizes = $color->sizes_restricted ? $color->sizes : $product->sizes;
             foreach ($allowedSizes as $size) {
                 $quantity = round((float) data_get($input, $color->id.'.'.$size->id, 0), 2, PHP_ROUND_HALF_UP);
                 if ($quantity <= 0) {
@@ -35,26 +56,13 @@ class LeadSalesItemVariantService
         }
 
         $total = round((float) collect($rows)->sum('quantity'), 2, PHP_ROUND_HALF_UP);
-        if (abs($total - (float) $item->quantity) > 0.001) {
+        if (abs($total - (float) $expectedQuantity) > 0.001) {
             throw ValidationException::withMessages([
-                $errorKey => 'La somma delle taglie e dei colori deve essere '.number_format((float) $item->quantity, 0, ',', '.').' pezzi. Attualmente è '.$this->formatQuantity($total).'.',
+                $errorKey => 'La somma delle taglie e dei colori deve essere '.number_format((float) $expectedQuantity, 0, ',', '.').' pezzi. Attualmente è '.$this->formatQuantity($total).'.',
             ]);
         }
 
-        DB::transaction(function () use ($item, $rows) {
-            $item->variants()->delete();
-            foreach ($rows as $row) {
-                $item->variants()->create($row);
-            }
-
-            $details = collect($rows)->groupBy('color_name')->map(function ($variants, $color) {
-                $sizes = $variants->map(fn (array $variant) => $variant['size_name'].'/'.$this->formatQuantity((float) $variant['quantity']))->join(', ');
-
-                return $color.' — '.$sizes;
-            })->values()->all();
-            $item->forceFill(['colors' => $details])->save();
-            $this->synchronizeCheckoutSnapshots($item->fresh('variants'));
-        });
+        return $rows;
     }
 
     private function synchronizeCheckoutSnapshots(LeadSalesItem $item): void
@@ -75,6 +83,7 @@ class LeadSalesItemVariantService
             ->get()
             ->each(function (LeadOrderCheckout $checkout) use ($item, $variants, $details, $fingerprint) {
                 $items = collect($checkout->items)->map(function (array $snapshot) use ($item, $variants, $details) {
+                    if (!empty($snapshot['is_setup'])) return $snapshot;
                     $matchesId = (int) ($snapshot['sales_item_id'] ?? 0) === $item->id;
                     $matchesLegacySnapshot = empty($snapshot['sales_item_id'])
                         && ($snapshot['code'] ?? null) === $item->product_code

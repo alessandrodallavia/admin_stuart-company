@@ -181,7 +181,7 @@
             @if(auth('admin')->user()?->hasAdminPermission('leads.manage'))
                 <section class="catalog-surface p-16">
                     <h2 class="text-14 font-black uppercase">Gestione ordine</h2>
-                    <form method="POST" action="{{ route('admin.checkout-orders.status.update', $checkout) }}" class="mt-12" data-order-status-form data-current-status="{{ $checkout->order_status }}">
+                    <form method="POST" action="{{ route('admin.checkout-orders.status.update', $checkout) }}" class="mt-12" data-confirm-order-update data-order-confirm-field="order_status" data-order-notify-values="in_production,shipped" data-order-status-form data-current-status="{{ $checkout->order_status }}">
                         @csrf
                         @method('PATCH')
                         <label class="block">
@@ -190,6 +190,7 @@
                                 @foreach($statuses as $value => $label)<option value="{{ $value }}" @selected($checkout->order_status === $value)>{{ $label }}</option>@endforeach
                             </select>
                         </label>
+                        @include('admin.orders.notification-choice')
                         <button class="catalog-button catalog-button-secondary mt-10">Aggiorna stato</button>
                     </form>
 
@@ -248,7 +249,7 @@
                 @endphp
                 <section class="catalog-surface p-16" x-data="{ method: @js($checkout->fulfillment_method ?: 'shipping'), carrier: @js($selectedCarrier) }">
                     <h2 class="text-14 font-black uppercase">Consegna</h2>
-                    <form method="POST" action="{{ route('admin.checkout-orders.fulfillment.update', $checkout) }}" class="mt-12 space-y-10" data-fulfillment-form data-current-fulfillment-status="{{ $checkout->fulfillment_status ?: 'pending' }}">
+                    <form method="POST" action="{{ route('admin.checkout-orders.fulfillment.update', $checkout) }}" class="mt-12 space-y-10" data-confirm-order-update data-order-confirm-field="fulfillment_status" data-order-notify-values="shipped" data-fulfillment-form data-current-fulfillment-status="{{ $checkout->fulfillment_status ?: 'pending' }}">
                         @csrf
                         @method('PATCH')
                         <label class="catalog-field"><span>Modalità</span><select name="fulfillment_method" x-model="method">@foreach($fulfillmentMethods as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach</select></label>
@@ -271,6 +272,7 @@
                         </div>
                         <label class="catalog-field"><span>Note consegna</span><textarea name="fulfillment_notes" rows="3" placeholder="Indicazioni interne">{{ $checkout->fulfillment_notes }}</textarea></label>
                         @if($checkout->fulfilled_at)<p class="catalog-help">Completata il {{ $checkout->fulfilled_at->format('d/m/Y H:i') }}</p>@endif
+                        @include('admin.orders.notification-choice')
                         <button class="catalog-button catalog-button-primary">Aggiorna consegna</button>
                     </form>
                 </section>
@@ -313,9 +315,10 @@
                                         <dd class="flex flex-col items-end gap-5 text-14 font-black">
                                             <span>{{ $money($payment->total_amount) }}</span>
                                             @if($payment->proforma && $payment->status !== 'paid' && auth('admin')->user()?->hasAdminPermission('documents.manage'))
-                                                <form method="POST" action="{{ route('admin.checkout-orders.payment.paid', $payment) }}" data-payment-confirm data-payment-type="{{ $payment->payment_type }}">
+                                                <form method="POST" action="{{ route('admin.checkout-orders.payment.paid', $payment) }}" data-confirm-order-update data-order-confirm-message="Confermi la registrazione del pagamento ricevuto?" data-order-notify-available="{{ $payment->payment_type === 'balance' ? 'false' : 'true' }}" data-payment-type="{{ $payment->payment_type }}">
                                                     @csrf
                                                     @method('PATCH')
+                                                    @include('admin.orders.notification-choice')
                                                     <button class="text-10 font-extrabold uppercase text-bullstar hover:underline">Segna come pagato</button>
                                                 </form>
                                             @endif
@@ -333,9 +336,10 @@
                 <p class="mt-12 text-13 font-semibold">{{ $checkout->payment_method === 'bank' ? 'Bonifico bancario' : 'Pagamento online' }}</p>
                 <p class="mt-4 text-11 font-semibold text-gray">Stato checkout: {{ match($checkout->status) { 'bank_transfer_pending' => 'Proforma richiesta', 'details_completed' => 'Dati completati', 'paid' => 'Pagato', 'invalidated' => 'Ordine modificato', 'expired' => 'Scaduto', 'revoked' => 'Revocato', default => 'Bozza' } }}</p>
                 @if($checkout->payment_type === 'full' && $checkout->proforma && $checkout->status !== 'paid' && auth('admin')->user()?->hasAdminPermission('documents.manage'))
-                    <form method="POST" action="{{ route('admin.checkout-orders.payment.paid', $checkout) }}" class="mt-12 inline-flex" data-payment-confirm data-payment-type="{{ $checkout->payment_type }}">
+                    <form method="POST" action="{{ route('admin.checkout-orders.payment.paid', $checkout) }}" class="mt-12 space-y-12" data-confirm-order-update data-order-confirm-message="Confermi la registrazione del pagamento ricevuto?" data-order-notify-available="{{ $checkout->payment_type === 'balance' ? 'false' : 'true' }}" data-payment-type="{{ $checkout->payment_type }}">
                         @csrf
                         @method('PATCH')
+                                                    @include('admin.orders.notification-choice')
                         <button class="catalog-button catalog-button-secondary text-green-700">Segna come pagato</button>
                     </form>
                 @endif
@@ -368,45 +372,5 @@
         </aside>
     </div>
 </div>
-@push('scripts')
-<script>
-    const paymentConfirmation = (paymentType) => paymentType === 'balance'
-        ? 'Confermi di segnare il saldo come pagato? L’ordine passerà allo stato Pronto. Non verrà inviata alcuna notifica al cliente.'
-        : 'Confermi di segnare la proforma come pagata? L’ordine passerà automaticamente In produzione e il cliente riceverà una notifica tramite WhatsApp oppure, se non disponibile, tramite e-mail.';
 
-    document.querySelectorAll('[data-payment-confirm]').forEach((form) => {
-        form.addEventListener('submit', (event) => {
-            if (! window.confirm(paymentConfirmation(form.dataset.paymentType))) event.preventDefault();
-        });
-    });
-
-    document.querySelector('[data-order-status-form]')?.addEventListener('submit', (event) => {
-        const form = event.currentTarget;
-        const nextStatus = form.elements.order_status.value;
-        if (nextStatus === form.dataset.currentStatus) return;
-
-        const messages = {
-            in_production: 'Confermi il passaggio a In produzione? Il cliente riceverà automaticamente una notifica tramite WhatsApp oppure, se non disponibile, tramite e-mail.',
-            balance_pending: 'Confermi il passaggio a In attesa saldo? Non verrà creato né inviato nulla automaticamente: dovrai scegliere manualmente se generare il link saldo oppure la proforma saldo.',
-            ready: 'Confermi il passaggio a Pronto? Non verrà inviata alcuna notifica al cliente.',
-            shipped: 'Confermi il passaggio a Spedito? Il cliente riceverà automaticamente una notifica tramite WhatsApp oppure, se non disponibile, tramite e-mail.',
-            cancelled: 'Confermi l’annullamento dell’ordine? Non verrà inviata alcuna notifica al cliente.',
-        };
-        const message = messages[nextStatus] || 'Confermi il cambio di stato dell’ordine?';
-        if (! window.confirm(message)) event.preventDefault();
-    });
-
-    document.querySelector('[data-fulfillment-form]')?.addEventListener('submit', (event) => {
-        const form = event.currentTarget;
-        const nextStatus = form.elements.fulfillment_status.value;
-        if (nextStatus === form.dataset.currentFulfillmentStatus) return;
-        const messages = {
-            shipped: 'Confermi la spedizione? Il cliente riceverà automaticamente una notifica tramite WhatsApp oppure, se non disponibile, tramite e-mail.',
-            delivered: 'Confermi che l’ordine è stato consegnato? Non verrà inviata alcuna notifica.',
-            collected: 'Confermi che l’ordine è stato ritirato? Non verrà inviata alcuna notifica.',
-        };
-        if (! window.confirm(messages[nextStatus] || 'Confermi l’aggiornamento della consegna?')) event.preventDefault();
-    });
-</script>
-@endpush
 @endsection

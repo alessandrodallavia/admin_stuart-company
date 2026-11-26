@@ -95,12 +95,12 @@ class LeadOrderCheckoutService
             'taxable_amount' => $paymentTotal['net'],
             'vat_amount' => $paymentTotal['vat'],
             'total_amount' => $paymentTotal['gross'],
-            'items' => $sheet->items->map(function ($item) use ($pricesIncludeVat) {
+            'items' => $sheet->items->flatMap(function ($item) use ($pricesIncludeVat) {
                 $unit = $this->netValue((float) $item->final_unit_price, $pricesIncludeVat);
-                $line = $this->netValue((float) $item->revenue_total, $pricesIncludeVat);
+                $line = $this->netValue((float) $item->revenue_total - (float) $item->setup_revenue_total, $pricesIncludeVat);
                 $details = collect($item->colors ?: [])->filter()->join(', ');
 
-                return [
+                $lines = [[
                     'sales_item_id' => $item->id,
                     'code' => $item->product_code,
                     'name' => $item->configuration_name ?: $item->product_name,
@@ -115,7 +115,11 @@ class LeadOrderCheckoutService
                         'size' => $variant->size_name,
                         'quantity' => (float) $variant->quantity,
                     ])->values()->all(),
-                ];
+                ]];
+                foreach ($item->setup_items ?? [] as $setup) {
+                    $lines[] = ['sales_item_id' => null, 'is_setup' => true, 'code' => $setup['code'], 'name' => $setup['name'], 'details' => 'Costo fisso · '.($item->configuration_name ?: $item->product_name), 'quantity' => $setup['quantity'], 'unit_price' => $this->netValue((float) $setup['unit_price'], $pricesIncludeVat), 'line_total' => $this->netValue((float) $setup['total_price'], $pricesIncludeVat), 'variants' => []];
+                }
+                return $lines;
             })->values()->all(),
         ]);
     }

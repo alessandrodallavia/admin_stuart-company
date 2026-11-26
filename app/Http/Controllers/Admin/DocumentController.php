@@ -199,6 +199,16 @@ class DocumentController extends Controller
             }
         }
 
+        if ($document->type === 'proforma' && $document->status === 'sent' && ! $wasSent) {
+            $ecommerceOrder = \App\Models\EcommerceOrder::where('admin_document_id', $document->id)->first();
+            if ($ecommerceOrder) {
+                try {
+                    app(\App\Services\EcommerceOrderProforma::class)->send($ecommerceOrder, $document, $pdfService->output($document), $pdfService->filename($document));
+                    $notification = ['sent' => true];
+                } catch (\Throwable $exception) { report($exception); $notification = ['sent' => false, 'error' => 'Invio e-mail non riuscito.']; }
+            }
+        }
+
         $response = redirect()
             ->route('admin.documents.show', $document)
             ->with('status', 'Documento aggiornato.');

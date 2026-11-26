@@ -254,7 +254,7 @@ class LeadProjectPdfService
             ? $this->netStoredPrice((float) $item->revenue_total, $pricesIncludeVat)
             : $subtotal;
         $colors = collect($item?->colors)->filter()->join(', ') ?: ($lead->live_mockup_color ?: '-');
-        $prints = $item?->prints?->pluck('print_name')->filter()->join(', ') ?: 'Personalizzazione inclusa';
+        $prints = ($item?->prints?->pluck('print_name')->filter()->join(', ') ?: 'Personalizzazione inclusa').($item?->setup_revenue_total > 0 ? ' · Impianti una tantum € '.number_format((float)$item->setup_revenue_total, 2, ',', '.') : '');
 
         $pdf->SetFillColor(...$surface);
         $pdf->SetDrawColor(...$line);
@@ -380,7 +380,7 @@ class LeadProjectPdfService
             $unitPrice = $this->netStoredPrice((float) $item->final_unit_price, $pricesIncludeVat);
             $lineTotal = $this->netStoredPrice((float) $item->revenue_total, $pricesIncludeVat);
             $colors = collect($item->colors)->filter()->join(', ') ?: ($lead->live_mockup_color ?: '-');
-            $prints = $item->prints?->pluck('print_name')->filter()->join(', ') ?: 'Personalizzazione inclusa';
+            $prints = ($item->prints?->pluck('print_name')->filter()->join(', ') ?: 'Personalizzazione inclusa').($item->setup_revenue_total > 0 ? ' · Impianti una tantum € '.number_format((float)$item->setup_revenue_total, 2, ',', '.') : '');
 
             $pdf->SetFillColor(...$surface);
             $pdf->SetDrawColor(...$line);
@@ -476,7 +476,7 @@ class LeadProjectPdfService
             $unitPrice = $this->roundMoney((float) $item->final_unit_price);
             $lineTotal = $this->roundMoney((float) $item->revenue_total);
             $colors = collect($item->colors)->filter()->join(', ') ?: ($lead->live_mockup_color ?: '-');
-            $prints = $item->prints?->pluck('print_name')->filter()->join(', ') ?: 'Personalizzazione inclusa';
+            $prints = ($item->prints?->pluck('print_name')->filter()->join(', ') ?: 'Personalizzazione inclusa').($item->setup_revenue_total > 0 ? ' · Impianti una tantum € '.number_format((float)$item->setup_revenue_total, 2, ',', '.') : '');
 
             $pdf->SetFillColor(...$surface);
             $pdf->SetDrawColor(...$line);

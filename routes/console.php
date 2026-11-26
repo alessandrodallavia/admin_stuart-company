@@ -15,3 +15,8 @@ Schedule::command('crm:sync-google-ads --days=30')
     ->hourly()
     ->when(fn () => app()->environment('production'))
     ->withoutOverlapping();
+
+Schedule::command('email:send-ecommerce-confirmations')->everyMinute()->withoutOverlapping();
+
+Schedule::command('email:send-ecommerce-updates')->everyMinute()->withoutOverlapping();
+Schedule::command('orders:sync-ecommerce-payments')->everyMinute()->withoutOverlapping();

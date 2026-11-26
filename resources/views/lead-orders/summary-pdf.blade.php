@@ -17,6 +17,7 @@
         <tr><td><strong>Lavorazioni</strong></td><td>{{ $item->prints->pluck('print_name')->join(', ') ?: 'Nessuna' }}</td></tr>
         <tr><td><strong>Prezzo finale unitario</strong></td><td>€ {{ number_format((float)$item->final_unit_price, 2, ',', '.') }}</td></tr>
         <tr><td><strong>Totale vendita</strong></td><td>€ {{ number_format((float)$item->revenue_total, 2, ',', '.') }}</td></tr>
+        @if($item->setup_revenue_total > 0)<tr><td><strong>Impianti una tantum</strong></td><td>€ {{ number_format((float)$item->setup_revenue_total, 2, ',', '.') }} (aggiunti al totale)</td></tr>@endif
         <tr><td><strong>Costo totale</strong></td><td>€ {{ number_format((float)$item->cost_total, 2, ',', '.') }}</td></tr>
         <tr><td><strong>Margine</strong></td><td>€ {{ number_format((float)$item->margin_total, 2, ',', '.') }}</td></tr>
         <tr><td><strong>Note</strong></td><td>{!! nl2br(e($item->notes ?: 'Nessuna nota')) !!}</td></tr>
@@ -26,7 +27,7 @@
 
 <h2 style="font-size:14px; margin-top:16px;">Totali ordine</h2>
 <p>
-    Prodotti: <strong>€ {{ number_format((float)$sheet->product_revenue_total, 2, ',', '.') }}</strong><br>
+    Prodotti e impianti: <strong>€ {{ number_format((float)$sheet->product_revenue_total, 2, ',', '.') }}</strong><br>
     Sconto: <strong>- € {{ number_format((float)$sheet->discount_amount, 2, ',', '.') }}</strong><br>
     Arrotondamento: <strong>€ {{ number_format((float)$sheet->rounding_adjustment, 2, ',', '.') }}</strong><br>
     Spedizione cliente: <strong>€ {{ number_format((float)$sheet->shipping_charge, 2, ',', '.') }}</strong><br>

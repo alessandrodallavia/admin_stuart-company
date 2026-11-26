@@ -82,7 +82,7 @@ class LeadOrderPackageService
 
     private function itemDetails($item): string
     {
-        $prints = $item->prints->map(fn ($print) => $print->print_name.' (€ '.number_format((float) $print->unit_price, 2, ',', '.').'/pz)')->join(', ');
+        $prints = $item->prints->map(fn ($print) => $print->print_name.' (€ '.number_format((float) $print->unit_price, 2, ',', '.').($print->printType?->technique === 'setup' ? ' una tantum)' : '/pz)'))->join(', ');
 
         return implode("\n", [
             'Prodotto: '.($item->configuration_name ?: $item->product_name),
@@ -92,6 +92,7 @@ class LeadOrderPackageService
             'Colori: '.(collect($item->colors)->join(', ') ?: 'Non indicati'),
             'Lavorazioni: '.($prints ?: 'Nessuna'),
             'Prezzo finale unitario: € '.number_format((float) $item->final_unit_price, 2, ',', '.'),
+            'Impianti una tantum: € '.number_format((float) $item->setup_revenue_total, 2, ',', '.'),
             'Totale: € '.number_format((float) $item->revenue_total, 2, ',', '.'),
             'Costo totale: € '.number_format((float) $item->cost_total, 2, ',', '.'),
             'Margine: € '.number_format((float) $item->margin_total, 2, ',', '.'),

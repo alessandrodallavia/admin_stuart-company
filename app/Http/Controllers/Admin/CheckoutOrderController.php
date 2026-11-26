@@ -152,9 +152,12 @@ class CheckoutOrderController extends Controller
     ): RedirectResponse
     {
         $data = $request->validate([
+            'notify_customer' => ['sometimes', 'boolean'],
             'order_status' => ['required', Rule::in(array_keys($this->statuses()))],
         ], [], ['order_status' => 'stato ordine']);
 
+        $notifyCustomer = $request->boolean('notify_customer', true);
+        unset($data['notify_customer']);
         $previousStatus = $checkout->order_status;
         if ($previousStatus === $data['order_status']) {
             return back()->with('status', 'Lo stato dell’ordine è già aggiornato.');
@@ -178,13 +181,13 @@ class CheckoutOrderController extends Controller
             ->update(['order_status' => $data['order_status']]);
 
         $checkout->forceFill(['order_status' => $data['order_status']]);
-        $notification = match ($data['order_status']) {
+        $notification = ! $notifyCustomer ? null : match ($data['order_status']) {
             'in_production' => $notifications->orderProcessing($checkout),
             'shipped' => $notifications->shipped($checkout),
             default => null,
         };
 
-        $response = back()->with('status', 'Stato dell’ordine aggiornato.');
+        $response = back()->with('status', $notifyCustomer ? 'Stato dell’ordine aggiornato.' : 'Stato dell’ordine aggiornato senza inviare comunicazioni al cliente.');
         if ($notification && ! $notification['sent']) {
             $response->with('notification_warning', 'Stato aggiornato, ma la notifica al cliente non è stata inviata: '.$notification['error']);
         }
@@ -198,6 +201,7 @@ class CheckoutOrderController extends Controller
         CheckoutOrderCustomerNotificationService $notifications,
     ): RedirectResponse {
         $data = $request->validate([
+            'notify_customer' => ['sometimes', 'boolean'],
             'fulfillment_method' => ['required', Rule::in(array_keys($this->fulfillmentMethods()))],
             'fulfillment_status' => ['required', Rule::in(array_keys($this->fulfillmentStatuses()))],
             'fulfillment_carrier' => ['nullable', 'string', 'max:255'],
@@ -205,6 +209,8 @@ class CheckoutOrderController extends Controller
             'fulfillment_notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
+        $notifyCustomer = $request->boolean('notify_customer', true);
+        unset($data['notify_customer']);
         $previousStatus = $checkout->fulfillment_status;
         $completed = in_array($data['fulfillment_status'], ['delivered', 'collected'], true);
         $orderStatus = in_array($data['fulfillment_status'], ['shipped', 'delivered', 'collected'], true)
@@ -220,12 +226,12 @@ class CheckoutOrderController extends Controller
             ]);
 
         $notification = null;
-        if ($data['fulfillment_status'] === 'shipped' && $previousStatus !== 'shipped') {
+        if ($notifyCustomer && $data['fulfillment_status'] === 'shipped' && $previousStatus !== 'shipped') {
             $checkout->forceFill([...$data, 'order_status' => 'shipped']);
             $notification = $notifications->shipped($checkout);
         }
 
-        $response = back()->with('status', 'Consegna dell’ordine aggiornata.');
+        $response = back()->with('status', $notifyCustomer ? 'Consegna dell’ordine aggiornata.' : 'Consegna aggiornata senza inviare comunicazioni al cliente.');
         if ($notification && ! $notification['sent']) {
             $response->with('notification_warning', 'Consegna aggiornata, ma la notifica al cliente non è stata inviata: '.$notification['error']);
         }
@@ -272,12 +278,15 @@ class CheckoutOrderController extends Controller
     }
 
     public function markPaid(
+        Request $request,
         LeadOrderCheckout $checkout,
         AdminDocumentService $service,
         CheckoutOrderCustomerNotificationService $notifications,
         CheckoutOrderLeadStatusService $leadStatuses,
     ): RedirectResponse
     {
+        $request->validate(['notify_customer' => ['sometimes', 'boolean']]);
+        $notifyCustomer = $request->boolean('notify_customer', true);
         if ($checkout->status === 'paid') {
             return back()->with('status', $checkout->payment_label.' risulta già pagato. Nessuna nuova notifica inviata.');
         }
@@ -313,7 +322,7 @@ class CheckoutOrderController extends Controller
                 ->update(['order_status' => $checkout->payment_type === 'balance' ? 'ready' : 'in_production']);
         });
 
-        $notification = $checkout->payment_type === 'balance'
+        $notification = !$notifyCustomer || $checkout->payment_type === 'balance'
             ? null
             : $notifications->orderProcessing($checkout->forceFill(['order_status' => 'in_production']));
         $leadStatuses->paymentReceived($checkout);

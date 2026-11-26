@@ -139,7 +139,7 @@ class CheckoutOrderCustomerNotificationService
         return $orderNumber;
     }
 
-    private function trackingUrl(?string $carrier, ?string $tracking): ?string
+    public function trackingUrl(?string $carrier, ?string $tracking): ?string
     {
         $carrier = mb_strtolower(trim((string) $carrier));
         $tracking = trim((string) $tracking);

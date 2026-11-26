@@ -202,11 +202,7 @@ class LeadSalesSheetController extends Controller
         abort_unless($item->lead_sales_sheet_id === $lead->salesSheet?->id, 404);
         $data = $request->validate(['print_type_id' => ['required', 'exists:crm_print_types,id']]);
         $type = CrmPrintType::with('priceTiers')->findOrFail($data['print_type_id']);
-        $tier = $calculator->tier($type->priceTiers, (float) $item->quantity);
-        if (! $tier) {
-            return back()->withErrors(['print_type_id' => 'Nessuna fascia prezzo stampa per questa quantità.']);
-        }
-        $item->prints()->create(['crm_print_type_id' => $type->id, 'print_code' => $type->code, 'print_name' => $type->name, 'unit_cost' => $tier->unit_cost, 'unit_price' => $tier->unit_price]);
+        $calculator->attachPrint($lead->salesSheet, $item, $type);
         $calculator->recalculate($lead->salesSheet);
 
         return back()->with('status', 'Stampa aggiunta.');

@@ -423,5 +423,8 @@ class AdminDocument extends Model
         };
 
         $this->forceFill(['payment_status' => $status])->save();
+        if (in_array($this->type, ['proforma','invoice'],true) && $this->currency === 'EUR' && $status === 'paid') {
+            EcommerceOrder::where($this->type === 'invoice' ? 'invoice_document_id' : 'admin_document_id', $this->id)->where('payment_method', 'bank')->where('status', '!=', 'cancelled')->where('gross', $this->total)->whereNull('paid_at')->update(['status' => 'paid', 'paid_at' => now()]);
+        }
     }
 }

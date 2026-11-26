@@ -59,6 +59,10 @@ Route::name('admin.')->group(function () {
         });
 
         Route::middleware('admin.permission:leads.view')->group(function () {
+            Route::get('/ecommerce-orders', [\App\Http\Controllers\Admin\EcommerceOrderController::class, 'index'])->name('ecommerce-orders.index');
+            Route::get('/ecommerce-orders/{order}', [\App\Http\Controllers\Admin\EcommerceOrderController::class, 'show'])->name('ecommerce-orders.show');
+            Route::get('/ecommerce-orders/{order}/files/{item}/{position}', [\App\Http\Controllers\Admin\EcommerceOrderController::class, 'file'])->whereUuid('item')->whereIn('position', ['front', 'back', 'sleeve_left', 'sleeve_right'])->name('ecommerce-orders.file');
+
             Route::get('/checkout-orders', [CheckoutOrderController::class, 'index'])->name('checkout-orders.index');
             Route::get('/checkout-orders/{checkout}', [CheckoutOrderController::class, 'show'])->name('checkout-orders.show');
             Route::get('/', AdminDashboardController::class)->name('dashboard');
@@ -72,6 +76,11 @@ Route::name('admin.')->group(function () {
         });
 
         Route::middleware('admin.permission:leads.manage')->group(function () {
+            Route::patch('/ecommerce-orders/{order}/status', [\App\Http\Controllers\Admin\EcommerceOrderController::class, 'status'])->middleware('admin.training.blocked')->name('ecommerce-orders.status');
+            Route::patch('/ecommerce-orders/{order}/fulfillment', [\App\Http\Controllers\Admin\EcommerceOrderController::class, 'fulfillment'])->middleware('admin.training.blocked')->name('ecommerce-orders.fulfillment');
+            Route::patch('/ecommerce-orders/{order}/notes', [\App\Http\Controllers\Admin\EcommerceOrderController::class, 'notes'])->middleware('admin.training.blocked')->name('ecommerce-orders.notes');
+            Route::patch('/ecommerce-orders/{order}/items/{item}/variants', [\App\Http\Controllers\Admin\EcommerceOrderController::class, 'variants'])->whereUuid('item')->middleware('admin.training.blocked')->name('ecommerce-orders.variants');
+            Route::patch('/ecommerce-orders/{order}/cancel', [\App\Http\Controllers\Admin\EcommerceOrderController::class, 'cancel'])->middleware('admin.training.blocked')->name('ecommerce-orders.cancel');
             Route::post('/checkout-orders/{checkout}/balance', [CheckoutOrderController::class, 'storeBalance'])->name('checkout-orders.balance.store');
             Route::post('/checkout-orders/{checkout}/balance/proforma', [CheckoutOrderController::class, 'storeBalanceProforma'])->name('checkout-orders.balance.proforma.store');
             Route::patch('/checkout-orders/{checkout}/status', [CheckoutOrderController::class, 'updateStatus'])->name('checkout-orders.status.update');
@@ -124,6 +133,11 @@ Route::name('admin.')->group(function () {
         });
 
         Route::middleware(['admin.permission:documents.manage', 'admin.training.blocked'])->group(function () {
+            Route::post('/ecommerce-orders/{order}/documents', [\App\Http\Controllers\Admin\EcommerceOrderController::class, 'document'])->name('ecommerce-orders.documents');
+            Route::post('/ecommerce-orders/{order}/proforma/send', [\App\Http\Controllers\Admin\EcommerceOrderController::class, 'sendProforma'])->name('ecommerce-orders.proforma.send');
+            Route::post('/ecommerce-orders/{order}/proforma', [\App\Http\Controllers\Admin\EcommerceOrderController::class, 'proforma'])->name('ecommerce-orders.proforma');
+            Route::patch('/ecommerce-orders/{order}/payment', [\App\Http\Controllers\Admin\EcommerceOrderController::class, 'markPaid'])->name('ecommerce-orders.payment');
+
             Route::post('/checkout-orders/{checkout}/proforma', [CheckoutOrderController::class, 'storeProforma'])->name('checkout-orders.proforma.store');
             Route::patch('/checkout-orders/{checkout}/payment', [CheckoutOrderController::class, 'markPaid'])->name('checkout-orders.payment.paid');
             Route::post('/documents', [AdminDocumentController::class, 'store'])->name('documents.store');
@@ -151,6 +165,7 @@ Route::name('admin.')->group(function () {
         });
 
         Route::middleware(['admin.permission:crm_catalog.view', 'admin.training.blocked'])->group(function () {
+            Route::get('/settings/crm-catalog/product-categories/{productCategory}/image', [CrmProductCategoryController::class, 'image'])->name('crm-catalog.product-categories.image');
             Route::get('/settings/crm-catalog/products/{product}/personalizations', [CrmProductPersonalizationController::class, 'index'])->name('crm-catalog.products.personalizations.index');
             Route::get('/settings/crm-catalog/mockup-assets', [CrmProductMockupController::class, 'asset'])->name('crm-catalog.mockup-assets.show');
             Route::get('/settings/crm-catalog/products/{product}/mockups', [CrmProductMockupController::class, 'index'])->name('crm-catalog.products.mockups.index');

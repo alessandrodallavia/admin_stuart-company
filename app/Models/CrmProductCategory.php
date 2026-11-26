@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CrmProductCategory extends Model
 {
-    protected $fillable = ['name', 'slug', 'parent_id', 'description', 'sort_order', 'is_active'];
+    protected $fillable = ['name', 'slug', 'parent_id', 'description', 'sort_order', 'is_active', 'image_path', 'image_alt'];
 
     protected $casts = ['sort_order' => 'integer', 'is_active' => 'boolean'];
 

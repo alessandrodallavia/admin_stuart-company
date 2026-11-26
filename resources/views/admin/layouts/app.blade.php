@@ -79,6 +79,11 @@
                         'active' => $activeNav === 'leads',
                     ] : null,
                     $adminUser?->hasAdminPermission('leads.view') ? [
+                        'label' => 'Ordini ecommerce',
+                        'route' => route('admin.ecommerce-orders.index'),
+                        'active' => $activeNav === 'ecommerce-orders',
+                    ] : null,
+                    $adminUser?->hasAdminPermission('leads.view') ? [
                         'label' => 'Ordini checkout',
                         'route' => route('admin.checkout-orders.index'),
                         'active' => $activeNav === 'checkout-orders',
@@ -439,6 +444,7 @@
             });
         })();
     </script>
+    @include('admin.orders.status-confirmation')
     @stack('scripts')
     @livewireScripts
 </body>

@@ -198,21 +198,7 @@ class LeadSalesSheet extends Component
         $field = "printTypeIds.$itemId";
         $this->validate([$field => ['required', 'exists:crm_print_types,id']]);
         $type = CrmPrintType::query()->with('priceTiers')->where('is_active', true)->findOrFail($this->printTypeIds[$itemId]);
-        $tier = $calculator->tier($type->priceTiers, (float) $item->quantity);
-
-        if (! $tier) {
-            $this->addError($field, 'Nessuna fascia prezzo disponibile per questa quantità.');
-
-            return;
-        }
-
-        $item->prints()->create([
-            'crm_print_type_id' => $type->id,
-            'print_code' => $type->code,
-            'print_name' => $type->name,
-            'unit_cost' => $tier->unit_cost,
-            'unit_price' => $tier->unit_price,
-        ]);
+        $calculator->attachPrint($sheet, $item, $type, $field);
 
         $calculator->recalculate($sheet);
         foreach ($sheet->fresh()->items as $sheetItem) {

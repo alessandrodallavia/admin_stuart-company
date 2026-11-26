@@ -91,7 +91,7 @@
                 </div>
 
                 <div class="mt-10 grid grid-cols-3 gap-4 rounded-10 border border-gray-mid bg-white p-8 text-center">
-                    <div><p class="text-10 font-extrabold uppercase text-gray">Prodotti</p><p class="mt-3 text-12 font-black">€ {{ number_format((float)($salesSheet?->product_revenue_total ?? 0), 2, ',', '.') }}</p></div>
+                    <div><p class="text-10 font-extrabold uppercase text-gray">Prodotti e impianti</p><p class="mt-3 text-12 font-black">€ {{ number_format((float)($salesSheet?->product_revenue_total ?? 0), 2, ',', '.') }}</p></div>
                     <div><p class="text-10 font-extrabold uppercase text-gray">Spedizione cliente IVA escl.</p><p class="mt-3 text-12 font-black">€ {{ number_format((float)($salesSheet?->shipping_charge ?? 0), 2, ',', '.') }}</p></div>
                     <div><p class="text-10 font-extrabold uppercase text-gray">Costo spedizione</p><p class="mt-3 text-12 font-black">€ {{ number_format((float)($salesSheet?->shipping_cost ?? 0), 2, ',', '.') }}</p></div>
                 </div>
@@ -421,12 +421,13 @@
 
                                 <div class="mt-10 border-t border-gray-mid pt-9">
                                     <p class="text-10 font-extrabold uppercase text-gray">Lavorazioni</p>
+                                    @if($item->setup_revenue_total > 0)<div class="mt-12 rounded-10 border border-bullstar/20 bg-bullstar/5 p-12"><p class="text-12 font-semibold">Impianti una tantum: € {{ number_format((float) $item->setup_revenue_total, 2, ',', '.') }}</p>@foreach($item->setup_items ?? [] as $setup)<p class="mt-4 text-11 text-gray">{{ $setup['name'] }} · {{ $setup['quantity'] }} × € {{ number_format($setup['unit_price'], 2, ',', '.') }}</p>@endforeach<p class="mt-4 text-11 text-gray">Aggiunti al totale, esclusi dal prezzo per pezzo.</p></div>@endif
                                     @if($item->prints->isNotEmpty())
                                         <div class="mt-5 space-y-4">
                                             @foreach($item->prints as $print)
                                                 <div wire:key="sales-print-{{ $print->id }}" class="flex items-center justify-between gap-5 rounded-10 border border-gray-mid bg-white px-8 py-6">
                                                     <span class="min-w-0 truncate text-10 font-bold">{{ $print->print_name }}</span>
-                                                    <span class="flex shrink-0 items-center gap-5 text-10 font-black">€ {{ number_format((float)$print->unit_price, 2, ',', '.') }} <button type="button" wire:click="removePrint({{ $item->id }}, {{ $print->id }})" wire:loading.attr="disabled" title="Rimuovi lavorazione" class="text-13 text-red-600">×</button></span>
+                                                    <span class="flex shrink-0 items-center gap-5 text-10 font-black">€ {{ number_format((float)$print->unit_price, 2, ',', '.') }} {{ !$salesSheet->prices_include_vat && $print->printType?->technique === 'setup' ? 'una tantum' : '/pz' }} <button type="button" wire:click="removePrint({{ $item->id }}, {{ $print->id }})" wire:loading.attr="disabled" title="Rimuovi lavorazione" class="text-13 text-red-600">×</button></span>
                                                 </div>
                                             @endforeach
                                         </div>
@@ -437,7 +438,7 @@
                                     <form wire:submit="addPrint({{ $item->id }})" class="mt-6 flex gap-5">
                                         <select wire:model="printTypeIds.{{ $item->id }}" required aria-label="Lavorazione per {{ $item->configuration_name ?: $item->product_name }}" class="min-w-0 flex-1 rounded-10 border-gray-mid bg-white px-8 py-8 text-10 font-semibold focus:border-bullstar focus:ring-bullstar">
                                             <option value="">Aggiungi lavorazione…</option>
-                                            @foreach($printTypes as $type)<option value="{{ $type->id }}">{{ $type->code }} · {{ $type->name }}</option>@endforeach
+                                            @foreach($printTypes as $type)<option value="{{ $type->id }}">{{ $type->code }} · {{ $type->name }}{{ $type->technique === 'setup' ? ' · costo fisso' : '' }}</option>@endforeach
                                         </select>
                                         <button type="submit" wire:loading.attr="disabled" wire:target="addPrint({{ $item->id }})" class="rounded-10 bg-white px-8 py-8 text-14 font-black shadow-sm disabled:opacity-50" title="Aggiungi lavorazione">+</button>
                                     </form>
