@@ -20,9 +20,13 @@ class EcommerceOrderConfirmation
             $order = EcommerceOrder::find($orderId);
             if (!$order || $order->confirmation_sent_at || $order->status === 'cancelled') return;
             if ($order->status !== 'paid' && $order->payment_method !== 'bank') return;
-            $html = view('emails.ecommerce-order-received', compact('order'))->render();
-            $text = html_entity_decode(trim(strip_tags(preg_replace('~<br\s*/?>|</p>~i', "\n", $html))), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-            $this->brevo->sendTransactionalEmail(['name' => $order->customer_name, 'email' => $order->email], 'Ordine nr. '.$order->reference.' - Conferma ordine', $html, $text, ['ecommerce-order']);
+            $params = app(EcommerceOrderEmailParams::class)->build($order);
+            $this->brevo->sendTemplateEmail(
+                ['name' => $order->customer_name, 'email' => $order->email],
+                (int) config('services.brevo.ecommerce_order_received_template_id', 12),
+                $params,
+                ['ecommerce-order']
+            );
             $order->update(['confirmation_sent_at' => now()]);
         } catch (Throwable $exception) {
             Log::error('Conferma ordine ecommerce non inviata', ['order_id' => $orderId, 'exception' => $exception]);

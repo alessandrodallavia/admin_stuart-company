@@ -36,6 +36,7 @@ return [
     ],
 
     'brevo' => [
+        'ecommerce_order_received_template_id' => (int) env('BREVO_ECOMMERCE_ORDER_RECEIVED_TEMPLATE_ID', 12),
         'api_key' => env('BREVO_API_KEY'),
         'pipeline_landing' => env('BREVO_PIPELINE_LANDING'),
         'first_stage' => env('BREVO_FIRST_STAGE'),

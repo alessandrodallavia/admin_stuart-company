@@ -61,6 +61,20 @@ class AdminCrmDashboardTest extends TestCase
         }
     }
 
+    public function test_new_default_minimum_does_not_replace_the_amount_saved_on_an_existing_order(): void
+    {
+        $lead = $this->lead();
+        $sheet = $lead->salesSheets()->create(['name' => 'Ordine esistente', 'order_number' => 'ORD-OLD-MIN', 'status' => 'draft', 'prices_include_vat' => false, 'minimum_order_amount' => 150, 'shipping_fee' => 0]);
+        $product = CrmProduct::create(['code' => 'OLD-MIN', 'name' => 'Prodotto', 'unit_cost' => 2, 'is_active' => true]);
+        $product->priceTiers()->create(['min_quantity' => 1, 'max_quantity' => null, 'unit_price' => 5]);
+        $sheet->items()->create(['crm_product_id' => $product->id, 'product_code' => $product->code, 'product_name' => $product->name, 'quantity' => 1, 'product_unit_price' => 5, 'product_unit_cost' => 2]);
+        app(\App\Services\LeadSalesSheetService::class)->recalculate($sheet);
+        $this->assertEquals(122.95, config('orders.minimum_amount_ex_vat'));
+        $this->assertEquals(150, $sheet->fresh()->minimum_order_amount);
+        $this->assertEquals(150, $sheet->fresh()->revenue_total);
+        $this->assertEquals(145, $sheet->fresh()->minimum_order_adjustment);
+    }
+
     public function test_color_and_size_distribution_updates_completed_checkout_without_changing_totals(): void
     {
         $lead = $this->lead(['name' => 'Cliente varianti']);
@@ -856,8 +870,8 @@ class AdminCrmDashboardTest extends TestCase
 
         $sheet = $lead->fresh()->salesSheet;
         $this->assertSame('45.00', $sheet->product_revenue_total);
-        $this->assertSame('105.00', $sheet->minimum_order_adjustment);
-        $this->assertSame('158.12', $sheet->revenue_total);
+        $this->assertSame('77.95', $sheet->minimum_order_adjustment);
+        $this->assertSame('131.07', $sheet->revenue_total);
 
         $this->actingAs($admin, 'admin')->post(route('admin.leads.orders.checkout.store', [$lead, $sheet]), [
             'payment_type' => 'full',
@@ -866,20 +880,20 @@ class AdminCrmDashboardTest extends TestCase
 
         $checkout = $sheet->fresh()->checkouts()->firstOrFail();
         $this->assertSame('45.00', $checkout->product_subtotal);
-        $this->assertSame('150.00', $checkout->minimum_order_amount);
-        $this->assertSame('105.00', $checkout->minimum_order_adjustment);
-        $this->assertSame('158.12', $checkout->order_taxable_amount);
-        $this->assertSame('34.79', $checkout->order_vat_amount);
-        $this->assertSame('192.91', $checkout->order_total_amount);
+        $this->assertSame('122.95', $checkout->minimum_order_amount);
+        $this->assertSame('77.95', $checkout->minimum_order_adjustment);
+        $this->assertSame('131.07', $checkout->order_taxable_amount);
+        $this->assertSame('28.84', $checkout->order_vat_amount);
+        $this->assertSame('159.91', $checkout->order_total_amount);
 
         $this->post(route('admin.checkout-orders.proforma.store', $checkout))->assertSessionHasNoErrors();
         $proforma = $checkout->fresh()->proforma()->with('items')->firstOrFail();
-        $this->assertSame('158.12', $proforma->subtotal);
-        $this->assertSame('192.91', $proforma->total);
+        $this->assertSame('131.07', $proforma->subtotal);
+        $this->assertSame('159.91', $proforma->total);
         $this->assertDatabaseHas('admin_document_items', [
             'admin_document_id' => $proforma->id,
             'description' => 'IMPORTO MINIMO ORDINE',
-            'unit_price' => 150,
+            'unit_price' => 122.95,
             'informational' => false,
         ]);
         $this->assertDatabaseHas('admin_document_items', [
@@ -954,8 +968,8 @@ class AdminCrmDashboardTest extends TestCase
             ->assertSee('€ 20,00')
             ->assertSee('Minimo d’ordine applicato: € 150,00')
             ->assertSee('€ 100,00')
-            ->assertSee('€ 80,00')
-            ->assertSee('50,6%')
+            ->assertSee('€ 52,95')
+            ->assertSee('40,4%')
             ->assertSee('Redditizio');
     }
 
@@ -1032,14 +1046,14 @@ class AdminCrmDashboardTest extends TestCase
             ->assertSee('90,00')
             ->assertSee('Minimo d’ordine applicato: € 150,00')
             ->assertSee('IVA 22%')
-            ->assertSee('34,79')
+            ->assertSee('28,84')
             ->assertSee('Totale da pagare IVA inclusa')
-            ->assertSee('192,91')
+            ->assertSee('159,91')
             ->set('shippingFee', '0')
             ->call('saveShipping')
             ->assertHasNoErrors()
-            ->assertSee('33,00')
-            ->assertSee('183,00');
+            ->assertSee('27,05')
+            ->assertSee('150,00');
 
         $this->assertDatabaseHas('lead_sales_items', [
             'product_code' => 'POLO01',

@@ -80,6 +80,20 @@ class BrevoEmailService
         }
     }
 
+    public function sendTemplateEmail(array $to, int $templateId, array $params, array $tags = ['customer-notification']): array
+    {
+        if ($templateId < 1) throw new \InvalidArgumentException('Template Brevo non configurato.');
+        $from = config('admin_notifications.from');
+        return $this->postTransactionalEmail([
+            'templateId' => $templateId,
+            'sender' => ['name' => $from['name'], 'email' => $from['email']],
+            'replyTo' => ['name' => $from['name'], 'email' => $from['email']],
+            'to' => [['name' => $to['name'] ?? $to['email'], 'email' => $to['email']]],
+            'params' => $params,
+            'tags' => $tags,
+        ]);
+    }
+
     private function postTransactionalEmail(array $payload): array
     {
         $sender = $payload['sender'];
@@ -121,7 +135,7 @@ class BrevoEmailService
         return (array) $this->brevo()->transactionalEmails->sendTransacEmail($request);
     }
 
-    private function brevo(): Brevo
+    protected function brevo(): Brevo
     {
         return new Brevo(
             apiKey: config('services.brevo.api_key'),

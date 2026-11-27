@@ -38,7 +38,7 @@
                 @endphp
                 <div class="mt-8 flex flex-wrap items-center gap-x-16 gap-y-4 rounded-10 border border-bullstar/20 bg-white px-10 py-8 text-11 font-semibold">
                     <span class="text-gray">Imponibile calcolato: <span class="line-through">€ {{ number_format($calculatedOrderAmount, 2, ',', '.') }}</span></span>
-                    <span class="font-black text-bullstar">Minimo d’ordine applicato: € {{ number_format((float) $salesSheet->minimum_order_amount, 2, ',', '.') }}</span>
+                    <span class="font-black text-bullstar">Minimo d’ordine applicato: € {{ number_format(round((float) $salesSheet->minimum_order_amount * ($salesSheet->prices_include_vat ? 1 : 1.22), 2), 2, ',', '.') }} IVA inclusa</span>
                 </div>
             @endif
             <div class="mt-8 grid gap-8 sm:grid-cols-3">

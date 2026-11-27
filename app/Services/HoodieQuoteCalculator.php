@@ -114,6 +114,7 @@ class HoodieQuoteCalculator
                 'items_subtotal' => $quote['items_subtotal'] ?? $subtotal,
                 'calculated_subtotal' => $quote['calculated_subtotal'] ?? $subtotal,
                 'minimum_order_amount' => $quote['minimum_order_amount'] ?? 0,
+                'minimum_order_amount_inc_vat' => $quote['minimum_order_amount_inc_vat'] ?? 0,
                 'minimum_order_applied' => $quote['minimum_order_applied'] ?? false,
                 'quality' => $quality, 'label' => $qualities[$quality], 'unit' => $unitCents,
                 'subtotal' => $subtotal, 'vat' => $vat, 'shipping' => $shipping, 'total' => $subtotal + $vat + $shipping];
@@ -133,7 +134,7 @@ class HoodieQuoteCalculator
             }
             if ($row['minimum_order_applied']) {
                 $lines[] = 'Imponibile calcolato: '.$money($row['calculated_subtotal']);
-                $lines[] = 'Minimo d’ordine applicato: '.$money($row['minimum_order_amount']).' + IVA';
+                $lines[] = 'Minimo d’ordine applicato: '.$money($row['minimum_order_amount_inc_vat']).' IVA inclusa';
             } elseif ($row['setup_count']) {
                 $lines[] = 'Imponibile ordine: '.$money($row['subtotal']);
             }

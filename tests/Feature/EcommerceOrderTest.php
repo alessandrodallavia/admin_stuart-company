@@ -429,15 +429,15 @@ class EcommerceOrderTest extends TestCase {
         $this->assertSame('database', $job->connection);
         $this->assertSame('admin', $job->queue);
         $this->assertSame(file_get_contents(app_path('Jobs/SendEcommerceOrderConfirmation.php')), file_get_contents(base_path('../public_html/app/Jobs/SendEcommerceOrderConfirmation.php')));
-        $this->mock(\App\Services\BrevoEmailService::class, fn ($mock) => $mock->shouldNotReceive('sendTransactionalEmail'));
+        $this->mock(\App\Services\BrevoEmailService::class, fn ($mock) => $mock->shouldNotReceive('sendTemplateEmail'));
         $job->handle();
         $this->assertNull($order->fresh()->confirmation_sent_at);
         $order->update(['status' => 'paid', 'paid_at' => now()]);
-        $this->mock(\App\Services\BrevoEmailService::class, fn ($mock) => $mock->shouldReceive('sendTransactionalEmail')->once()->andThrow(new \RuntimeException('Offline')));
+        $this->mock(\App\Services\BrevoEmailService::class, fn ($mock) => $mock->shouldReceive('sendTemplateEmail')->once()->andThrow(new \RuntimeException('Offline')));
         try { $job->handle(); $this->fail('Expected retriable exception'); }
         catch (\RuntimeException $error) { $this->assertSame('Offline', $error->getMessage()); }
         $this->assertNull($order->fresh()->confirmation_sent_at);
-        $this->mock(\App\Services\BrevoEmailService::class, fn ($mock) => $mock->shouldReceive('sendTransactionalEmail')->once()->andReturn(['messageId' => 'test']));
+        $this->mock(\App\Services\BrevoEmailService::class, fn ($mock) => $mock->shouldReceive('sendTemplateEmail')->once()->andReturn(['messageId' => 'test']));
         $job->handle();
         $job->handle();
         $this->assertNotNull($order->fresh()->confirmation_sent_at);
@@ -450,7 +450,7 @@ class EcommerceOrderTest extends TestCase {
         Storage::fake('ecommerce_orders');
         $order = $this->order(); $order->update(['status' => 'paid', 'paid_at' => now()]);
         $this->mock(\App\Services\BrevoEmailService::class, function ($mock) use ($order) {
-            $mock->shouldReceive('sendTransactionalEmail')->once()->withArgs(fn ($recipient, $subject, $html, $text, $tags) => $recipient['email'] === $order->email && $subject === 'Ordine nr. '.$order->reference.' - Conferma ordine' && str_contains($html, 'Maglietta') && str_contains($html, 'Gentile Cliente,') && str_contains($html, 'Cordiali saluti') && !preg_match('/<(?:h[1-6]|strong|b)(?:\s|>)/i', $html) && str_contains($text, '€ 183,00') && $tags === ['ecommerce-order'])->andReturn(['messageId' => 'test']);
+            $mock->shouldReceive('sendTemplateEmail')->once()->withArgs(fn ($recipient, $template, $params, $tags) => $recipient['email'] === $order->email && $template === 12 && $params['order_number'] === $order->reference && $params['items'][0]['name'] === 'Maglietta' && $params['total_amount'] === '€ 183,00' && $params['payment_received'] === true && $params['shipping_city'] === 'Milano' && $tags === ['ecommerce-order'])->andReturn(['messageId' => 'test']);
         });
         $this->artisan('email:send-ecommerce-confirmations')->assertSuccessful();
         $this->assertNotNull($order->fresh()->confirmation_sent_at);
@@ -460,12 +460,12 @@ class EcommerceOrderTest extends TestCase {
         Storage::fake('ecommerce_orders');
         $order = $this->order(); $order->update(['status' => 'paid', 'paid_at' => now()]);
         $this->mock(\App\Services\BrevoEmailService::class, function ($mock) {
-            $mock->shouldReceive('sendTransactionalEmail')->once()->andThrow(new \RuntimeException('Offline'));
+            $mock->shouldReceive('sendTemplateEmail')->once()->andThrow(new \RuntimeException('Offline'));
         });
         $this->artisan('email:send-ecommerce-confirmations')->assertSuccessful();
         $this->assertNull($order->fresh()->confirmation_sent_at);
         $this->mock(\App\Services\BrevoEmailService::class, function ($mock) {
-            $mock->shouldReceive('sendTransactionalEmail')->once()->andReturn(['messageId' => 'test']);
+            $mock->shouldReceive('sendTemplateEmail')->once()->andReturn(['messageId' => 'test']);
         });
         $this->artisan('email:send-ecommerce-confirmations')->assertSuccessful();
         $this->assertNotNull($order->fresh()->confirmation_sent_at);
